@@ -1,0 +1,2 @@
+# Preserve the exact reviewed bytes recorded in the third-party provenance manifest.
+/extensions/webbridge-v2/semantics.js text eol=lf

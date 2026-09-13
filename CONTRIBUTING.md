@@ -50,9 +50,9 @@ Commit source, sanitized contracts, synthetic fixtures and documentation. Keep `
 API tokens, DPAPI files, browser state, mail attachments, runtime databases and raw provider evidence
 outside Git and outside synced source directories. `.env.example` is a blank template only.
 
-The private repository contains internal architecture and sanitized customer-zero handoffs. Keep
-visibility private and invite only owner-approved collaborators. Do not copy its contents into a
-public issue, public fork or another service without authorization.
+The owner made this repository public on 2026-09-13. Source and sanitized handoffs are public;
+runtime files, provider evidence and credentials remain private. Invite only owner-approved
+collaborators with write access. Public issues and pull requests must contain no private data.
 
 No Ascend, CarrierView, Outlook or other production action is authorized by ordinary coding work.
 V1 remains the installed/default architecture; V2 is fixture/TestRuns-gated and OBSERVE-only.

@@ -19,14 +19,16 @@ ROOT = Path(__file__).resolve().parents[1]
 ORIGIN = 'chrome-extension://' + 'a' * 32 + '/'
 
 
-def compile_launcher(tmp_path, *, template=None, child=None):
+def compile_launcher(tmp_path, *, template=None, child=None, input_preamble=False):
     folder = tmp_path / 'source with spaces'
     (folder / 'scripts').mkdir(parents=True)
     (folder / 'scripts/__init__.py').write_text('', encoding='utf-8')
     (folder / 'scripts/ascend_native_host.py').write_text(child or '''import json, struct, sys
 from pathlib import Path
 def mark(stage, **facts):
-    Path('fixture-status.json').write_text(json.dumps(dict(stage=stage,**facts)))
+    path=Path('fixture-status.json')
+    prior=json.loads(path.read_text()) if path.exists() else {}
+    path.write_text(json.dumps(dict(prior,stage=stage,**facts)))
 mark('CHILD_STARTED')
 try:
     for _ in range(2):
@@ -44,6 +46,9 @@ except Exception as exc:
     mark('CHILD_FAILED',exception_type=type(exc).__name__)
 ''', encoding='utf-8')
     code = template or (ROOT / 'scripts/native_host_launcher.cs').read_text(encoding='utf-8')
+    if input_preamble:
+        code = code.replace('static int Main(string[] args) {',
+            'static int Main(string[] args) { Console.InputEncoding = new System.Text.UnicodeEncoding(false, true);')
     # Replace the fixed production root before inserting fixture paths, which themselves live under it.
     code = code.replace(r'C:\FreightDeskRuntime', str(tmp_path / 'runtime'))
     code = code.replace('__PYTHON__', str(ROOT / '.tools/python/python.exe')).replace('__SOURCE__', str(folder))
@@ -82,15 +87,32 @@ def response_while_input_open(process, timeout=3):
         return None
 
 
-def test_launcher_handles_small_interactive_frames_and_spaces(tmp_path):
-    exe = compile_launcher(tmp_path)
+def fixture_diagnostics(tmp_path):
+    """Only synthetic fixed-stage receipts; never subprocess output or private values."""
+    records = []
+    for file in (tmp_path / 'runtime/Data/booking-logistics/ascend-native').glob('startup-*.jsonl'):
+        for line in file.read_text().splitlines():
+            record = json.loads(line)
+            records.append({key: record[key] for key in (
+                'startup_stage', 'safe_error_code', 'exception_type', 'python_started',
+                'host_initialized', 'first_message_received') if key in record})
+    child_status = tmp_path / 'source with spaces/fixture-status.json'
+    child = json.loads(child_status.read_text()) if child_status.exists() else {}
+    return {'startup': records, 'fixture_child': {key: child[key] for key in (
+        'stage', 'prefix_length', 'declared_size', 'exception_type') if key in child}}
+
+
+@pytest.mark.parametrize('input_preamble,headless', [(False, False), (True, False), (True, True)])
+def test_launcher_handles_small_interactive_frames_and_spaces(tmp_path, input_preamble, headless):
+    exe = compile_launcher(tmp_path, input_preamble=input_preamble)
     process = subprocess.Popen([str(exe), ORIGIN], cwd=str(tmp_path), stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        creationflags=subprocess.CREATE_NO_WINDOW if headless else 0)
     try:
         for _ in range(2):
             process.stdin.write(encode_message({'kind':'FIXTURE_PING','protocol':1}))
             process.stdin.flush()
-            assert response_while_input_open(process) == {'kind':'FIXTURE_PONG','protocol':1}
+            assert response_while_input_open(process) == {'kind':'FIXTURE_PONG','protocol':1}, fixture_diagnostics(tmp_path)
         process.stdin.close()
         assert process.wait(timeout=5) == 0
         assert process.stdout.read() == b'' and process.stderr.read() == b''
@@ -171,7 +193,7 @@ raise SystemExit(run(sys.argv[1:],sys.stdin,sys.stdout,recorder=StartupRecorder(
 '''
     exe=compile_launcher(tmp_path,child=child)
     report=probe(str(exe),ORIGIN,timeout=3)
-    assert report['status']=='PASS' and report['stdout_clean'] and report['response_framing_valid']
+    assert report['status']=='PASS' and report['stdout_clean'] and report['response_framing_valid'], (report, fixture_diagnostics(tmp_path))
     assert not report['production_reads'] and not report['production_writes']
     denied=probe(str(exe),'chrome-extension://'+'b'*32+'/',timeout=3)
     assert denied['status']=='STOPPED' and not denied['response_framing_valid']
@@ -213,5 +235,6 @@ b=json.dumps({'kind':'SELF_TEST_PONG','protocol':1,'production_reads':False,'pro
 sys.stdout.buffer.write(struct.pack('<I',len(b))+b);sys.stdout.buffer.flush()
 '''
     exe=compile_launcher(tmp_path,child=child)
-    assert probe(str(exe),ORIGIN,timeout=3)['status']=='PASS'
+    report = probe(str(exe),ORIGIN,timeout=3)
+    assert report['status']=='PASS', (report, fixture_diagnostics(tmp_path))
     assert 'PRIVATE' not in (tmp_path/'runtime/Data/booking-logistics/ascend-native/startup-launcher.jsonl').read_text()

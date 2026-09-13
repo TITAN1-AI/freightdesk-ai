@@ -1,5 +1,11 @@
 # Known issues - audit repair 2026-09-13
 
+Fresh Windows CI exposed two portability defects: CRLF checkout changed the pinned adaptation hash,
+and .NET Framework's redirected-input writer inserted an encoding preamble into native binary frames.
+Git attributes preserve the reviewed LF bytes; the launcher source now prevents the preamble, with
+console/headless synthetic regressions. The installed host is unchanged; deployment and real pairing
+remain outside this work. Hosted full-suite verification of these fixes is tracked in PR #1.
+
 A01-A10 repairs are implemented in source; see [the repair handoff](docs/WEBBRIDGE_V2_AUDIT_FIXES.md).
 Earlier unconditional acceptance missed reproduced defects. V2 remains offline, not LIVE_VALIDATED.
 A 19-field fixture now fits (15,298 graph / 29,802 combined bytes); a 32-field fixture still safely
