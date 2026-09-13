@@ -43,5 +43,9 @@ jobs:
           if (-not ($edgeCandidates | Where-Object { Test-Path -LiteralPath $_ })) {
             throw 'The offline browser fixtures require Microsoft Edge on the Windows runner.'
           }
+      - name: Check native pipe and pinned-source checkout portability
+        run: |
+          .\.tools\python\python.exe -m pytest tests/test_ascend_native_startup.py tests/test_webbridge_v2_boundaries.py --basetemp=C:\FreightDeskRuntime\Data\TestRuns\ci-portability
+          if ($LASTEXITCODE -ne 0) { throw 'Offline portability checks failed.' }
       - name: Full offline suite, lint and dashboard checks
         run: .\scripts\test.ps1
