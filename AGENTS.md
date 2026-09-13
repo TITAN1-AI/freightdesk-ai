@@ -1,3 +1,13 @@
+CURRENT OWNER AUTHORIZATION 2026-09-13: owner said "execute you have full access" for the proposed
+daily-operations validation plan. Proceed with reversible release preparation, local installed-component
+inspection/update, existing-profile X1 read-only validation and scoped local fixes/tests. This is fresh
+authorization, not reuse of the closed five-iteration grant. Preserve pinned enrollment/profile,
+identity/presence/session/lease/write protections and unrelated authority/history. First installed
+capture is one exact LOAD/1763 / Load Basics metadata observation if currently proved. Keep V2 off;
+no automatic cohort crawling, unreviewed section traversal, communications, provider mutations or
+canonical writes. Operational field reads follow their separate proved contracts and local-only data
+boundaries. Stop for actual login/MFA or important identity/scope ambiguity. Do not invent live success.
+
 COLLABORATIVE CODING: read CONTRIBUTING.md. Use one scoped codex/<task> branch per change and a
 reviewable PR against main. Preserve Git history and the audited baseline. GitHub access/CI never
 authorizes provider execution, real leases or production writes. Keep runtime/secrets out of Git.

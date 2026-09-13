@@ -1,5 +1,25 @@
 # Current state — 2026-09-13
 
+## Read-only release execution authorized — in progress
+
+Owner approved execution of the proposed setup/validation plan. Fresh local inventory confirms pinned
+installation/manifest bindings, no pending read, expired/revoked last lease and no active mapping job.
+Prepare X1/V1 release identity, recoverable native-host update and one exact installed metadata capture
+before expanding validation. V2 stays off; no new live success is claimed. Earlier planning-only and
+offline-only notes below are historical for this newly authorized bounded release work.
+
+## Proposed daily-operations readiness path
+
+Owner asked how to validate and set up dependable everyday use. The concrete gate sequence is in
+[the proposed validation plan](docs/ASCEND_DAILY_OPERATIONS_VALIDATION_PLAN.md): versioned installed
+release, one exact workspace, representative navigation cohort, separately validated operational
+values, explicit operations coverage, then a supervised daily pilot. This is planning only; no new
+live authority, installation, field activation or capability promotion. CURRENT_OPERATIONS remains
+review-gated. Private runtime evidence remains outside the public repository.
+
+GitHub PR #1 merged the checkout/native-framing portability repairs. Run 34773561853 passed 967
+tests, full Ruff and dashboard checks; two existing dependency warnings remain. Installed host unchanged.
+
 ## GitHub collaboration - 2026-09-13
 
 Repository: https://github.com/TITAN1-AI/freightdesk-ai. Initially created private; the owner changed

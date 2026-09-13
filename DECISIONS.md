@@ -1,5 +1,11 @@
 # GitHub collaboration decision - 2026-09-13
 
+Proposed next milestone (not execution authorization): qualify a versioned X1 read-only operations
+release through installed component proof, exact workspace capture, representative reviewed
+navigation, field-value comparison and a supervised pilot. Keep V2 migration separate and preserve
+metadata/value, board/detail, view-coverage and write boundaries. Numerical targets in
+docs/ASCEND_DAILY_OPERATIONS_VALIDATION_PLAN.md are proposals, not achieved service levels.
+
 Owner requested a shared repository for agentic coding. TITAN1-AI/freightdesk-ai was created PRIVATE;
 the owner subsequently changed it to PUBLIC on 2026-09-13. Preserve this owner-selected visibility,
 audited history, main plus scoped branches/PRs, and synthetic-only Windows CI.

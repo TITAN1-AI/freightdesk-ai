@@ -1,5 +1,11 @@
 # Known issues - audit repair 2026-09-13
 
+Everyday operations is not yet a released capability. CURRENT_OPERATIONS waits at scope review;
+candidate maps do not provide validated operational values, and the flat context assembler is not
+a complete per-stop appointment model. Installed release/rollback qualification, field contracts,
+coverage and supervised recovery/performance validation remain necessary. See
+[the proposed readiness plan](docs/ASCEND_DAILY_OPERATIONS_VALIDATION_PLAN.md). No gate was relaxed.
+
 Fresh Windows CI exposed two portability defects: CRLF checkout changed the pinned adaptation hash,
 and .NET Framework's redirected-input writer inserted an encoding preamble into native binary frames.
 Git attributes preserve the reviewed LF bytes; the launcher source now prevents the preamble, with
