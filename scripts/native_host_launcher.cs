@@ -59,6 +59,11 @@ class FreightDeskAscendHost {
             start.EnvironmentVariables["PYTHONDONTWRITEBYTECODE"] = "1";
             start.EnvironmentVariables["TEMP"] = @"C:\FreightDeskRuntime\Data\booking-logistics\ascend-native";
             start.EnvironmentVariables["TMP"] = start.EnvironmentVariables["TEMP"];
+            // Framework creates an auto-flushing text writer for redirected stdin even though
+            // this relay uses only BaseStream. Its default encoding can emit a BOM before the
+            // first binary frame. BOM-free Unicode also works without a console/code-page handle;
+            // no text encoding is applied to the actual binary protocol in either direction.
+            Console.InputEncoding = new System.Text.UnicodeEncoding(false, false);
             using(var child = Process.Start(start)) {
                 pythonStarted = true;
                 Diagnostic("PYTHON_LAUNCH", "OK");

@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ORIGIN = 'chrome-extension://' + 'a' * 32 + '/'
 
 
-def compile_launcher(tmp_path, *, template=None, child=None):
+def compile_launcher(tmp_path, *, template=None, child=None, input_preamble=False):
     folder = tmp_path / 'source with spaces'
     (folder / 'scripts').mkdir(parents=True)
     (folder / 'scripts/__init__.py').write_text('', encoding='utf-8')
@@ -46,6 +46,9 @@ except Exception as exc:
     mark('CHILD_FAILED',exception_type=type(exc).__name__)
 ''', encoding='utf-8')
     code = template or (ROOT / 'scripts/native_host_launcher.cs').read_text(encoding='utf-8')
+    if input_preamble:
+        code = code.replace('static int Main(string[] args) {',
+            'static int Main(string[] args) { Console.InputEncoding = new System.Text.UnicodeEncoding(false, true);')
     # Replace the fixed production root before inserting fixture paths, which themselves live under it.
     code = code.replace(r'C:\FreightDeskRuntime', str(tmp_path / 'runtime'))
     code = code.replace('__PYTHON__', str(ROOT / '.tools/python/python.exe')).replace('__SOURCE__', str(folder))
@@ -99,10 +102,12 @@ def fixture_diagnostics(tmp_path):
         'stage', 'prefix_length', 'declared_size', 'exception_type') if key in child}}
 
 
-def test_launcher_handles_small_interactive_frames_and_spaces(tmp_path):
-    exe = compile_launcher(tmp_path)
+@pytest.mark.parametrize('input_preamble,headless', [(False, False), (True, False), (True, True)])
+def test_launcher_handles_small_interactive_frames_and_spaces(tmp_path, input_preamble, headless):
+    exe = compile_launcher(tmp_path, input_preamble=input_preamble)
     process = subprocess.Popen([str(exe), ORIGIN], cwd=str(tmp_path), stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        creationflags=subprocess.CREATE_NO_WINDOW if headless else 0)
     try:
         for _ in range(2):
             process.stdin.write(encode_message({'kind':'FIXTURE_PING','protocol':1}))

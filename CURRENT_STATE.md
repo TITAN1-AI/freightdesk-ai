@@ -2,7 +2,8 @@
 
 ## GitHub collaboration - 2026-09-13
 
-Private repository created: https://github.com/TITAN1-AI/freightdesk-ai.
+Repository: https://github.com/TITAN1-AI/freightdesk-ai. Initially created private; the owner changed
+it to PUBLIC on 2026-09-13, and GitHub visibility was verified. Runtime and secrets remain excluded.
 CONTRIBUTING.md, task/PR templates and the Windows Offline checks workflow define the coding handoff.
 Main is the integration branch; use scoped codex/<task> branches for changes. Full history preserves
 6d4a781 and f2377b2. GitHub login stays in the Windows credential store; configuration is under the
