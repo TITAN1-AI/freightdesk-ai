@@ -1,0 +1,411 @@
+# Proposed research registry. No third-party implementation is incorporated by this file.
+# Historical audit snapshot. Subsequent exact incorporation is tracked separately below.
+implementation_record: third_party/webbridge-v2-implementation.json
+schema_version: 1
+status: PROPOSED_RESEARCH_ONLY
+research_date: '2026-09-12'
+incorporation_authorized: false
+production_modules_changed: false
+source_repository_count: 11
+third_party_code_copied: false
+third_party_license_files_copied: false
+license_review_complete: false
+decision_vocabulary: [COPY, ADAPT, REIMPLEMENT, REFERENCE, IGNORE]
+commercial_reuse_categories:
+  - SAFE_TO_COPY_WITH_NOTICE
+  - SAFE_TO_ADAPT_WITH_NOTICE
+  - PREFER_CLEAN_REIMPLEMENTATION
+  - REFERENCE_ONLY
+  - DO_NOT_USE
+source_notes:
+  - docs/research/WEBBRIDGE_SOURCES_STAGEHAND_BROWSER_USE.md
+  - docs/research/WEBBRIDGE_SOURCES_SCRAPLING_CRAWLEE_CRAWL4AI.md
+  - docs/research/WEBBRIDGE_SOURCES_SKYVERN_HEALENIUM_FINDER.md
+  - docs/research/WEBBRIDGE_SOURCES_PLAYWRIGHT_RRWEB_AXE.md
+policy:
+  target_modules: Proposed design names only; no module existence or implementation is implied.
+  categories: Conditional engineering dispositions for reviewed source units, not product legal clearance.
+  reimplementation: Original implementation from documented algorithms; not a claim of a formal clean-room process.
+  external_execution: Excluded; X1 remains the authenticated sensor and action boundary.
+  dependencies: No dependency or asset is cleared merely by a repository root license.
+  copy_gate: Separate owner authorization, file-level license review, attribution bundle and regression review required.
+  notice_plan: docs/WEBBRIDGE_V2_PROVENANCE.md
+
+# Anchors provide required source fields to each component below; they do not imply incorporation.
+source_defaults:
+  stagehand: &stagehand
+    source_project: Stagehand
+    repository: https://github.com/browserbase/stagehand
+    source_commit: b771930d2b4d858e5bd9670203c66260b385a8fa
+    license: MIT
+    license_evidence: https://github.com/browserbase/stagehand/blob/b771930d2b4d858e5bd9670203c66260b385a8fa/LICENSE
+    notice_inventory: Only root LICENSE found in examined Git tree; no separate NOTICE found.
+    notice_plan: Preserve Browserbase copyright and MIT permission text if source is incorporated.
+    excluded_scope: [dependencies, generated assets, hosted services, external cache server, broader extension permissions]
+    source_notes: docs/research/WEBBRIDGE_SOURCES_STAGEHAND_BROWSER_USE.md
+  browser_use: &browser_use
+    source_project: Browser Use
+    repository: https://github.com/browser-use/browser-use
+    source_commit: 50f205533fe10ba35b553d2a3689c77b87bd5d0a
+    license: MIT
+    license_evidence: https://github.com/browser-use/browser-use/blob/50f205533fe10ba35b553d2a3689c77b87bd5d0a/LICENSE
+    notice_inventory: Only root LICENSE found in examined Git tree; no separate NOTICE found.
+    notice_plan: Preserve Gregor Zunic copyright and MIT permission text if source is incorporated.
+    excluded_scope: [dependencies, assets, hosted services, browser executor, session switching, raw DOM and screenshots]
+    source_notes: docs/research/WEBBRIDGE_SOURCES_STAGEHAND_BROWSER_USE.md
+  scrapling: &scrapling
+    source_project: Scrapling
+    repository: https://github.com/D4Vinci/Scrapling
+    source_commit: 48da61d1ee85cea7bbbdff013d98c90602e1d93f
+    license: BSD-3-Clause
+    license_evidence: https://github.com/D4Vinci/Scrapling/blob/48da61d1ee85cea7bbbdff013d98c90602e1d93f/LICENSE
+    notice_inventory: Root license plus separately located agent-skill license; no separate root NOTICE found.
+    notice_plan: Preserve Karim Shoair copyright, conditions and disclaimer; reproduce notices with binaries; no endorsement.
+    excluded_scope: [agent-skill package, browser and fingerprint fetchers, dependencies, raw signature persistence]
+    source_notes: docs/research/WEBBRIDGE_SOURCES_SCRAPLING_CRAWLEE_CRAWL4AI.md
+  crawlee: &crawlee
+    source_project: Crawlee
+    repository: https://github.com/apify/crawlee
+    source_commit: 0b2ac45323d7be8d9d3d146d4873cec1cafdc095
+    license: Apache-2.0
+    license_evidence: https://github.com/apify/crawlee/blob/0b2ac45323d7be8d9d3d146d4873cec1cafdc095/LICENSE.md
+    notice_inventory: No separate NOTICE found in examined tree.
+    notice_plan: Include Apache license; retain applicable Apify notices; mark changed files; recheck downstream notices.
+    excluded_scope: [dependencies, crawler runners, cookie pools, live DOM mutation, screenshot and HTML diagnostics]
+    source_notes: docs/research/WEBBRIDGE_SOURCES_SCRAPLING_CRAWLEE_CRAWL4AI.md
+  crawl4ai: &crawl4ai
+    source_project: Crawl4AI
+    repository: https://github.com/unclecode/crawl4ai
+    source_commit: 862f6bccb9c063f49b9d42701baa0eea17a4993f
+    license: LicenseRef-Crawl4AI-Apache-2.0-Text-Plus-Attribution
+    license_evidence: https://github.com/unclecode/crawl4ai/blob/862f6bccb9c063f49b9d42701baa0eea17a4993f/LICENSE
+    notice_inventory: Apache text has appended prominent public-use attribution requirement; no separate root NOTICE found.
+    notice_plan: Direct use remains unapproved pending additional-term review, per-file provenance and attribution placement.
+    excluded_scope: [vendored html2text, other vendored modules, dependencies, assets, browser runner, model selector executor]
+    source_notes: docs/research/WEBBRIDGE_SOURCES_SCRAPLING_CRAWLEE_CRAWL4AI.md
+  skyvern: &skyvern
+    source_project: Skyvern
+    repository: https://github.com/Skyvern-AI/skyvern
+    source_commit: 35cfb314f4777ad77130dae087b26aa3ef99c489
+    license: AGPL-3.0
+    license_evidence: https://github.com/Skyvern-AI/skyvern/blob/35cfb314f4777ad77130dae087b26aa3ef99c489/LICENSE
+    notice_inventory: No separate NOTICE or permissive override found for inspected core; n8n is a separate submodule.
+    notice_plan: No direct copy or translation planned; require AGPL/commercial agreement review before any direct reuse.
+    excluded_scope: [integrations/n8n, dependencies, assets, private managed-cloud measures, browser executor, DOM stamping]
+    source_notes: docs/research/WEBBRIDGE_SOURCES_SKYVERN_HEALENIUM_FINDER.md
+  playwright: &playwright
+    source_project: Playwright
+    repository: https://github.com/microsoft/playwright
+    source_commit: d1ead3ecca23182f2d06d761c28e3d4edafb6595
+    license: Apache-2.0
+    license_evidence: https://github.com/microsoft/playwright/blob/d1ead3ecca23182f2d06d761c28e3d4edafb6595/LICENSE
+    notice_inventory: Root NOTICE exists and must be reviewed for applicable retained attributions.
+    notice_evidence: https://github.com/microsoft/playwright/blob/d1ead3ecca23182f2d06d761c28e3d4edafb6595/NOTICE
+    notice_plan: Include Apache license and applicable NOTICE material, retain headers and document modifications/dependencies.
+    excluded_scope: [browser binaries, server executor, bundled dependencies, test website content, stock value-bearing serializers]
+    source_notes: docs/research/WEBBRIDGE_SOURCES_PLAYWRIGHT_RRWEB_AXE.md
+  rrweb: &rrweb
+    source_project: rrweb
+    repository: https://github.com/rrweb-io/rrweb
+    source_commit: 32ed9fe5387e088cfc023c71a39672c30c516da7
+    license: MIT
+    license_evidence: https://github.com/rrweb-io/rrweb/blob/32ed9fe5387e088cfc023c71a39672c30c516da7/LICENSE
+    notice_inventory: Root MIT reviewed; recheck selected-file attributions and dependency notices before incorporation.
+    notice_plan: Retain applicable MIT copyright and permission text; review selected helper dependency closure.
+    excluded_scope: [session recorder, replay, input and event capture, prototype patching, cross-origin federation, assets]
+    source_notes: docs/research/WEBBRIDGE_SOURCES_PLAYWRIGHT_RRWEB_AXE.md
+  axe_core: &axe_core
+    source_project: axe-core
+    repository: https://github.com/dequelabs/axe-core
+    source_commit: 4d306cbb7c456849c6f964444a6a7174d2be502a
+    license: MPL-2.0
+    license_evidence: https://github.com/dequelabs/axe-core/blob/4d306cbb7c456849c6f964444a6a7174d2be502a/LICENSE
+    notice_inventory: LICENSE-3RD-PARTY.txt exists; covered-file and bundled-component review required.
+    notice_evidence: https://github.com/dequelabs/axe-core/blob/4d306cbb7c456849c6f964444a6a7174d2be502a/LICENSE-3RD-PARTY.txt
+    notice_plan: No direct inclusion planned; review MPL covered-file source availability and notices if that changes.
+    excluded_scope: [bundled third-party implementations, full virtual-tree runtime, assets, unreviewed dependency licenses]
+    source_notes: docs/research/WEBBRIDGE_SOURCES_PLAYWRIGHT_RRWEB_AXE.md
+  healenium_web: &healenium_web
+    source_project: Healenium Web
+    repository: https://github.com/healenium/healenium-web
+    source_commit: c1e4f83d8995c2928ea1e09e721a7ac9f421bd69
+    license: Apache-2.0
+    license_evidence: https://github.com/healenium/healenium-web/blob/c1e4f83d8995c2928ea1e09e721a7ac9f421bd69/LICENSE
+    notice_inventory: EPAM HEADER exists; no separate NOTICE or nested license found in tracked tree.
+    notice_evidence: https://github.com/healenium/healenium-web/blob/c1e4f83d8995c2928ea1e09e721a7ac9f421bd69/HEADER
+    notice_plan: Include Apache license, retain EPAM notices and mark changes; dependency license clearance is separate.
+    excluded_scope: [Selenium proxy, backend services, automatic target acceptance, screenshots, raw HTML, example assets]
+    source_notes: docs/research/WEBBRIDGE_SOURCES_SKYVERN_HEALENIUM_FINDER.md
+  finder: &finder
+    source_project: '@medv/finder'
+    repository: https://github.com/antonmedv/finder
+    source_commit: a8d83110d3d035e029c571b94965b629a10a469f
+    license: MIT
+    license_evidence: https://github.com/antonmedv/finder/blob/a8d83110d3d035e029c571b94965b629a10a469f/LICENSE
+    notice_inventory: finder.ts has MIT attribution; no nested license or NOTICE found.
+    notice_plan: Preserve Anton Medvedev copyright and MIT permission notice with any adapted source.
+    excluded_scope: [tests/pages website HTML, screenshots and content, development dependencies]
+    source_notes: docs/research/WEBBRIDGE_SOURCES_SKYVERN_HEALENIUM_FINDER.md
+
+components:
+  - <<: *stagehand
+    component: document_scope_interval_index
+    source_file: packages/extension/understudy/a11y/snapshot/capture.ts
+    source_symbols: [buildFrameExclusionIntervals, makeIsIgnoredBackendNode]
+    source_lines: '534 and 644 onward; inspect the named functions separately'
+    decision: ADAPT
+    commercial_reuse_category: SAFE_TO_ADAPT_WITH_NOTICE
+    incorporated: false
+    adaptation_notes: Bounded allowed-workspace snapshot first; merged DFS intervals and membership; missing scope stops; epoch invalidates index.
+    freightdesk_module: proposed/webbridge/DocumentGraph/ScopeIndex
+  - <<: *stagehand
+    component: hybrid_graph_projection
+    source_file: packages/extension/understudy/a11y/snapshot/domTree.ts
+    source_symbols: [buildSessionDomIndex]
+    source_lines: '233 onward; exact symbols detailed in source note'
+    related_source_files: [packages/extension/understudy/a11y/snapshot/a11yTree.ts, packages/extension/understudy/a11y/snapshot/treeFormatUtils.ts]
+    decision: REIMPLEMENT
+    commercial_reuse_category: PREFER_CLEAN_REIMPLEMENTATION
+    incorporated: false
+    adaptation_notes: Separate immutable graph from compact projection; preserve ownership wrappers; no CDP collector or unscoped fallback.
+    freightdesk_module: proposed/webbridge/DocumentGraph
+  - <<: *stagehand
+    component: document_capability_registry
+    source_file: packages/extension/understudy/executionContextRegistry.ts
+    source_symbols: [ExecutionContextRegistry]
+    source_lines: '23 onward'
+    decision: ADAPT
+    commercial_reuse_category: SAFE_TO_ADAPT_WITH_NOTICE
+    incorporated: false
+    adaptation_notes: Factor existing X1 generations and fixed module proof into lifecycle registry; coalesce recovery; no added execution worlds.
+    freightdesk_module: proposed/webbridge/DocumentRegistry
+  - <<: *browser_use
+    component: graph_identity_and_state_channels
+    source_file: browser_use/dom/views.py
+    source_symbols: [EnhancedDOMTreeNode, compute_stable_hash, filter_dynamic_classes]
+    source_lines: '379, 834 and 138; inspect symbols separately'
+    related_source_files: [browser_use/dom/service.py, browser_use/dom/serializer/serializer.py]
+    decision: REIMPLEMENT
+    commercial_reuse_category: PREFER_CLEAN_REIMPLEMENTATION
+    incorporated: false
+    adaptation_notes: Separate document-node identity, semantic structure and current state; no private AX values, class-state erasure or first-match replay.
+    freightdesk_module: proposed/webbridge/DocumentGraph/StateDiff
+  - <<: *browser_use
+    component: occlusion_evidence_channel
+    source_file: browser_use/dom/serializer/paint_order.py
+    source_symbols: [RectUnionPure, PaintOrderRemover.calculate_paint_order]
+    source_lines: '35 and 146 onward'
+    decision: ADAPT
+    commercial_reuse_category: SAFE_TO_ADAPT_WITH_NOTICE
+    incorporated: false
+    adaptation_notes: Bounded geometry evidence when existing authorized sensor supports it; unknown paint order remains unknown; no added CDP permissions.
+    freightdesk_module: proposed/webbridge/EvidenceEngine
+  - <<: *scrapling
+    component: locator_signature_ranker
+    source_file: scrapling/parser.py
+    source_symbols: [Selector.relocate, Selector.__calculate_similarity_score]
+    source_lines: '530 and 822 onward'
+    related_source_files: [scrapling/core/utils/_utils.py]
+    decision: ADAPT
+    commercial_reuse_category: SAFE_TO_ADAPT_WITH_NOTICE
+    incorporated: false
+    adaptation_notes: Sanitized feature contributions, all competing candidates and score margin; bounded scope; exact identity vetoes; append-only approved history.
+    freightdesk_module: proposed/webbridge/LocatorEngine
+  - <<: *scrapling
+    component: repeated_structure_candidates
+    source_file: scrapling/parser.py
+    source_symbols: [Selector.find_similar, Selector.__are_alike]
+    source_lines: '987 onward'
+    decision: REIMPLEMENT
+    commercial_reuse_category: PREFER_CLEAN_REIMPLEMENTATION
+    incorporated: false
+    adaptation_notes: Bounded shape grouping tolerates wrapper changes; similarity never establishes same entity or same control; no raw text signatures.
+    freightdesk_module: proposed/webbridge/SchemaGraph
+  - <<: *crawlee
+    component: repository_restore_lifecycle
+    source_file: packages/core/src/recoverable_state.ts
+    source_symbols: [RecoverableState]
+    source_lines: '130 onward'
+    decision: ADAPT
+    commercial_reuse_category: SAFE_TO_ADAPT_WITH_NOTICE
+    incorporated: false
+    adaptation_notes: Validate restore, explicit owned resource cleanup and reinitialization; retain RuntimePaths, SQLite and durable authority receipts.
+    freightdesk_module: proposed/webbridge/RecoveryEngine
+  - <<: *crawlee
+    component: observation_transaction
+    source_file: packages/core/src/storages/transaction.ts
+    source_symbols: [StorageTransaction]
+    source_lines: '166 onward'
+    decision: REIMPLEMENT
+    commercial_reuse_category: PREFER_CLEAN_REIMPLEMENTATION
+    incorporated: false
+    adaptation_notes: Original local atomic candidate journal; no at-least-once external delivery, closed-transaction pass-through or provider retry.
+    freightdesk_module: proposed/webbridge/EvidenceStore
+  - <<: *crawlee
+    component: scoped_reference_ownership
+    source_file: packages/utils/src/internals/extract-microdata.ts
+    source_symbols: [microdata traversal, itemref resolution, nested itemscope ownership]
+    source_lines: '36 onward'
+    decision: ADAPT
+    commercial_reuse_category: SAFE_TO_ADAPT_WITH_NOTICE
+    incorporated: false
+    adaptation_notes: Tokenized graph references, nested ownership and cycle guards; duplicate IDs are ambiguous; no schema.org values assumed in Ascend.
+    freightdesk_module: proposed/webbridge/ControlGraph
+  - <<: *crawl4ai
+    component: typed_schema_proposal_feedback
+    source_file: crawl4ai/extraction_strategy.py
+    source_symbols: [JsonElementExtractionStrategy, JsonElementExtractionStrategy._validate_schema, JsonElementExtractionStrategy.agenerate_schema]
+    source_lines: '1043, 1366 and 1764 onward'
+    decision: REIMPLEMENT
+    commercial_reuse_category: PREFER_CLEAN_REIMPLEMENTATION
+    incorporated: false
+    adaptation_notes: Original graph-reference DSL and bounded proposal/validate/refine loop; require all designated fixtures; no arbitrary selectors or failed best-effort activation.
+    freightdesk_module: proposed/webbridge/SemanticProposalEngine
+  - <<: *crawl4ai
+    component: table_extraction_reference_only
+    source_file: crawl4ai/table_extraction.py
+    source_symbols: [DefaultTableExtraction]
+    source_lines: '65 onward'
+    decision: IGNORE
+    commercial_reuse_category: DO_NOT_USE
+    incorporated: false
+    adaptation_notes: Reject default padding/truncation, first-header-row alignment and model extraction; weak table candidate features remain research only.
+    freightdesk_module: proposed/webbridge/TableGraph
+  - <<: *skyvern
+    component: identity_fingerprint_decomposition
+    source_file: skyvern/webeye/scraper/scraper.py
+    source_symbols: [clean_element_before_hashing, hash_element, structural_identity, build_element_dict]
+    source_lines: '178-281'
+    related_source_files: [skyvern/webeye/actions/caching.py]
+    decision: REIMPLEMENT
+    commercial_reuse_category: PREFER_CLEAN_REIMPLEMENTATION
+    incorporated: false
+    adaptation_notes: Original distinct physical, structural and semantic identity types with duplicate multimaps; no AGPL translation or cached action execution.
+    freightdesk_module: proposed/webbridge/StateDiff
+  - <<: *skyvern
+    component: control_target_state_reference
+    source_file: skyvern/webeye/scraper/domUtils.js
+    source_symbols: [resolveAriaPopupTargets, rendered-area checks]
+    source_lines: '825-961'
+    decision: REFERENCE
+    commercial_reuse_category: REFERENCE_ONLY
+    incorporated: false
+    adaptation_notes: Record absent, dangling and resolved IDREF state; independently specify bounded rendered evidence; no copied collector, DOM stamping or fallback identity proof.
+    freightdesk_module: proposed/webbridge/ControlGraph
+  - <<: *playwright
+    component: accessible_relation_and_visibility_helpers
+    source_file: packages/injected/src/roleUtils.ts
+    source_symbols: [computeAccessibleNameComposite, getElementAccessibleName, getTextAlternativeInternal, getAriaRole]
+    source_lines: '516-803'
+    related_source_files: [packages/injected/src/domUtils.ts, packages/injected/src/ariaSnapshot.ts, packages/injected/src/ariaSnapshotDistiller.ts]
+    decision: ADAPT
+    commercial_reuse_category: SAFE_TO_ADAPT_WITH_NOTICE
+    incorporated: false
+    adaptation_notes: Preserve source relation edges; never access provider field values during metadata projection; no claim of fully conforming accessible names after value omissions.
+    freightdesk_module: proposed/webbridge/DocumentGraph/ControlGraph
+  - <<: *playwright
+    component: scored_locator_portfolio
+    source_file: packages/injected/src/selectorGenerator.ts
+    source_symbols: [generateSelector, generateSelectorFor, buildNoTextCandidates, cssFallback, combineScores, isGuidLike]
+    source_lines: '37-278 and 359-488'
+    decision: ADAPT
+    commercial_reuse_category: SAFE_TO_ADAPT_WITH_NOTICE
+    incorporated: false
+    adaptation_notes: Typed approved candidate plans, exact target uniqueness and explicit costs; exclude private names; positional fallback never bypasses identity or action gates.
+    freightdesk_module: proposed/webbridge/LocatorEngine
+  - <<: *playwright
+    component: cancellation_and_document_recovery
+    source_file: packages/playwright-core/src/server/frames.ts
+    source_symbols: [retryWithProgressAndTimeouts, isNonRetriableError, _retryWithProgressIfNotConnected]
+    source_lines: '1155-1251 and 1785-1817'
+    decision: REIMPLEMENT
+    commercial_reuse_category: PREFER_CLEAN_REIMPLEMENTATION
+    incorporated: false
+    adaptation_notes: Original lifecycle behind X1; fresh generation proof and bounded pure-read recovery only; never reopen closed Playwright executor or retry uncertain actions.
+    freightdesk_module: proposed/webbridge/RecoveryEngine
+  - <<: *rrweb
+    component: document_node_mirror
+    source_file: packages/rrweb-snapshot/src/utils.ts
+    source_symbols: [Mirror]
+    source_lines: '192-290'
+    decision: ADAPT
+    commercial_reuse_category: SAFE_TO_ADAPT_WITH_NOTICE
+    incorporated: false
+    adaptation_notes: Bounded ID map and weak node metadata scoped to document generation; moves differ from replacement; no masking/input/recorder helpers.
+    freightdesk_module: proposed/webbridge/DocumentRegistry
+  - <<: *rrweb
+    component: metadata_mutation_journal
+    source_file: packages/rrweb/src/record/mutation.ts
+    source_symbols: [MutationBuffer, genAdds]
+    source_lines: '137-508 and 768-807'
+    decision: REIMPLEMENT
+    commercial_reuse_category: PREFER_CLEAN_REIMPLEMENTATION
+    incorporated: false
+    adaptation_notes: Original bounded coalescing, move/remove ordering and sequence fences; no raw serialization, replay or prototype patching; mutations alone are not causal proof.
+    freightdesk_module: proposed/webbridge/StateDiff
+  - <<: *axe_core
+    component: standards_based_table_occupancy
+    source_file: lib/commons/table/to-grid.js
+    source_symbols: [toGridMemoized]
+    source_lines: '11-55'
+    related_source_files: [lib/commons/table/get-headers.js]
+    decision: REIMPLEMENT
+    commercial_reuse_category: PREFER_CLEAN_REIMPLEMENTATION
+    incorporated: false
+    adaptation_notes: Original HTML-standard table slots and header associations; zero rowspan respects row group; preserve clone and required-header proof; no MPL source copy.
+    freightdesk_module: proposed/webbridge/TableGraph
+  - <<: *axe_core
+    component: composed_tree_and_label_reference
+    source_file: lib/core/utils/get-flattened-tree.js
+    source_symbols: [flattened virtual tree]
+    source_lines: '33-180'
+    related_source_files: [lib/commons/text/label-text.js]
+    decision: REFERENCE
+    commercial_reuse_category: REFERENCE_ONLY
+    incorporated: false
+    adaptation_notes: Compare ownership/slot/label cases; prefer separately reviewed Apache helpers; MPL covered-file duties are not notice-only clearance.
+    freightdesk_module: proposed/webbridge/DocumentGraph
+  - <<: *healenium_web
+    component: locator_candidate_history_and_uniqueness
+    source_file: src/main/java/com/epam/healenium/service/HealingService.java
+    source_symbols: [findNewLocations, selector ladder and uniqueness checks]
+    source_lines: '39-116'
+    decision: ADAPT
+    commercial_reuse_category: SAFE_TO_ADAPT_WITH_NOTICE
+    incorporated: false
+    adaptation_notes: Candidate-only locator history and uniqueness; do not import Selenium/backend or automatic replacement; scorer dependency separately recorded below.
+    freightdesk_module: proposed/webbridge/LocatorEngine
+  - component: path_similarity_algorithm_reference
+    source_project: Healenium tree-comparing
+    repository: https://github.com/healenium/tree-comparing
+    repository_status: Declared upstream repository returned 404 during review; no Git source commit verified.
+    source_file: com/epam/healenium/treecomparing/PathFinder.java
+    related_source_files: [com/epam/healenium/treecomparing/LCSPathDistance.java, com/epam/healenium/treecomparing/HeuristicNodeDistance.java, com/epam/healenium/treecomparing/Node.java]
+    source_symbols: [PathFinder, LCSPathDistance, HeuristicNodeDistance, Node.equals]
+    source_lines: '65, 14, 11 and 69 respectively; source JAR paths, not GitHub line references'
+    source_commit: null
+    source_artifact: com.epam.healenium:tree-comparing:0.4.14:sources
+    source_artifact_url: https://repo.maven.apache.org/maven2/com/epam/healenium/tree-comparing/0.4.14/tree-comparing-0.4.14-sources.jar
+    source_artifact_sha256: 1b785629b9f8b76268009227f3503562296f90959749797e4dc4d63c3b974187
+    source_pin_status: VERIFIED_SOURCE_ARTIFACT_HASH_GIT_COMMIT_UNKNOWN
+    license: Apache-2.0
+    license_evidence: https://repo.maven.apache.org/maven2/com/epam/healenium/tree-comparing/0.4.14/tree-comparing-0.4.14.pom
+    license_evidence_kind: Published POM declaration; archive contains no LICENSE, NOTICE or per-file attribution header.
+    provenance_gap: Git revision and exact redistribution attribution are unresolved; artifact version is not a source commit.
+    notice_plan: Resolve exact attribution and redistribution review before any direct copying; no source or license bundle copied now.
+    decision: REIMPLEMENT
+    commercial_reuse_category: PREFER_CLEAN_REIMPLEMENTATION
+    incorporated: false
+    adaptation_notes: Original metadata scorer from documented path/feature concepts; bounded candidate space, missing evidence normalization and hard identity vetoes; no automatic recovery.
+    freightdesk_module: proposed/webbridge/LocatorEngine/EvidenceEngine
+    source_notes: docs/research/WEBBRIDGE_SOURCES_SKYVERN_HEALENIUM_FINDER.md
+  - <<: *finder
+    component: bounded_css_locator_generator
+    source_file: finder.ts
+    source_symbols: [finder, findRootDocument, unique, optimize]
+    source_lines: '39-384'
+    decision: ADAPT
+    commercial_reuse_category: SAFE_TO_ADAPT_WITH_NOTICE
+    incorporated: false
+    adaptation_notes: Hard-budget combinations before materialization, verify root contains target and exact match, whitelist metadata attributes; fallback remains candidate only.
+    freightdesk_module: proposed/webbridge/LocatorEngine

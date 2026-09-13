@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "status": "INCORPORATED_OFFLINE_ONLY",
+  "incorporated": true,
+  "repository": "https://github.com/microsoft/playwright",
+  "commit": "d1ead3ecca23182f2d06d761c28e3d4edafb6595",
+  "license": "Apache-2.0",
+  "source_units": [
+    {
+      "path": "packages/injected/src/roleUtils.ts",
+      "sha256": "d20cb99864b1a18bcc33d254b6aa27c310a4361686072ea0183cb70b402b7b43",
+      "reviewed_symbols": [
+        "kImplicitRoleByTagName:90-170",
+        "getExplicitAriaRole:270-274",
+        "getIdRefs token/dedup only:365-386",
+        "inputTypeToRole:1325-1334"
+      ]
+    },
+    {
+      "path": "packages/injected/src/domUtils.ts",
+      "sha256": "df5f09293f58ad756167d5cc160bb9ad598fbb59d491ccdc85f7c10a14d41773",
+      "reviewed_symbols": [
+        "parentElementOrShadowHost:43-50",
+        "computeElementStyleVisibilityVisible Chromium subset:95-120"
+      ]
+    }
+  ],
+  "destination": "extensions/webbridge-v2/semantics.js",
+  "destination_sha256": "298f84016e28070e04eebf1b8fffda63e9bc338c32a1556e4fab5e319a883038",
+  "dependencies": [
+    "DOM Element attributes",
+    "parentElement/ShadowRoot.host",
+    "getComputedStyle supplied by caller",
+    "Chromium Element.checkVisibility"
+  ],
+  "excluded": [
+    "full accessible-name computation",
+    "input values",
+    "selected values",
+    "CDP/browser acquisition",
+    "frame execution",
+    "value-related role helpers",
+    "first-ID fallback",
+    "raw recording"
+  ],
+  "modifications": [
+    "Reviewed role subset; unsupported presentation conflicts unknown",
+    "Bounded streaming IDREF token dedup; scoped multimap resolves duplicates",
+    "Visibility channels separated; display:contents handled by bounded caller",
+    "No imported runtime dependencies"
+  ],
+  "notices": [
+    "third_party/licenses/playwright/LICENSE",
+    "third_party/licenses/playwright/NOTICE"
+  ],
+  "tests": [
+    "tests/test_webbridge_v2.py",
+    "tests/test_x1_mapping_integrated_path.py"
+  ],
+  "review_status": "Exact pinned units and license/NOTICE locally inspected; modified subset attributed",
+  "independent": [
+    "core.js traversal/ledger/projection/contracts/relationships",
+    "compatibility.js",
+    "Python contracts and runtime transaction adapter"
+  ],
+  "architectural_inputs_only": [
+    "Stagehand indexing",
+    "Browser Use indexing",
+    "rrweb ledger invariants"
+  ],
+  "deferred": [
+    "generic field/table engine",
+    "adaptive locators",
+    "mutation journal",
+    "crawler",
+    "AUTO_MAP",
+    "operational values"
+  ]
+}

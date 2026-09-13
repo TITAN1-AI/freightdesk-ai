@@ -1,0 +1,16 @@
+[project]
+name = "freightdesk-ai"
+version = "0.1.0"
+description = "Avery's freight operations control plane"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q -p no:cacheprovider"
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
