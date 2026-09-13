@@ -26,7 +26,9 @@ def compile_launcher(tmp_path, *, template=None, child=None):
     (folder / 'scripts/ascend_native_host.py').write_text(child or '''import json, struct, sys
 from pathlib import Path
 def mark(stage, **facts):
-    Path('fixture-status.json').write_text(json.dumps(dict(stage=stage,**facts)))
+    path=Path('fixture-status.json')
+    prior=json.loads(path.read_text()) if path.exists() else {}
+    path.write_text(json.dumps(dict(prior,stage=stage,**facts)))
 mark('CHILD_STARTED')
 try:
     for _ in range(2):
