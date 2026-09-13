@@ -15,6 +15,11 @@ The pre-update snapshot is not a live-qualified rollback; full coherent installe
 See [release handoff](docs/ASCEND_X1_RELEASE_063.md). Trusted native-host signing is the proposed next
 deployment prerequisite; no signing account or Windows security change has been made.
 
+Unsigned candidate staging succeeded from source commit5031e49. Artifact verification matched 201
+executable-source/config files plus the native/Python hashes. Signature status is NotSigned; candidate
+execution is NOT_RUN, no self-test/install receipt exists, and the installed host matches its backup.
+This proves staged integrity only. No actual deployment/candidate startup acceptance is claimed.
+
 Current targeted verification covers 73 distinct tests: 72 release/coordinator/trace/integrated cases
 passed, then the final 20-test release run passed (19 overlap, one added receipt-write regression).
 Full repository Ruff, X1 controller/runtime Node checks and helper PowerShell parsing passed.

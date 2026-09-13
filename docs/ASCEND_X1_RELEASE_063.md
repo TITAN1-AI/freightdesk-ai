@@ -5,6 +5,11 @@ installed-release gate. No new Ascend read, mapping grant, extension reload or i
 replacement has occurred. The code on disk advertises 0.6.3; the inspected loaded extension card
 still showed 0.6.2. Do not treat these as a coherent deployed release.
 
+Staging completed from source commit `5031e49`: 201 source/config file hashes verified, candidate
+signature status `NotSigned`, candidate execution `NOT_RUN`. The installed host still matches its
+pre-update hash; candidate-selftest/install receipts do not exist. The local release directory holds
+the unsigned candidate and reviewed source manifest; no executable artifact was published to GitHub.
+
 ## Actual inspection and blocker
 
 The pinned extension and Native Messaging manifest bindings match the existing installation.
@@ -64,7 +69,8 @@ The initial targeted run returned 72 passed / 3 failed. All three failures were 
 policy blocks; this run is not represented as passing. The native-launcher suite was not repeated
 locally. Later source-only release/orchestrator/causal-trace/integrated tests passed 72 cases,
 including 19 release tests, before the final receipt-write regression was added. Final results are
-recorded in CURRENT_STATE.md. Full repository Ruff and X1 controller/runtime Node checks passed.
+recorded in CURRENT_STATE.md: 73 distinct cases across the integrated run and final 20-test release
+run. Full repository Ruff and X1 controller/runtime Node checks passed.
 Two existing Starlette/AnyIO deprecation warnings remain.
 
 The existing GitHub offline workflow may validate synthetic native binaries in its disposable
