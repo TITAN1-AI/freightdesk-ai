@@ -1,3 +1,7 @@
+> Current status (2026-09-13): see [the audit repair handoff](WEBBRIDGE_V2_AUDIT_FIXES.md).
+> Earlier acceptance/design statements below are historical. V2 is implemented offline with
+> audited repairs; live packaging, operational semantics and Phases 3-7 remain deferred.
+
 # WebBridge V2 implementation roadmap
 
 Status: **PROPOSED — implementation requires owner approval**. This roadmap follows the [source harvest](BROWSER_INTELLIGENCE_CODE_HARVEST.md), [architecture](WEBBRIDGE_V2_ARCHITECTURE.md), [page model](WEBBRIDGE_V2_PAGE_MODEL.md) and [provenance plan](WEBBRIDGE_V2_PROVENANCE.md). No package installation, production implementation or live validation occurred in this research task.

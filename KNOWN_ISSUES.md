@@ -1,3 +1,17 @@
+# Known issues - audit repair 2026-09-13
+
+A01-A10 repairs are implemented in source; see [the repair handoff](docs/WEBBRIDGE_V2_AUDIT_FIXES.md).
+Earlier unconditional acceptance missed reproduced defects. V2 remains offline, not LIVE_VALIDATED.
+A 19-field fixture now fits (15,298 graph / 29,802 combined bytes); a 32-field fixture still safely
+exceeds the unchanged combined payload limit. Large unrelated chrome may stop at WORKSPACE_BOUND.
+Generic fields/tables, conditional semantics, installed MV3/host lifecycle, cross-section performance
+and Phases 3-7 remain deferred or UNKNOWN. Metadata authorizes no values, writes or V2 AUTO_MAP.
+History reports have explicit finite bounds; full-history pagination is future work.
+Source-only rollback is rehearsed; a live version-pinned package/migration remains separately
+authorized future work. The separately referenced revised plan remains unavailable.
+
+## Historical pre-audit status (current limits above supersede older completion claims)
+
 # Known issues — after exact X1 metadata capture
 
 ## V2 provider migration remains unvalidated

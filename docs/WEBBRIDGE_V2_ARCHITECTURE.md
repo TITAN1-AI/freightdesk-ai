@@ -1,3 +1,7 @@
+> Current status (2026-09-13): see [the audit repair handoff](WEBBRIDGE_V2_AUDIT_FIXES.md).
+> Earlier acceptance/design statements below are historical. V2 is implemented offline with
+> audited repairs; live packaging, operational semantics and Phases 3-7 remain deferred.
+
 # WebBridge V2 architecture
 
 WebBridge V2 should be an evidence-preserving interpretation pipeline behind X1, with one document graph and several typed views. It should not become a crawler, a second browser session, or an agent framework. Borrow semantics, node indexing, selector search and mutation bookkeeping; retain FreightDesk's identity, action policy, provenance and business-state reconciliation.

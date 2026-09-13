@@ -3,7 +3,8 @@
 The caller supplies trusted expected bindings and vocabulary, never the browser payload.
 These contracts do not authorize a provider action or validate operational field meanings.
 """
-from typing import Annotated, Literal
+from collections import Counter
+from typing import Annotated, Literal, get_args, get_origin
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
@@ -26,6 +27,9 @@ class Frozen(BaseModel):
     @field_validator("*", mode="before")
     @classmethod
     def immutable_sequences(cls, value, info: ValidationInfo):
+        annotation = cls.model_fields[info.field_name].annotation
+        if get_origin(annotation) is Literal and all(type(v) is int for v in get_args(annotation)) and type(value) is not int:
+            raise ValueError('V2_SCALAR_INVALID')
         if info.field_name in {"nodes", "relations", "unresolved", "attributes", "gaps", "source_nodes", "relation_refs", "evidence_refs", "candidates", "evidence", "resolutions", "deferred_domains", "recognized_section_labels", "target_relationship_kinds"} and type(value) is list:
             return tuple(value)
         return value
@@ -247,6 +251,27 @@ class DocumentGraph(Frozen):
                 raise ValueError("V2_REFERENCE_INVALID")
             if resolution.status == "RESOLVED" and (resolution.from_, resolution.candidates[0], resolution.kind) not in tuples:
                 raise ValueError("V2_REFERENCE_INVALID")
+        resolved = {(r.from_, r.candidates[0], r.kind) for r in self.resolutions if r.status == 'RESOLVED'}
+        expected_unresolved = Counter((r.from_, r.kind, 'AMBIGUOUS' if r.status == 'AMBIGUOUS' else 'MISSING_OR_OUT_OF_SCOPE', r.candidate_count)
+            for r in self.resolutions if r.status not in {'RESOLVED', 'UNDECLARED'})
+        if expected_unresolved != Counter((r.from_, r.kind, r.status, r.candidate_count) for r in self.unresolved):
+            raise ValueError('V2_REFERENCE_INVALID')
+        reference_kinds = {'CONTROLS', 'LABELLED_BY', 'DESCRIBED_BY', 'OWNS', 'PROVIDER_TARGET', 'FRAGMENT_TARGET'}
+        for relation in self.relations:
+            if relation.kind in reference_kinds and (relation.from_, relation.to, relation.kind) not in resolved:
+                raise ValueError('V2_REFERENCE_INVALID')
+            if relation.kind == 'LABEL_FOR' and (relation.from_, relation.to, relation.kind) not in resolved:
+                ancestor = nodes[relation.to]
+                while ancestor.parent is not None and ancestor.id != relation.from_:
+                    ancestor = nodes[ancestor.parent]
+                if ancestor.id != relation.from_ or nodes[relation.from_].tag != 'label':
+                    raise ValueError('V2_REFERENCE_INVALID')
+        for r in self.resolutions:
+            if r.status == 'UNDECLARED' and any(other.from_ == r.from_ and other.kind == r.kind and other.status != 'UNDECLARED' for other in self.resolutions):
+                raise ValueError('V2_REFERENCE_INVALID')
+        for node in self.nodes:
+            if not node.metadata_name.evidence_refs or any(node.id not in evidence[e].nodes for e in node.metadata_name.evidence_refs):
+                raise ValueError('V2_EVIDENCE_INVALID')
         if (self.entity_proof.entity_id != self.binding.entity_id or self.entity_proof.provider != self.binding.provider
             or self.entity_proof.root != self.root or any(e not in evidence for e in self.entity_proof.evidence_refs)
             or self.document_key.document_epoch != self.binding.document_epoch or self.document_key.content_realm_epoch != self.binding.realm

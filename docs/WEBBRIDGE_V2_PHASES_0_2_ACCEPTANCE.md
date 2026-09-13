@@ -1,3 +1,7 @@
+> Current status (2026-09-13): see [the audit repair handoff](WEBBRIDGE_V2_AUDIT_FIXES.md).
+> Earlier acceptance/design statements below are historical. V2 is implemented offline with
+> audited repairs; live packaging, operational semantics and Phases 3-7 remain deferred.
+
 # WebBridge V2 — Phases 0–2 offline acceptance
 
 2026-09-12. Owner authorized implementation after reviewing

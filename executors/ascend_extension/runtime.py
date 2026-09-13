@@ -167,6 +167,10 @@ class RuntimeAccess:
                     db.execute("CREATE TABLE IF NOT EXISTS runtime_mapping_validations(id TEXT PRIMARY KEY,body TEXT)")
                     db.execute("CREATE TABLE IF NOT EXISTS runtime_navigation_contracts(id INTEGER PRIMARY KEY,body TEXT)")
                     db.execute("CREATE TABLE IF NOT EXISTS runtime_auto_map_cycles(id INTEGER PRIMARY KEY,body TEXT)")
+                    from executors.ascend_extension.mapping_store import ensure_map_indexes
+                    ensure_map_indexes(db)
+                    for table in ('runtime_auto_map_cycles', 'runtime_mapping_diagnostics', 'runtime_capture_events'):
+                        db.execute(f"CREATE INDEX IF NOT EXISTS {table}_session ON {table}(json_extract(body,'$.session_id'),id)")
                     db.execute("CREATE TABLE IF NOT EXISTS runtime_state(id INTEGER PRIMARY KEY,body TEXT)")
                     for table in (
                         "runtime_detail_attempts",

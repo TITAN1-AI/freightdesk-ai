@@ -9,6 +9,22 @@ from executors.ascend_extension.workspace_contracts import AscendFieldContract, 
 DOMAINS = ("identity", "status", "references", "customer", "carrier", "driver", "assets", "equipment",
            "commodity", "stops", "appointments", "tracking", "documents", "load_log", "financials")
 
+# Application-owned meanings, never selected by a browser observation's domain string.
+FIELD_DOMAINS = {field: domain for domain, fields in {
+    'status': ('status',), 'references': ('reference', 'customer_reference', 'carrier_reference'),
+    'customer': ('customer', 'bill_to'), 'carrier': ('carrier', 'dispatcher', 'dispatcher_contact'),
+    'driver': ('driver', 'driver_contact'), 'assets': ('truck', 'trailer'), 'equipment': ('equipment',),
+    'commodity': ('commodity', 'weight', 'pieces', 'quantity'),
+    'stops': ('pickup', 'delivery', 'facility', 'address', 'city', 'state', 'postal_code'),
+    'appointments': ('appointment', 'appointment_date', 'appointment_time', 'arrival', 'departure'),
+    'tracking': ('tracking', 'tracking_status'), 'documents': ('document_type', 'document_status'),
+    'load_log': ('load_log',), 'financials': ('total_income', 'total_expenses', 'gross_profit', 'currency'),
+}.items() for field in fields}
+
+
+def _finite_number(value):
+    return type(value) in (int, float) and isfinite(value)
+
 
 @dataclass(frozen=True)
 class ReadMappingValidation:
@@ -45,7 +61,7 @@ class AscendLoadContextAssembler(Protocol):
 class VerifiedAscendLoadContextAssembler:
     def assemble(self, current, sections, observations, validations, *, now, max_age_seconds=300):
         current = AscendProviderMap.model_validate(current)
-        if not isfinite(now) or not isfinite(max_age_seconds) or not 0 < max_age_seconds <= 3600:
+        if not _finite_number(now) or not _finite_number(max_age_seconds) or not 0 < max_age_seconds <= 3600:
             raise ValueError("CONTEXT_FRESHNESS_INVALID")
         output = {d: {"value": None, "source": None, "observed_at": None, "freshness": "UNKNOWN",
                       "evidence_level": None, "confidence": "UNKNOWN"} for d in DOMAINS}
@@ -67,8 +83,13 @@ class VerifiedAscendLoadContextAssembler:
         approved = {v.contract_fingerprint: v for v in validations}
         grouped = {}
         for o in observations:
+            if (not isinstance(o, VerifiedProviderObservation) or type(o.field) is not str or type(o.domain) is not str
+                or type(o.contract_fingerprint) is not str or not _finite_number(o.observed_at)
+                or type(o.value) not in (str, int, float, bool) or type(o.value) is float and not isfinite(o.value)):
+                continue
             f, v = fields.get(o.contract_fingerprint), approved.get(o.contract_fingerprint)
             if (o.load_id != current.workspace.load_id or o.domain not in DOMAINS or o.domain == "identity"
+                or FIELD_DOMAINS.get(o.field) != o.domain
                 or o.source != "AscendTMS provider DOM" or f is None or v is None or f.field_name_candidate != o.field
                 or v.evidence_level not in {"LEVEL_1", "LEVEL_2"} or v.evidence_level != f.evidence_level
                 or not v.evidence_reference

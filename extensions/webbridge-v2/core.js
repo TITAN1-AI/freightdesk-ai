@@ -310,9 +310,21 @@
         evidence:edges.filter(e=>e.to===candidates[0]).map(e=>e.id),derived_relation:siblingRelation,diagnostic:diag,action_effect:'UNKNOWN'});
     }
     return Object.freeze({capture,section,resolveNode(graph,id){const p=boundary();if(graph.observation_id!==lastObservation||graph.binding.document_epoch!==ledger.epoch||graph.binding.realm!==ledger.realm||
-      p.epoch!==graph.binding.document_epoch||p.realm!==graph.binding.realm||p.leaseRef!==graph.binding.lease_ref||p.entityId!==graph.binding.entity_id)throw new Stop('V2_DOCUMENT_CHANGED');
+      p.epoch!==graph.binding.document_epoch||p.realm!==graph.binding.realm||p.leaseRef!==graph.binding.lease_ref||p.sessionRef!==graph.binding.session_ref||p.entityId!==graph.binding.entity_id)throw new Stop('V2_DOCUMENT_CHANGED');
       // Only the offline adapter receives a handle. It must still apply the current provider proof.
-      return lastHandles.get(id)||null;},close(){closed=true;ledger.close();lastHandles.clear();}});
+      return lastHandles.get(id)||null;},nodeRef(graph,node){boundary();const id=ledger.ids.get(node);return lastObservation===graph.observation_id&&lastHandles.get(id)===node?id:null;},
+      release(){lastHandles.clear();lastObservation=null;},close(){closed=true;ledger.close();lastHandles.clear();}});
   }
-  globalThis.FreightDeskWebBridgeV2=Object.freeze({version:VERSION,stages:Object.freeze(STAGES),limits:DEFAULTS,createOfflineHarness});
+  function toWire(graph){
+    // Versioned positional wire projection removes repeated property names and deterministic evidence.
+    const {nodes,relations,resolutions,unresolved,evidence,...header}=graph;
+    return {wire_version:1,header,
+      nodes:nodes.map(n=>[n.id,n.parent,n.tag,n.role,n.name,n.name_conflict,n.current_route,n.selected,n.expanded,n.control,n.attributes,
+        [n.visibility.layout,n.visibility.accessibility,n.visibility.viewport,n.visibility.paint],
+        [n.metadata_name.source_nodes,n.metadata_name.relation_refs]]),
+      relations:relations.map(r=>[r.id,r.from,r.to,r.kind]),
+      resolutions:resolutions.map(r=>[r.from,r.kind,r.status,r.candidates]),
+      unresolved:unresolved.map(r=>[r.from,r.kind,r.status,r.candidate_count])};
+  }
+  globalThis.FreightDeskWebBridgeV2=Object.freeze({version:VERSION,stages:Object.freeze(STAGES),limits:DEFAULTS,createOfflineHarness,toWire});
 })();

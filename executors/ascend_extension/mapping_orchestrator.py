@@ -344,10 +344,15 @@ class MappingOrchestrator:
     def _records(self, job):
         if not self.access.path.exists():
             return [], []
+        from executors.ascend_extension.mapping_store import _bounded_records
+        sessions = job['session_ids']
+        if not sessions:
+            return [], []
+        placeholders = ','.join('?' for _ in sessions)
         with self.access.database(readonly=True) as db:
-            records = [json.loads(r[0]) for r in db.execute("SELECT body FROM runtime_provider_maps ORDER BY id")]
-            cycles = [json.loads(r[0]) for r in db.execute("SELECT body FROM runtime_auto_map_cycles ORDER BY id")]
-        return [r for r in records if r["session_id"] in job["session_ids"]], [c for c in cycles if c["session_id"] in job["session_ids"]]
+            records = _bounded_records(db.execute(f"SELECT body FROM runtime_provider_maps WHERE json_extract(body,'$.session_id') IN ({placeholders}) ORDER BY id LIMIT 4097", sessions))
+            cycles = _bounded_records(db.execute(f"SELECT body FROM runtime_auto_map_cycles WHERE json_extract(body,'$.session_id') IN ({placeholders}) ORDER BY id LIMIT 4097", sessions))
+        return records, cycles
 
     def _navigation_available(self, observed):
         from executors.ascend_extension.auto_map import plan_auto_map

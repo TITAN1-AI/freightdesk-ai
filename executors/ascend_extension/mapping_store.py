@@ -7,6 +7,29 @@ from executors.ascend_extension.workspace_contracts import AscendProviderMap
 from executors.ascend_extension.bridge_build import BUILD
 
 
+def ensure_map_indexes(db):
+    """Additive, evidence-preserving indexes; no provider-map rewrite or deletion."""
+    for name, expressions in {
+        'section': "json_extract(body,'$.map.section.section')",
+        'load': "json_extract(body,'$.map.workspace.load_id')",
+        'load_section': "json_extract(body,'$.map.workspace.load_id'),json_extract(body,'$.map.section.section')",
+        'session': "json_extract(body,'$.session_id')",
+    }.items():
+        db.execute(f'CREATE INDEX IF NOT EXISTS runtime_maps_{name} ON runtime_provider_maps({expressions},id)')
+
+
+def _latest(db, predicate='', parameters=()):
+    row = db.execute('SELECT body FROM runtime_provider_maps ' + predicate + ' ORDER BY id DESC LIMIT 1', parameters).fetchone()
+    return json.loads(row[0]) if row else None
+
+
+def _bounded_records(cursor, maximum=4096):
+    rows = cursor.fetchmany(maximum + 1)
+    if len(rows) > maximum:
+        raise PermissionError('MAPPING_REPORT_BOUND')
+    return [json.loads(row[0]) for row in rows]
+
+
 def _workspace_structure(workspace):
     """Identity/navigation topology only, excluding the changing provider entity ID."""
     return {key: workspace.get(key) for key in ("shell_fingerprint", "navigation_candidates", "path_pattern")}
@@ -41,13 +64,13 @@ def persist_map(db, state, lease, pending, raw, now):
         raise PermissionError("MAPPING_SECTION_BOUND")
     if state.get("mapping_contract_count", 0) + len(observed.section.fields) > approval["max_contract_observations"]:
         raise PermissionError("MAPPING_CONTRACT_BOUND")
-    records = [json.loads(r[0]) for r in db.execute("SELECT body FROM runtime_provider_maps ORDER BY id")]
-    prior = next((r for r in reversed(records) if r["map"]["section"]["section"] == observed.section.section), None)
+    ensure_map_indexes(db)
+    newest = _latest(db)
+    prior = _latest(db, "WHERE json_extract(body,'$.map.section.section')=?", (observed.section.section,))
     changed = prior is not None and prior["map"]["section"]["fingerprint"] != observed.section.fingerprint
-    same_load = next((r for r in reversed(records) if r["map"]["workspace"]["load_id"] == observed.workspace.load_id
-        and r["map"]["section"]["section"] == observed.section.section), None)
+    same_load = _latest(db, "WHERE json_extract(body,'$.map.workspace.load_id')=? AND json_extract(body,'$.map.section.section')=?", (observed.workspace.load_id, observed.section.section))
     comparison = same_load or prior
-    previous_workspace = next((r for r in reversed(records) if r["map"]["workspace"]["load_id"] == observed.workspace.load_id), records[-1] if records else None)
+    previous_workspace = _latest(db, "WHERE json_extract(body,'$.map.workspace.load_id')=?", (observed.workspace.load_id,)) or newest
     safety_drift = (previous_workspace is not None and _workspace_structure(previous_workspace["map"]["workspace"]) != workspace_structure
         or comparison is not None and _section_structure(comparison["map"]["section"]) != _section_structure(observed.section.model_dump()))
     same_load_drift = same_load is not None and same_load["map"]["section"]["fingerprint"] != observed.section.fingerprint
@@ -55,12 +78,13 @@ def persist_map(db, state, lease, pending, raw, now):
     variation = bool(changed and same_load is None and not drift)
     change_kind = "STRUCTURAL_DRIFT" if drift else "CROSS_LOAD_VARIATION" if variation else "UNCHANGED" if prior else "FIRST_OBSERVATION"
     version = 1 if prior is None else prior["section_contract_version"] + int(changed)
-    workspace_version = 1 if not records else records[-1]["workspace_contract_version"] + int(
-        records[-1]["map"]["workspace"]["shell_fingerprint"] != observed.workspace.shell_fingerprint)
+    workspace_version = 1 if newest is None else newest["workspace_contract_version"] + int(
+        newest["map"]["workspace"]["shell_fingerprint"] != observed.workspace.shell_fingerprint)
     navigation = ("FIRST_OBSERVATION" if last is None else "DOCUMENT_REPLACED" if last["document_id"] != pending["route"]["document_id"]
                   else "WORKSPACE_CHANGED" if last["load_id"] != observed.workspace.load_id else "DYNAMIC_SECTION_CHANGE"
                   if last["section"] != observed.section.section else "STABLE_CAPTURE")
-    record = {"provider_map_version": len(records) + 1, "workspace_contract_version": workspace_version, "section_contract_version": version, "build": BUILD,
+    next_version = db.execute('SELECT coalesce(max(id),0)+1 FROM runtime_provider_maps').fetchone()[0]
+    record = {"provider_map_version": next_version, "workspace_contract_version": workspace_version, "section_contract_version": version, "build": BUILD,
               "session_id": approval["session_id"], "navigation": navigation, "structural_drift": drift,
               "change_kind": change_kind, "cross_load_variation": variation,
               "map": observed.model_dump(), "live_validated": False, "production_writes": False}
@@ -115,10 +139,9 @@ def report_maps(access, session_id):
     with access.database(readonly=True) as db:
         if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='runtime_provider_maps'").fetchone():
             return {"state": "NOT_OBSERVED", "production_writes": False}
-        diagnostics = [json.loads(r[0]) for r in db.execute("SELECT body FROM runtime_mapping_diagnostics WHERE json_extract(body,'$.session_id')=? ORDER BY id", (session_id,))] if db.execute("SELECT 1 FROM sqlite_master WHERE name='runtime_mapping_diagnostics'").fetchone() else []
-        records = [json.loads(r[0]) for r in db.execute("SELECT body FROM runtime_provider_maps ORDER BY id")]
-        cycles = [json.loads(r[0]) for r in db.execute("SELECT body FROM runtime_auto_map_cycles WHERE json_extract(body,'$.session_id')=?", (session_id,))] if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='runtime_auto_map_cycles'").fetchone() else []
-    records = [r for r in records if r["session_id"] == session_id]
+        diagnostics = _bounded_records(db.execute("SELECT body FROM runtime_mapping_diagnostics WHERE json_extract(body,'$.session_id')=? ORDER BY id LIMIT 4097", (session_id,))) if db.execute("SELECT 1 FROM sqlite_master WHERE name='runtime_mapping_diagnostics'").fetchone() else []
+        records = _bounded_records(db.execute("SELECT body FROM runtime_provider_maps WHERE json_extract(body,'$.session_id')=? ORDER BY id LIMIT 4097", (session_id,)))
+        cycles = _bounded_records(db.execute("SELECT body FROM runtime_auto_map_cycles WHERE json_extract(body,'$.session_id')=? ORDER BY id LIMIT 4097", (session_id,))) if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='runtime_auto_map_cycles'").fetchone() else []
     maps = [AscendProviderMap.model_validate(r["map"]) for r in records]
     sections = {}
     for m in maps:

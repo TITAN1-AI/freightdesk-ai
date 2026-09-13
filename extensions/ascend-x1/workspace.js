@@ -4,6 +4,35 @@
   const norm=s=>(s||'').replace(/\s+/g,' ').trim(),key=s=>norm(s).toLowerCase().replace(/\s*\/\s*/g,'/');
   const visible=e=>!!e?.isConnected&&!!e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden'&&!e.closest('[hidden],[aria-hidden="true"]');
   const bound=(a,n)=>{if(a.length>n)throw Error('WORKSPACE_BOUND');return a;};
+  const collection=(items,n)=>Array.from(bound(items,n));
+  // Label text is admitted before access. Never read aggregate textContent or arbitrary neighbors.
+  const privateSelector='[data-private],[contenteditable],input,select,textarea,option,script,style,template';
+  function staticText(e){
+    if(!e||e.closest(privateSelector))return '';
+    let result='',count=0;const stack=[{node:e.firstChild,depth:0}];
+    while(stack.length){
+      const {node,depth}=stack.pop();if(!node)continue;
+      if(++count>32||depth>4)return '';
+      if(node.nextSibling)stack.push({node:node.nextSibling,depth});
+      if(node.nodeType===3){if(result.length+node.length>128)return '';result+=node.data;}
+      else if(node.nodeType===1){
+        if(node.matches(privateSelector)||!node.matches('span,b,strong,em,i,small'))return '';
+        stack.push({node:node.firstChild,depth:depth+1});
+      }
+    }
+    return result;
+  }
+  function query(root,selector,maximum=1024){
+    // Streaming native iterator: bounds precede JS collection/layout and private descendants are pruned.
+    const doc=root.ownerDocument||root;let visited=0;
+    const walker=doc.createTreeWalker(root,1,{acceptNode(e){
+      if(++visited>4096)throw Error('WORKSPACE_BOUND');
+      if(e.matches('[data-private],[contenteditable],script,style,template,option')||e.parentElement?.closest(privateSelector))return 2;
+      return e.matches(selector)?1:3;
+    }});
+    const result=[];let e;while((e=walker.nextNode())){if(result.length>=maximum)throw Error('WORKSPACE_BOUND');result.push(e);}
+    return result;
+  }
   const selected=e=>e.getAttribute('aria-selected')==='true'||e.getAttribute('aria-current')==='page'||e.getAttribute('aria-current')==='true'||e.classList.contains('active')||e.parentElement?.classList.contains('active');
   const sectionName=s=>S.sections.find(x=>key(x)===key(s))||'DISCOVERED_UNCLASSIFIED';
   const label=s=>Object.keys(S.fields).find(x=>key(x)===key(s))||null;
@@ -19,47 +48,47 @@
   function observeWorkspace(doc,allowed,at,check=()=>{},mark=()=>{},scope=doc){
     if(doc.location.origin!=='https://ascendtms.com')throw Error('WORKSPACE_SCOPE_DENIED');
     check();
-    // Filter semantic candidates before any layout/visibility work. Never walk the document tree.
-    const candidates=scope.querySelectorAll('h1,h2,h3,[role="heading"],'+controls);
+    // Bound semantic candidate iteration before layout work; later checks reuse the proved shell.
+    const candidates=query(scope,'h1,h2,h3,[role="heading"],'+controls);
     const anchors=[],nav=[];
     for(const e of candidates){
       check();
-      if(e.textContent.length>100)continue;
-      if(loadId(e.textContent)&&proofEligible(e)&&visible(e))anchors.push(e);
-      if(e.matches(controls)&&sectionName(e.textContent)!=='DISCOVERED_UNCLASSIFIED'&&visible(e))nav.push(e);
+      if(staticText(e).length>100)continue;
+      if(loadId(staticText(e))&&proofEligible(e)&&visible(e))anchors.push(e);
+      if(e.matches(controls)&&sectionName(staticText(e))!=='DISCOVERED_UNCLASSIFIED'&&visible(e))nav.push(e);
       bound(anchors,16);bound(nav,64);
     }
     mark('ENTITY_DISCOVERY',{identity_signal_count:anchors.length,section_control_count:nav.length});
     if(!anchors.length&&!nav.length)throw Error('NOT_A_LOAD_WORKSPACE');
     const shells=scope!==doc&&visible(scope)?[scope]:[];
-    const hasNav=e=>new Set(nav.filter(n=>e.contains(n)).map(n=>sectionName(n.textContent))).size>=2;
+    const hasNav=e=>new Set(nav.filter(n=>e.contains(n)).map(n=>sectionName(staticText(n)))).size>=2;
     for(const a of anchors){for(let e=a.parentElement,depth=0;e&&depth<10;e=e.parentElement,depth++)if(hasNav(e)){shells.push(e);break;}}
-    for(const e of bound([...scope.querySelectorAll('[data-load-workspace],main,[role="main"]')].filter(visible),16))if(hasNav(e))shells.push(e);
+    for(const e of bound([...query(scope,'[data-load-workspace],main,[role="main"]')].filter(visible),16))if(hasNav(e))shells.push(e);
     const unique=[...new Set(shells)].filter(e=>!shells.some(other=>other!==e&&e.contains(other)));
     mark('LOAD_WORKSPACE_CANDIDATE_FOUND',{candidate_workspace_count:unique.length},unique.length>0);
     if(!unique.length)throw Error('WORKSPACE_IDENTITY_MISSING');
     if(unique.length!==1)throw Error('WORKSPACE_AMBIGUOUS');
     const shell=unique[0],signals=[];
-    for(const a of anchors.filter(e=>shell.contains(e)))signals.push({kind:a.closest('.breadcrumb,[aria-label="breadcrumb"],[aria-label="Breadcrumb"]')?'BREADCRUMB':'HEADER_CONTROL',load_id:loadId(a.textContent),outside_child_section:true});
-    const attributes=[shell,...shell.querySelectorAll('[data-load-workspace][data-load-id]')].filter(e=>visible(e)&&!e.closest('form,[role="tabpanel"]'));
+    for(const a of anchors.filter(e=>shell.contains(e)))signals.push({kind:a.closest('.breadcrumb,[aria-label="breadcrumb"],[aria-label="Breadcrumb"]')?'BREADCRUMB':'HEADER_CONTROL',load_id:loadId(staticText(a)),outside_child_section:true});
+    const attributes=[shell,...query(shell,'[data-load-workspace][data-load-id]')].filter(e=>visible(e)&&!e.closest('form,[role="tabpanel"]'));
     for(const e of bound(attributes,16)){const id=e.getAttribute('data-load-id');if(id&&/^\d{1,20}$/.test(id))signals.push({kind:'PROVIDER_ATTRIBUTE',load_id:id,outside_child_section:true});}
     const route=doc.location.pathname.match(/^\/loads?\/(\d{1,20})(?:\/|$)/);
     if(route)signals.push({kind:'ROUTE_ID',load_id:route[1],outside_child_section:true});
     bound(signals,16);if(!signals.length)throw Error('WORKSPACE_IDENTITY_MISSING');
     const ids=new Set(signals.map(s=>s.load_id));if(ids.size!==1)throw Error('WORKSPACE_IDENTITY_CONFLICT');
     const id=[...ids][0];if(allowed!==null&&!allowed.includes(id))throw Error('WORKSPACE_SCOPE_DENIED');
-    const sectionControls=S.sections.filter(s=>nav.some(e=>shell.contains(e)&&sectionName(e.textContent)===s));
+    const sectionControls=S.sections.filter(s=>nav.some(e=>shell.contains(e)&&sectionName(staticText(e))===s));
     mark('WORKSPACE_IDENTITY_VERIFIED',{identity_signal_count:signals.length,section_control_count:sectionControls.length});
     return {shell,identityElements:[...anchors.filter(e=>shell.contains(e)),...attributes.filter(e=>e.hasAttribute('data-load-id'))],nav:nav.filter(e=>shell.contains(e)),contract:{contract:'AscendLoadWorkspaceContract',provider:'AscendTMS',entity_type:'LOAD',source:'provider DOM',load_id:id,confidence:'VERIFIED',signals,
       section_controls:sectionControls,path_pattern:pathPattern(doc),observed_at:at,tenant_identity_source:'OWNER_ATTESTED'}};
   }
   function sectionStructure(workspace,selections){
-    const shell=workspace.shell,children=[...shell.children],headings=[...shell.querySelectorAll('h1,h2,h3,legend,[role="heading"]')].filter(visible);
+    const shell=workspace.shell,children=collection(shell.children,1024),headings=[...query(shell,'h1,h2,h3,legend,[role="heading"]')].filter(visible);
     const output={schema_version:1,observation_scope:'VERIFIED_WORKSPACE_ONLY',status:'CAPTURED',selected_controls:[],
       heading_candidate_count:headings.length,heading_candidates:[],workspace_direct_child_count:children.length,workspace_direct_children:[],diagnostic_bounds:[]};
     const tag=e=>['a','button','div','span','li','ul','ol','nav','main','section','form','h1','h2','h3','legend','table','tbody','tr','td'].includes(e?.tagName?.toLowerCase())?e.tagName.toLowerCase():'OTHER';
     const role=e=>['tab','button','link','tablist','tabpanel','region','main','navigation','heading','dialog'].includes(e?.getAttribute('role'))?e.getAttribute('role'):'OTHER';
-    const label=e=>{const name=sectionName(e.textContent);return name==='DISCOVERED_UNCLASSIFIED'?'UNCLASSIFIED':name;};
+    const label=e=>{const name=sectionName(staticText(e));return name==='DISCOVERED_UNCLASSIFIED'?'UNCLASSIFIED':name;};
     const markers=e=>{
       const result=[];
       for(const [attribute,value,marker] of [['aria-selected','true','ARIA_SELECTED_TRUE'],['aria-current','page','ARIA_CURRENT_PAGE'],['aria-current','true','ARIA_CURRENT_TRUE']])
@@ -104,8 +133,8 @@
       child_index,tag:tag(child),role:role(child),visible:visible(child),child_element_count:child.children.length,
       known_navigation_control_count:workspace.nav.filter(e=>child===e||child.contains(e)).length,
       selected_control_count:selections.filter(e=>child===e||child.contains(e)).length,
-      descendant_field_control_count:child.querySelectorAll('input,select,textarea,output,[role="textbox"],[role="combobox"],[role="checkbox"],[data-field]').length,
-      immediate_heading_labels:headingsBound?[...child.children].filter(e=>e.matches('h1,h2,h3,legend,[role="heading"]')&&visible(e)).map(label):[],
+      descendant_field_control_count:query(child,'input,select,textarea,output,[role="textbox"],[role="combobox"],[role="checkbox"],[data-field]').length,
+      immediate_heading_labels:headingsBound?collection(child.children,1024).filter(e=>e.matches('h1,h2,h3,legend,[role="heading"]')&&visible(e)).map(label):[],
     }));
     return output;
   }
@@ -123,10 +152,10 @@
       if(context.tagName!=='DIV')continue;
       if(!visible(context)){record.predicate='NOT_VISIBLE';continue;}
       if(workspace.identityElements.some(e=>context===e||context.contains(e)))return reject('CONTEXT_CONTAINS_IDENTITY');
-      if(headings.some(e=>context.contains(e)&&sectionName(e.textContent)!=='DISCOVERED_UNCLASSIFIED'&&sectionName(e.textContent)!==name))
+      if(headings.some(e=>context.contains(e)&&sectionName(staticText(e))!=='DISCOVERED_UNCLASSIFIED'&&sectionName(staticText(e))!==name))
         return reject('CONTEXT_CONTAINS_OTHER_HEADING');
       if(children.length>24)return reject('DIRECT_CHILD_BOUND');
-      const forms=[...context.querySelectorAll('form')];record.form_candidate_count=forms.length;
+      const forms=[...query(context,'form')];record.form_candidate_count=forms.length;
       if(forms.length>16)return reject('CONTEXT_FORM_BOUND');
       const shown=forms.filter(visible);record.visible_form_count=shown.length;
       if(!shown.length){record.predicate='NO_VISIBLE_CONTEXT_FORMS';continue;}
@@ -145,11 +174,11 @@
       if(!record.all_visible_forms_contained)return reject('FORM_REGION_NOT_ALL_FORMS');
       if(workspace.identityElements.some(e=>root===e||root.contains(e)))return reject('FORM_REGION_CONTAINS_IDENTITY');
       if(workspace.nav.some(e=>root===e||root.contains(e)))return reject('FORM_REGION_CONTAINS_NAVIGATION');
-      if(headings.some(e=>root.contains(e)&&sectionName(e.textContent)!=='DISCOVERED_UNCLASSIFIED'&&sectionName(e.textContent)!==name))
+      if(headings.some(e=>root.contains(e)&&sectionName(staticText(e))!=='DISCOVERED_UNCLASSIFIED'&&sectionName(staticText(e))!==name))
         return reject('FORM_REGION_CONTAINS_OTHER_HEADING');
       let fieldCount=0,hasVisibleFields=false;record.field_candidate_count=0;
       for(const form of shown){
-        const items=[...form.querySelectorAll('input,select,textarea,output,[role="textbox"],[role="combobox"],[role="checkbox"],[role="status"],[data-field]')];
+        const items=[...query(form,'input,select,textarea,output,[role="textbox"],[role="combobox"],[role="checkbox"],[role="status"],[data-field]')];
         fieldCount+=items.length;record.field_candidate_count=fieldCount;if(fieldCount>256)return reject('FORM_FIELD_BOUND');
         if(items.some(e=>visible(e)&&!e.matches('[type="hidden"],[type="password"],[type="submit"],[type="reset"],[type="button"]')))hasVisibleFields=true;
       }
@@ -166,7 +195,7 @@
     const stop=predicate=>{diagnostic.failed_predicate=predicate;return {section:null,diagnostic};};
     // The observed provider route and heading must agree independently of the requested section.
     const anchors=selections.filter(control=>{
-      if(control.tagName!=='A'||sectionName(control.textContent)==='DISCOVERED_UNCLASSIFIED')return false;
+      if(control.tagName!=='A'||sectionName(staticText(control))==='DISCOVERED_UNCLASSIFIED')return false;
       const href=control.getAttribute('href');if(!href?.trim()||/^javascript:/i.test(href.trim()))return false;
       try{const url=new URL(href,shell.ownerDocument.location.href);
         return url.origin===shell.ownerDocument.location.origin&&url.pathname===shell.ownerDocument.location.pathname&&
@@ -176,7 +205,7 @@
     diagnostic.route_anchor_candidate_count=anchors.length;
     if(!anchors.length)return stop('ROUTE_ANCHOR_COUNT_ZERO');
     if(anchors.length!==1)return stop('ROUTE_ANCHOR_COUNT_MULTIPLE');
-    const name=sectionName(anchors[0].textContent),matching=headings.filter(e=>sectionName(e.textContent)===name);
+    const name=sectionName(staticText(anchors[0])),matching=headings.filter(e=>sectionName(staticText(e))===name);
     diagnostic.matching_heading_count=matching.length;
     if(!matching.length)return stop('MATCHING_HEADING_COUNT_ZERO');
     if(matching.length!==1)return stop('MATCHING_HEADING_COUNT_MULTIPLE');
@@ -189,15 +218,15 @@
       if(!visible(root)){record.predicate='NOT_VISIBLE';continue;}
       if(workspace.identityElements.some(e=>root===e||root.contains(e))){record.predicate='CONTAINS_WORKSPACE_IDENTITY';continue;}
       if(workspace.nav.some(e=>root===e||root.contains(e))){record.predicate='CONTAINS_SECTION_NAVIGATION';continue;}
-      if(headings.some(e=>root.contains(e)&&sectionName(e.textContent)!=='DISCOVERED_UNCLASSIFIED'&&sectionName(e.textContent)!==name)){
+      if(headings.some(e=>root.contains(e)&&sectionName(staticText(e))!=='DISCOVERED_UNCLASSIFIED'&&sectionName(staticText(e))!==name)){
         record.predicate='CONTAINS_OTHER_SECTION_HEADING';continue;
       }
-      const forms=[...root.querySelectorAll('form')];record.form_candidate_count=forms.length;
+      const forms=[...query(root,'form')];record.form_candidate_count=forms.length;
       if(forms.length>16){record.predicate='FORM_CANDIDATE_BOUND';continue;}
       const shown=forms.filter(visible);record.visible_form_count=shown.length;
       record.field_candidate_count=0;record.forms_with_visible_fields=0;
       for(const form of shown){
-        const fields=[...form.querySelectorAll('input,select,textarea,output,[role="textbox"],[role="combobox"],[role="checkbox"],[role="status"],[data-field]')];
+        const fields=[...query(form,'input,select,textarea,output,[role="textbox"],[role="combobox"],[role="checkbox"],[role="status"],[data-field]')];
         record.field_candidate_count+=fields.length;
         if(record.field_candidate_count>256){record.predicate='FORM_FIELD_CANDIDATE_BOUND';break;}
         if(fields.some(e=>!e.matches('[type="hidden"],[type="password"],[type="submit"],[type="reset"],[type="button"]')&&visible(e)))record.forms_with_visible_fields++;
@@ -205,7 +234,7 @@
       if(record.predicate==='FORM_FIELD_CANDIDATE_BOUND')continue;
       if(!record.forms_with_visible_fields){record.predicate='NO_VISIBLE_FORM_FIELDS';continue;}
       record.predicate='ELIGIBLE';diagnostic.eligible_root_count=1;diagnostic.selected_ancestor_depth=depth;diagnostic.root_relationship='ANCESTOR_FORM_REGION';
-      diagnostic.visible_field_candidate_count=[...root.querySelectorAll('input,select,textarea,output,[role="textbox"],[role="combobox"],[role="checkbox"],[role="status"],[data-field]')]
+      diagnostic.visible_field_candidate_count=[...query(root,'input,select,textarea,output,[role="textbox"],[role="combobox"],[role="checkbox"],[role="status"],[data-field]')]
         .filter(visible).filter(e=>!e.matches('[type="hidden"],[type="password"],[type="submit"],[type="reset"],[type="button"]')).length;
       // One matching heading gives one ancestor chain. Choose its innermost eligible form region;
       // coverage remains CURRENT_VISIBLE_SECTION_ONLY, never the whole Load Basics workspace.
@@ -214,7 +243,7 @@
     const sibling=siblingFormSection(workspace,matching[0],headings,name);diagnostic.sibling_form_diagnostic=sibling.diagnostic;
     if(sibling.root){
       diagnostic.root_relationship='SIBLING_FORM_REGION';diagnostic.eligible_root_count=1;
-      diagnostic.visible_field_candidate_count=[...sibling.root.querySelectorAll('input,select,textarea,output,[role="textbox"],[role="combobox"],[role="checkbox"],[role="status"],[data-field]')]
+      diagnostic.visible_field_candidate_count=[...query(sibling.root,'input,select,textarea,output,[role="textbox"],[role="combobox"],[role="checkbox"],[role="status"],[data-field]')]
         .filter(visible).filter(e=>!e.matches('[type="hidden"],[type="password"],[type="submit"],[type="reset"],[type="button"]')).length;
       return {section:{root:sibling.root,name,signal:'SELECTED_ROUTE_AND_VISIBLE_HEADING'},diagnostic};
     }
@@ -234,11 +263,11 @@
       }
       const error=Error(code);error.section_diagnostic=snapshot();throw error;
     };
-    for(const e of workspace.nav)safeLabel(e.textContent);
-    const selections=[...shell.querySelectorAll(controls)].filter(visible).filter(selected).filter(e=>!loadId(e.textContent));
+    for(const e of workspace.nav)safeLabel(staticText(e));
+    const selections=[...query(shell,controls)].filter(visible).filter(selected).filter(e=>!loadId(staticText(e)));
     diagnostic.selected_candidate_count=selections.length;
     for(const control of selections.slice(0,24)){
-      safeLabel(control.textContent);
+      safeLabel(staticText(control));
       for(const [attribute,value,marker] of [['aria-selected','true','ARIA_SELECTED_TRUE'],['aria-current','page','ARIA_CURRENT_PAGE'],['aria-current','true','ARIA_CURRENT_TRUE']])
         if(control.getAttribute(attribute)===value)markers.add(marker);
       if(control.classList.contains('active'))markers.add('CLASS_ACTIVE');
@@ -247,14 +276,14 @@
     if(selections.length>24)fail('SELECTED_CANDIDATE_BOUND','WORKSPACE_BOUND');
     const candidates=[],visibleTargets=new Set();let proofHeadings=[];
     for(const control of selections){
-      const name=sectionName(control.textContent),refs=[];
+      const name=sectionName(staticText(control)),refs=[];
       for(const [attribute,kind] of [['aria-controls','ARIA_CONTROLS'],['href','FRAGMENT'],['data-target','DATA_TARGET'],['data-bs-target','DATA_BS_TARGET']]){
         const value=control.getAttribute(attribute)||'';
         const id=attribute==='aria-controls'&&/^[\w-]+$/.test(value)?value:/^#[\w-]+$/.test(value)?value.slice(1):null;
-        if(id){relationships.add(kind);refs.push(...shell.querySelectorAll('#'+CSS.escape(id)));}
+        if(id){relationships.add(kind);refs.push(...query(shell,'#'+CSS.escape(id)));}
       }
       if(control.id){
-        const labelled=[...shell.querySelectorAll('[role="tabpanel"][aria-labelledby]')].filter(e=>e.getAttribute('aria-labelledby').split(/\s+/).includes(control.id));
+        const labelled=[...query(shell,'[role="tabpanel"][aria-labelledby]')].filter(e=>e.getAttribute('aria-labelledby').split(/\s+/).includes(control.id));
         if(labelled.length)relationships.add('LABELLEDBY');refs.push(...labelled);
       }
       for(const root of [...new Set(refs)].filter(e=>visible(e)&&e!==shell&&shell.contains(e)&&!e.contains(control))){
@@ -264,12 +293,12 @@
       }
     }
     if(!candidates.length){
-      const headings=[...shell.querySelectorAll('h1,h2,h3,legend,[role="heading"]')].filter(visible),headingRoots=new Set();
+      const headings=[...query(shell,'h1,h2,h3,legend,[role="heading"]')].filter(visible),headingRoots=new Set();
       if(headings.length>48)fail('HEADING_CANDIDATE_BOUND','WORKSPACE_BOUND');
       proofHeadings=headings;
       for(const h of headings){
-        const name=sectionName(h.textContent),root=h.closest(roots);
-        if(name!=='DISCOVERED_UNCLASSIFIED')safeLabel(h.textContent);
+        const name=sectionName(staticText(h)),root=h.closest(roots);
+        if(name!=='DISCOVERED_UNCLASSIFIED')safeLabel(staticText(h));
         if(name!=='DISCOVERED_UNCLASSIFIED'&&root&&root!==shell&&shell.contains(root)&&!root.querySelector('[role="tablist"]')){
           headingRoots.add(root);candidates.push({root,name,signal:'VISIBLE_HEADING'});
         }
@@ -296,9 +325,9 @@
     const found=[];
     for(const [attr,kind] of [['aria-controls','ARIA_CONTROLS'],['href','FRAGMENT'],['data-target','DATA_TARGET'],['data-bs-target','DATA_TARGET']]){
       const value=control.getAttribute(attr)||'',id=attr==='aria-controls'&&/^[\w-]+$/.test(value)?value:/^#[\w-]+$/.test(value)?value.slice(1):null;
-      if(id)for(const target of shell.querySelectorAll('#'+CSS.escape(id)))if(target!==shell&&!target.contains(control))found.push({target,kind});
+      if(id)for(const target of query(shell,'#'+CSS.escape(id)))if(target!==shell&&!target.contains(control))found.push({target,kind});
     }
-    if(!found.length&&control.id)for(const target of shell.querySelectorAll('[role="tabpanel"][aria-labelledby]'))
+    if(!found.length&&control.id)for(const target of query(shell,'[role="tabpanel"][aria-labelledby]'))
       if(target.getAttribute('aria-labelledby').split(/\s+/).includes(control.id))found.push({target,kind:'LABELLEDBY'});
     const targets=[...new Set(found.map(f=>f.target))];return targets.length===1?found[0]:null;
   }
@@ -306,7 +335,7 @@
     const candidates=[];
     for(const control of workspace.nav){
       const ref=navigationTarget(control,workspace.shell);if(!ref)continue;
-      const structure={section:sectionName(control.textContent),tag:control.tagName.toLowerCase(),role:'tab',control_type:control.tagName==='BUTTON'?'button':'anchor',
+      const structure={section:sectionName(staticText(control)),tag:control.tagName.toLowerCase(),role:'tab',control_type:control.tagName==='BUTTON'?'button':'anchor',
         reference:ref.kind,relative_path:relativePath(control,workspace.shell),target_relative_path:relativePath(ref.target,workspace.shell),same_document_target:true};
       candidates.push({...structure,fingerprint:await W.ProviderContract.fingerprint(structure)});
     }
@@ -314,25 +343,25 @@
   }
   async function fields(section,id,at,check=()=>{}){
     const root=section.root,result=[];
-    const items=bound([...root.querySelectorAll('input,select,textarea,output,[role="textbox"],[role="combobox"],[role="checkbox"],[role="status"],[data-field]')].filter(visible).filter(e=>!e.matches('[type="hidden"],[type="password"],[type="submit"],[type="reset"],[type="button"]')),64);
+    const items=bound([...query(root,'input,select,textarea,output,[role="textbox"],[role="combobox"],[role="checkbox"],[role="status"],[data-field]')].filter(visible).filter(e=>!e.matches('[type="hidden"],[type="password"],[type="submit"],[type="reset"],[type="button"]')),64);
     for(const e of items){
       check();
-      const signals=[],labels=[];
-      for(const l of e.labels||[])if(root.contains(l)&&visible(l)&&label(l.textContent)){signals.push('LABEL_CONTROL');labels.push(label(l.textContent));}
+      const signals=[],labels=[],nativeLabels=collection(e.labels||[],32);
+      for(const l of nativeLabels)if(root.contains(l)&&visible(l)&&label(staticText(l))){signals.push('LABEL_CONTROL');labels.push(label(staticText(l)));}
       if(label(e.getAttribute('aria-label'))){signals.push('ARIA_LABEL');labels.push(label(e.getAttribute('aria-label')));}
       for(const id of bound((e.getAttribute('aria-labelledby')||'').split(/\s+/).filter(Boolean),8)){
-        const l=e.ownerDocument.getElementById(id);if(l&&root.contains(l)&&visible(l)&&label(l.textContent)){signals.push('ARIA_LABELLEDBY');labels.push(label(l.textContent));}
+        const l=e.ownerDocument.getElementById(id);if(l&&root.contains(l)&&visible(l)&&label(staticText(l))){signals.push('ARIA_LABELLEDBY');labels.push(label(staticText(l)));}
       }
-      const neighbor=e.previousElementSibling,near=neighbor&&visible(neighbor)?label(neighbor.textContent):null;
+      const neighbor=e.previousElementSibling,near=neighbor?.matches('label,legend')&&visible(neighbor)?label(staticText(neighbor)):null;
       if(near&&!labels.length){signals.push('NEIGHBOR');labels.push(near);}
       const provider=e.getAttribute('data-field'),keys=[...new Set(labels.map(l=>S.fields[l]))];
       if(Object.values(S.fields).includes(provider)){signals.push('PROVIDER_ATTRIBUTE');keys.push(provider);}
-      const unknownExplicit=[...e.labels||[]].some(l=>root.contains(l)&&visible(l)&&!label(l.textContent))||
+      const unknownExplicit=nativeLabels.some(l=>root.contains(l)&&visible(l)&&!label(staticText(l)))||
         e.hasAttribute('aria-label')&&!label(e.getAttribute('aria-label'))||provider!==null&&!Object.values(S.fields).includes(provider);
       const names=[...new Set(keys)],field=names.length===1&&!unknownExplicit?names[0]:'UNKNOWN';
       if(e.hasAttribute('role'))signals.push('CONTROL_ROLE');
       const graph={signals:[...new Set(signals)],relative_path:relativePath(e,root),neighboring_labels:near?[near]:[],
-        data_attribute_names:[...new Set(bound([...e.attributes],32).filter(a=>a.name.startsWith('data-')).map(a=>S.data_attributes.includes(a.name)?a.name:'data-unclassified'))],
+        data_attribute_names:[...new Set(collection(e.attributes,32).filter(a=>a.name.startsWith('data-')).map(a=>S.data_attributes.includes(a.name)?a.name:'data-unclassified'))],
         aria_relationships:['labelledby','describedby','controls'].filter(a=>e.hasAttribute('aria-'+a))};
       const score=W.EvidenceScorer.mapping(field,signals);
       const type=e.tagName==='SELECT'?'select':e.tagName==='TEXTAREA'?'textarea':e.tagName==='OUTPUT'?'output':e.tagName!=='INPUT'?'STATIC':
@@ -345,7 +374,7 @@
     }
     return result;
   }
-  async function capture(doc,allowed,lease,progress=()=>{},started=performance.now(),target={}){
+  async function capture(doc,allowed,lease,progress=()=>{},started=performance.now(),target={},hooks={}){
     let diagnostic={stage:'SESSION_VERIFIED',candidate_workspace_count:0,identity_signal_count:0,section_control_count:0,elapsed_ms:0};
     const check=()=>{lease();if(performance.now()-started>=3000)throw Error('READ_TIMEOUT');};
     const mark=(stage,counts={},complete=true)=>{Object.assign(diagnostic,counts);if(complete){diagnostic.stage=stage;diagnostic.elapsed_ms=Math.floor(performance.now()-started);progress({...diagnostic});}check();};
@@ -356,10 +385,11 @@
     const section=observeSection(before);
     mark('SECTION_IDENTIFIED',{section_diagnostic:section.diagnostic});
     if(target.capture_section&&section.name!==target.capture_section)throw Error('STARTING_SECTION_MISMATCH');
+    hooks.onVerified?.({workspace:before,section});check();
     await new Promise(r=>setTimeout(r,0));check();
     const metadata=await W.LocatorGraph.mappingFields(section,before.contract.load_id,at,check);
-    const headings=bound([...section.root.querySelectorAll('h1,h2,h3,legend,[role="heading"]')].filter(visible),24).map(e=>sectionName(e.textContent)==='DISCOVERED_UNCLASSIFIED'?'UNCLASSIFIED_LABEL':sectionName(e.textContent));
-    const actions=bound([...section.root.querySelectorAll('button,a,[role="button"]')].filter(visible),32).map(e=>S.actions.find(a=>key(a)===key(e.textContent))||S.sections.find(a=>key(a)===key(e.textContent))||'UNCLASSIFIED_LABEL');
+    const headings=bound([...query(section.root,'h1,h2,h3,legend,[role="heading"]')].filter(visible),24).map(e=>sectionName(staticText(e))==='DISCOVERED_UNCLASSIFIED'?'UNCLASSIFIED_LABEL':sectionName(staticText(e)));
+    const actions=bound([...query(section.root,'button,a,[role="button"]')].filter(visible),32).map(e=>S.actions.find(a=>key(a)===key(staticText(e)))||S.sections.find(a=>key(a)===key(staticText(e)))||'UNCLASSIFIED_LABEL');
     await new Promise(r=>setTimeout(r,150));check();
     const after=observeWorkspace(doc,allowed,at,check,()=>{},before.shell),current=observeSection(after);
     if(W.DOMDiff.workspaceChanged(before,after)||current.root!==section.root||current.name!==section.name||
@@ -382,7 +412,7 @@
     const candidates=await navigationCandidates(w),matches=candidates.filter(c=>c.section===target.section&&c.fingerprint===target.fingerprint);
     if(matches.length!==1||candidates.filter(c=>c.section===target.section).length!==1)throw Error('NAVIGATION_CONTROL_AMBIGUOUS');
     let control=w.shell;for(const i of target.relative_path)control=control?.children[i];
-    if(!control||!visible(control)||sectionName(control.textContent)!==target.section||!navigationTarget(control,w.shell))throw Error('NAVIGATION_CONTROL_CHANGED');
+    if(!control||!visible(control)||sectionName(staticText(control))!==target.section||!navigationTarget(control,w.shell))throw Error('NAVIGATION_CONTROL_CHANGED');
     const relation=navigationTarget(control,w.shell);
     if(relation.kind!==target.reference||JSON.stringify(relativePath(relation.target,w.shell))!==JSON.stringify(target.target_relative_path))throw Error('NAVIGATION_CONTROL_CHANGED');
     check();const immediate=observeWorkspace(doc,command.approved_load_ids,proof.workspace.observed_at);

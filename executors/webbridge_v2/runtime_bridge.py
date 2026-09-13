@@ -13,6 +13,13 @@ from app.core.runtime import RuntimePaths
 from executors.ascend_extension.mapping_store import persist_map
 from executors.ascend_extension.workspace_contracts import AscendProviderMap, MAP_OPERATION, SCOPE
 from executors.webbridge_v2.contracts import Binding, Frozen, NodeRef, Ref, validate_graph
+from executors.webbridge_v2.wire import expand_graph
+
+
+class FieldBinding(Frozen):
+    index: int = Field(ge=0, le=63)
+    node: NodeRef
+    fingerprint: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
 class SectionDiagnostic(Frozen):
@@ -113,7 +120,7 @@ class OfflineRuntimeBridge:
             legacy = {k: v for k, v in raw.items() if k != "webbridge_v2"}
             mapped = AscendProviderMap.model_validate(legacy)
             bundle = raw["webbridge_v2"]
-            if set(bundle) != {"compatibility_version", "graph", "section"} or type(bundle["compatibility_version"]) is not int or bundle["compatibility_version"] != 2:
+            if set(bundle) != {"compatibility_version", "graph", "section", "fields"} or type(bundle["compatibility_version"]) is not int or bundle["compatibility_version"] != 3:
                 raise ValueError()
             command = pending["command"]
             expected = Binding(document_epoch=pending["route"]["document_id"],
@@ -122,7 +129,7 @@ class OfflineRuntimeBridge:
                 session_ref='dispatch-' + command["request_id"], provider="AscendTMS",
                 entity_type="LOAD", entity_id=mapped.workspace.load_id)
             vocabulary = frozenset(SCOPE["sections"] + list(SCOPE["fields"]) + SCOPE["actions"])
-            graph = validate_graph(bundle["graph"], expected_binding=expected, vocabulary=vocabulary)
+            graph = validate_graph(expand_graph(bundle["graph"]), expected_binding=expected, vocabulary=vocabulary)
             proof = SectionProof.model_validate(bundle["section"])
             nodes = {n.id: n for n in graph.nodes}
             control, root = nodes[proof.control], nodes[proof.root]
@@ -142,6 +149,22 @@ class OfflineRuntimeBridge:
             elif not proof.evidence or any(not any(e.id == ref and e.from_ == control.id and e.to == root.id and e.kind in {"CONTROLS", "FRAGMENT_TARGET", "PROVIDER_TARGET"} for e in graph.relations) for ref in proof.evidence):
                 raise ValueError()
             _section_relationship(graph, proof)
+            if type(bundle['fields']) is not list or len(bundle['fields']) != len(mapped.section.fields):
+                raise ValueError()
+            fields = [FieldBinding.model_validate(f) for f in bundle['fields']]
+            if len({f.node for f in fields}) != len(fields):
+                raise ValueError()
+            for index, (binding, field) in enumerate(zip(fields, mapped.section.fields, strict=True)):
+                node = nodes[binding.node]
+                if (binding.index != index or binding.fingerprint != field.contract_fingerprint
+                    or not node.visible or node.tag not in {'input', 'select', 'textarea', 'div', 'span'}
+                    or field.field_name_candidate != 'UNKNOWN' and SCOPE['fields'].get(node.name) != field.field_name_candidate):
+                    raise ValueError()
+                ancestor = node
+                while ancestor.id != root.id and ancestor.parent is not None:
+                    ancestor = nodes[ancestor.parent]
+                if ancestor.id != root.id:
+                    raise ValueError()
             body = json.dumps(bundle, sort_keys=True, separators=(",", ":"))
         except (ValueError, TypeError, KeyError, AttributeError):
             raise PermissionError("MAPPING_CONTRACT_INVALID") from None
@@ -157,7 +180,7 @@ class OfflineRuntimeBridge:
         record = persist_map(db, state, lease, pending, legacy, now)
         if self.before_completion:
             self.before_completion()
-        completion = json.dumps({"status": "MAP_PERSISTED", "compatibility_version": 2,
+        completion = json.dumps({"status": "MAP_PERSISTED", "compatibility_version": 3,
             "observation_id": graph.observation_id, "digest": digest, "map_disposition": "NEW" if record else "NO_OP",
             "activation": "CANDIDATE_ONLY", "values_included": False, "production_writes": False})
         db.execute("INSERT INTO runtime_v2_observations VALUES (?,?,?,?)", (graph.observation_id, digest, body, completion))

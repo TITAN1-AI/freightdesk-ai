@@ -7,6 +7,9 @@ import asyncio
 import copy
 import json
 import os
+import shutil
+import subprocess
+import sys
 import time
 from pathlib import Path
 from unittest.mock import patch
@@ -30,7 +33,7 @@ def provider_dom(number='900101', *, optional=True, section='Load Basics', linke
     if optional:
         fields += '<label for="carrier">Carrier</label><input id="carrier" value="PRIVATE_NEVER_READ">'
     panels = ''.join(f'<section id="panel{i}" role="tabpanel" {"hidden" if label != section else ""}>'
-        f'<h2>{label}</h2>{fields}<button type="button">Save</button></section>'
+        f'<h2>{label}</h2>{fields.replace("equipment", f"equipment{i}").replace("carrier", f"carrier{i}")}<button type="button">Save</button></section>'
         for i, label in enumerate(['Load Basics', 'Customer Info']))
     body = nav + f'<main data-load-workspace data-load-id="{number}"><h1>Load #{number}</h1><div role="tablist">{controls}</div>{panels}</main>'
     if not linked:
@@ -39,7 +42,7 @@ def provider_dom(number='900101', *, optional=True, section='Load Basics', linke
 
 
 @pytest.mark.parametrize('v2,sibling_first_capture,commit_failure', [
-    (False, False, False), (False, True, False), (True, False, False), (True, True, False), (True, False, True), (True, False, 'GRAPH')])
+    (False, False, False), (False, True, False), (True, False, False), (True, True, False), (True, False, True), (True, False, 'GRAPH'), ('CAPACITY', False, False)])
 def test_mapping_orchestrator_native_worker_dom_persistence(enrollment, tmp_path, sibling_first_capture, v2, commit_failure):
     async def exercise():
         from playwright.async_api import async_playwright
@@ -71,6 +74,7 @@ def test_mapping_orchestrator_native_worker_dom_persistence(enrollment, tmp_path
         orchestrator = MappingOrchestrator(access)
         frames = []
         lost_notification = []
+        process_recovery = []
 
         async def host_wire(message):
             # Exercise actual native framing, HMAC/replay handling, host dispatch and receipt hooks.
@@ -78,8 +82,25 @@ def test_mapping_orchestrator_native_worker_dom_persistence(enrollment, tmp_path
             frames.append(request['envelope']['body']['kind'])
             body = request['envelope']['body']
             if v2 and not commit_failure and not lost_notification and body['kind'] == 'RUNTIME_RESULT' and body.get('evidence', {}).get('webbridge_v2'):
-                # Model process loss after the runtime commit, before coordinator notification.
-                # No receipt is mocked; the real host/controller/SQLite completion still executes.
+                # Independent real process crash/recovery on a copy of this synthetic pending state.
+                if not sibling_first_capture:
+                    restart_root = tmp_path / 'process-restart'
+                    restart_root.mkdir()
+                    for directory in ['Data', 'Secrets']:
+                        shutil.copytree(tmp_path / directory, restart_root / directory)
+                    # Relocate only the synthetic manifest's path; production enrollment is never touched.
+                    manifest_path = restart_root / 'Data/booking-logistics/ascend-native/host-manifest.json'
+                    manifest = json.loads(manifest_path.read_text())
+                    manifest['path'] = str(manifest_path.with_name('FreightDeskAscendHost.exe'))
+                    manifest_path.write_text(json.dumps(manifest))
+                    (restart_root / 'restart-result.json').write_text(json.dumps(body))
+                    args = [sys.executable, '-m', 'tests.x1_restart_fixture', str(restart_root)]
+                    crashed = subprocess.run([*args, 'commit_then_crash', str(clock())], capture_output=True, text=True, timeout=20)
+                    assert crashed.returncode == 23, crashed.stdout + crashed.stderr
+                    recovered = subprocess.run([*args, 'recover', str(clock())], capture_output=True, text=True, timeout=20)
+                    assert recovered.returncode == 0, recovered.stdout + recovered.stderr
+                    process_recovery.append(json.loads(recovered.stdout))
+                # Also lose the in-process wake while preserving the normal full host chain.
                 with patch.object(MappingOrchestrator, 'tick', return_value=None):
                     response = decode_message(encode_message(host.handle(request)))
                 with access.database(readonly=True) as db:
@@ -127,9 +148,12 @@ def test_mapping_orchestrator_native_worker_dom_persistence(enrollment, tmp_path
                     '<div><form><legend>Private fixture legend</legend><label for="fixture-field">Equipment</label>' \
                     '<input id="fixture-field" value="PRIVATE_NEVER_READ"><button>Save</button></form></div></div></main>'
                 await page.evaluate('body=>document.body.innerHTML=body', sibling_dom if sibling_first_capture else provider_dom())
+                if v2 == 'CAPACITY':
+                    await page.evaluate('''()=>document.getElementById('panel0').insertAdjacentHTML('beforeend',Array.from({length:17},(_,i)=>
+                      '<label for="large'+i+'">Equipment</label><input id="large'+i+'" value="PRIVATE_NEVER_READ">').join(''))''')
                 if commit_failure == 'GRAPH':
-                    # Legitimate V1 workspace, but V2's SMALLER wire budget must fail closed.
-                    await page.evaluate("()=>document.querySelector('main').insertAdjacentHTML('beforeend','<div></div>'.repeat(80))")
+                    # Oversized structural graph still fails at the unchanged compact wire budget.
+                    await page.evaluate("()=>document.querySelector('main').insertAdjacentHTML('beforeend','<div></div>'.repeat(350))")
 
                 async def flush():
                     for _ in range(12):
@@ -163,6 +187,7 @@ def test_mapping_orchestrator_native_worker_dom_persistence(enrollment, tmp_path
                 await page.evaluate('()=>x1Chain.advance(40)')
                 assert orchestrator.tick()['stage'] == 'WAITING_FOR_OWNER_WORKSPACE'
                 assert access.status()['mapping_capture_count'] == 0 and not maps()
+                capture_started = time.monotonic()
                 await focus(True)
                 await flush()
                 state = orchestrator.tick()
@@ -184,19 +209,42 @@ def test_mapping_orchestrator_native_worker_dom_persistence(enrollment, tmp_path
                 assert len(maps()) == 1 and state['last_completed_dom_stage'] == 'MAP_PERSISTED'
                 assert state['capture_dispatch_state'] == 'COMPLETED'
                 assert state['cleanup_complete'] and access.status()['read_access'] == 'REVOKED'
+                if v2 == 'CAPACITY':
+                    assert len(maps()[0]['map']['section']['fields']) == 19
+                    (tmp_path / 'pipeline-metrics.json').write_text(json.dumps({'fields': 19,
+                        'focus_to_persistence_cleanup_seconds': round(time.monotonic()-capture_started, 3),
+                        'includes_independent_process_restart_test': True, 'live_validated': False}))
                 if v2:
                     with access.database(readonly=True) as db:
                         rows = db.execute('SELECT body,completion FROM runtime_v2_observations').fetchall()
                     assert len(rows) == 1
                     assert json.loads(rows[0][1])['status'] == 'MAP_PERSISTED'
-                    assert json.loads(rows[0][0])['graph']['binding']['entity_id'] == '900101'
+                    from executors.webbridge_v2.wire import expand_graph
+                    assert expand_graph(json.loads(rows[0][0])['graph'])['binding']['entity_id'] == '900101'
                     assert 'PRIVATE_NEVER_READ' not in str(rows)
                     assert lost_notification == [True]  # tick recovered the committed evidence.
+                    if not sibling_first_capture:
+                        assert process_recovery == [dict(recovery='PASSED', maps=1, cleanup='COMPLETE', reads_replayed=0)]
                     saved = accepted[0]
                     with access.database() as db:
                         assert real_persist(db, *copy.deepcopy(saved)) is None
                         changed = copy.deepcopy(saved)
-                        changed[3]['webbridge_v2']['graph']['nodes'][0]['visibility']['viewport'] = 'UNKNOWN'
+                        changed[3]['webbridge_v2']['graph']['nodes'][0][11][2] = 'UNKNOWN'
+                        with pytest.raises(PermissionError, match='MAPPING_CONTRACT_INVALID'):
+                            real_persist(db, *changed)
+                        # Internally valid but incoherent legacy metadata is rejected against its graph node.
+                        from executors.ascend_extension.workspace_contracts import fingerprint
+                        changed = copy.deepcopy(saved)
+                        raw = changed[3]
+                        field = raw['section']['fields'][0]
+                        field.update(field_name_candidate='carrier', semantic_label='Carrier')
+                        field['contract_fingerprint'] = fingerprint({k: v for k, v in field.items() if k not in
+                            {'presence', 'optionality', 'observed_on_load', 'observed_at', 'contract_fingerprint'}})
+                        raw['section']['fingerprint'] = fingerprint(dict(section=raw['section']['section'], headings=raw['section']['headings'],
+                            actions=raw['section']['action_controls'], fields=[f['contract_fingerprint'] for f in raw['section']['fields']]))
+                        raw['webbridge_v2']['fields'][0]['fingerprint'] = field['contract_fingerprint']
+                        from executors.ascend_extension.workspace_contracts import AscendProviderMap
+                        AscendProviderMap.model_validate({k: v for k, v in raw.items() if k != 'webbridge_v2'})
                         with pytest.raises(PermissionError, match='MAPPING_CONTRACT_INVALID'):
                             real_persist(db, *changed)
                         assert db.execute('SELECT count(*) FROM runtime_provider_maps').fetchone()[0] == 1

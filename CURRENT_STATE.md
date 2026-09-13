@@ -1,3 +1,26 @@
+# Current state — 2026-09-13
+
+## X1 / WebBridge V2 audit fixes — implemented offline
+
+Owner authorized the A01–A10 repairs. See [the repair handoff](docs/WEBBRIDGE_V2_AUDIT_FIXES.md)
+for findings, evidence, capacity limits and release boundaries. Coherent map/graph acquisition,
+private-source exclusion, document-lifetime node IDs, compact wire, strict graph coherence,
+field/domain checks and bounded indexed history are implemented. The actual synthetic chain and
+an independent runtime-commit/process-exit/coordinator-restart path are covered by regressions.
+
+V1 remains default. Compatibility v3 / graph v2 / wire v1 remain fixture/TestRuns-only and OBSERVE-only.
+No installed-state or vendor action, new live authority, operational value extraction or capability
+promotion occurred. Audited baseline is local commit 6d4a781; source hashes and source-only rollback
+rehearsal are generated under TestRuns. No live V2 packaging command exists.
+
+Verification: scripts/test.ps1 passed 960 tests (375.61s), full Ruff and synthetic dashboard checks.
+Final audit/release rerun: 18 passed; final integrated rerun: 7 passed (including the additional
+19-field full chain); final release rerun: 4 passed. These runs overlap: 965 distinct tests are covered
+by the full suite plus five newly added cases. Node syntax checks passed. Two existing Starlette/AnyIO
+deprecation warnings remain. No vendor capability is newly LIVE_VALIDATED.
+
+## Historical 2026-09-12 acceptance — superseded by audit and repair handoff
+
 # Current state — 2026-09-12
 
 ## WebBridge V2 Phases 0–2 — accepted OFFLINE

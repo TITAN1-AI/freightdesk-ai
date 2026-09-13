@@ -1,5 +1,9 @@
 # Roadmap
 
+Current implementation/release matrix: [X1 / V2 audit repairs](docs/WEBBRIDGE_V2_AUDIT_FIXES.md).
+V2 Phases 0-2 repaired offline; V1 remains default. No live V2 migration or capability promotion.
+
+
 | Phase | Scope | State |
 |---|---|---|
 | M1 | Core state/gates, policy/roles, events/audit, approvals/scheduler/risk, interfaces, dashboard | Local demo foundation implemented/tested |

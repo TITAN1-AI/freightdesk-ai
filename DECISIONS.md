@@ -1,3 +1,19 @@
+# Decisions - latest 2026-09-13
+
+## Repair audited boundaries without live deployment
+
+Use A01-A10 as the defect list. One observation fence and field-node links must make legacy metadata
+and graph coherent before the runtime-owned atomic commit. Compatibility3/graph2/wire1 retains
+message limits. Keep document/realm node identity independently of observation handles. Admit static
+label text before access; never use arbitrary neighbors/aggregate text. Field/domain meaning belongs
+to the application. History uses additive indexes and bounded latest/session queries, without rewrites.
+Regressions exercise the actual facade, host and synthetic full chain, including real process exit
+following runtime commit and recovery without read replay. Local baseline6d4a781 and source-hash/
+rollback rehearsal are source-only. No installed-state or vendor change; V1 default, V2 TestRuns-only
+and OBSERVE-only remain. See docs/WEBBRIDGE_V2_AUDIT_FIXES.md.
+
+## Historical decisions
+
 # Decisions
 
 ## 2026-09-12: accept V2 Phases 0–2 through the offline X1 compatibility chain

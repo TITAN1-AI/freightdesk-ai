@@ -1,3 +1,13 @@
+LATEST 2026-09-13: owner requested fixes for audit A01-A10. Read docs/WEBBRIDGE_V2_AUDIT_FIXES.md.
+Offline repair: coherent capture/field-node bindings, admitted private-safe text, document ledger,
+compatibility3/graph2/wire1, strict graph coherence, field/domain checks, indexed bounded history,
+adversarial fixtures and actual subprocess recovery. Baseline6d4a781 is AUDITED PRE-REPAIR, not a safe
+live rollback claim. Source-hash/rollback helper stays TestRuns. Current test results: CURRENT_STATE.md.
+V1 default; V2 absent from manifest, fixture/TestRuns gated and OBSERVE-only. No live package, installed
+extension/host/profile, vendor, real lease, registry or permission action. Do not reuse closed grants.
+No operational semantics/general mapping/AUTO_MAP or V2 LIVE_VALIDATED claim. Earlier acceptance below
+was reopened by independent audit and is historical.
+
 LATEST COMPLETION 2026-09-12: V2 Phases 0–2 accepted OFFLINE after owner proceed.
 Read docs/WEBBRIDGE_V2_PHASES_0_2_ACCEPTANCE.md. 428 broader + 7 distinct boundary + 1 integrated
 graph-bound tests passed (436 distinct); focused/final diagnostic runs overlap. Actual synthetic
