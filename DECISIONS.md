@@ -1,3 +1,11 @@
+# GitHub collaboration decision - 2026-09-13
+
+Owner requested a shared repository for agentic coding. Create TITAN1-AI/freightdesk-ai as PRIVATE,
+preserve audited history, use main plus scoped branches/PRs, and run synthetic-only Windows CI.
+Pin CI actions and give its token contents:read only; publish no runtime artifacts or provider secrets.
+Repository access does not authorize live provider work. Contributor invitations and any future
+visibility change require an owner decision. No automatic merge or production deployment is enabled.
+
 # Decisions - latest 2026-09-13
 
 ## Repair audited boundaries without live deployment

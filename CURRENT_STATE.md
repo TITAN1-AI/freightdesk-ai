@@ -1,5 +1,14 @@
 # Current state — 2026-09-13
 
+## GitHub collaboration - 2026-09-13
+
+Private repository created: https://github.com/TITAN1-AI/freightdesk-ai.
+CONTRIBUTING.md, task/PR templates and the Windows Offline checks workflow define the coding handoff.
+Main is the integration branch; use scoped codex/<task> branches for changes. Full history preserves
+6d4a781 and f2377b2. GitHub login stays in the Windows credential store; configuration is under the
+nonsynced runtime. No collaborators are invited implicitly, and no provider authority is granted.
+Local source/lint checks pass; the first hosted CI run is tracked separately from prior local tests.
+
 ## X1 / WebBridge V2 audit fixes — implemented offline
 
 Owner authorized the A01–A10 repairs. See [the repair handoff](docs/WEBBRIDGE_V2_AUDIT_FIXES.md)

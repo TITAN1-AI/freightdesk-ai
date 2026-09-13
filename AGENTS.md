@@ -1,3 +1,8 @@
+COLLABORATIVE CODING: read CONTRIBUTING.md. Use one scoped codex/<task> branch per change and a
+reviewable PR against main. Preserve Git history and the audited baseline. GitHub access/CI never
+authorizes provider execution, real leases or production writes. Keep runtime/secrets out of Git.
+Use separate checkouts for concurrent edits and unique TestRuns directories for concurrent tests.
+
 LATEST 2026-09-13: owner requested fixes for audit A01-A10. Read docs/WEBBRIDGE_V2_AUDIT_FIXES.md.
 Offline repair: coherent capture/field-node bindings, admitted private-safe text, document ledger,
 compatibility3/graph2/wire1, strict graph coherence, field/domain checks, indexed bounded history,

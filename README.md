@@ -1,16 +1,19 @@
 # FreightDesk AI
 
+Private collaboration repository: [TITAN1-AI/freightdesk-ai](https://github.com/TITAN1-AI/freightdesk-ai).
+
 FreightDesk is the freight operations control plane above existing logistics systems.
 Avery, Booking Logistics' AI Operations Assistant, will execute bounded operational work
 through replaceable adapters and workers. FreightDesk owns shipment facts, workflow,
 authorization, policy, scheduling and audit history.
 
-**Latest X1 work:** source 0.3.0 implements persistent owner enrollment and separately enabled read-only
-leases. It has not been enrolled or run live by this implementation task. See
-[the current X1 runtime handoff](docs/ASCEND_X1_RUNTIME.md) for migration, remaining manual steps and
-the first bounded owner-run plan. Opening the demo dashboard does not authorize X1 reads.
+**Current work:** the X1 / WebBridge V2 audit fixes are implemented and tested offline. V1 remains
+default; V2 remains fixture/TestRuns-gated and OBSERVE-only. Read [CURRENT_STATE.md](CURRENT_STATE.md)
+and [the repair handoff](docs/WEBBRIDGE_V2_AUDIT_FIXES.md) before starting a task.
+Opening the demo dashboard or a pull request does not authorize live vendor activity.
 
-**Current release: M1 foundation plus owner-reconciled CarrierView historical POC import and display. Live validation is capability-specific.**
+**Collaborative development:** see [CONTRIBUTING.md](CONTRIBUTING.md) for branches, agent handoffs,
+Windows setup, offline checks and source/runtime boundaries. Live validation is capability-specific.
 Synthetic DEMO-1847 through DEMO-1850 are not LIVE POC #001.
 
 ## Run locally
@@ -69,7 +72,8 @@ All operational runtime paths use owner-authorized C:\FreightDeskRuntime, outsid
 See SECURITY.md and docs/CARRIERVIEW_ACCESS.md for two-class private DPAPI setup.
 The CarrierView panel displays the imported historical POC through a separate protected session.
 Open privately with .tools/python/python.exe scripts/open_live_poc.py; no CarrierView token enters the browser.
-All production CarrierView writes remain blocked. 151 tests cover M1, adapters, historical import, source preservation and protected access.
+All production CarrierView writes remain blocked. Current validation results and scoped capability
+claims are recorded in CURRENT_STATE.md and LIVE_POC.md.
 
 ## Structure
 

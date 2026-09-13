@@ -23,6 +23,9 @@ __pycache__/
 *.key
 *.pfx
 *.p12
+*.dpapi
+pairing-bootstrap.json
+enrollment-bootstrap.json
 node_modules/
 playwright-report/
 test-results/
