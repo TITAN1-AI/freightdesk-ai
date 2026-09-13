@@ -45,7 +45,12 @@ jobs:
           }
       - name: Check native pipe and pinned-source checkout portability
         run: |
-          .\.tools\python\python.exe -m pytest tests/test_ascend_native_startup.py tests/test_webbridge_v2_boundaries.py --basetemp=C:\FreightDeskRuntime\Data\TestRuns\ci-portability
+          $testRoot = & .\.tools\python\python.exe -c "from app.core.runtime import RuntimePaths; print(RuntimePaths.from_environment().path('Data', 'TestRuns', 'ci-portability'))"
+          if ($LASTEXITCODE -ne 0) { throw 'Test runtime path validation failed.' }
+          $env:TEMP = Split-Path $testRoot -Parent
+          New-Item -ItemType Directory -Force $env:TEMP | Out-Null
+          $env:TMP = $env:TEMP
+          .\.tools\python\python.exe -m pytest tests/test_ascend_native_startup.py tests/test_webbridge_v2_boundaries.py "--basetemp=$testRoot"
           if ($LASTEXITCODE -ne 0) { throw 'Offline portability checks failed.' }
       - name: Full offline suite, lint and dashboard checks
         run: .\scripts\test.ps1
