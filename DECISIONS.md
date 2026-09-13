@@ -1,5 +1,14 @@
 # GitHub collaboration decision - 2026-09-13
 
+Owner authorized executing the staged validation plan. Identify the V1 source release as X1 0.6.3;
+preserve enrollment, protocols, permissions and V2 isolation. Keep preparation, candidate execution,
+installed artifact proof and live workspace proof separate. Failed/uncertain candidate execution is
+one-time and cannot automatically retry. Retain the original native files and all unrelated authority.
+Windows Application Control denial is not a provider/session failure. Do not disable protection or
+execute denied binaries indirectly; propose trusted signing with a final signed-artifact manifest.
+No signing service purchase/account, trust exception or operational capability release is approved
+implicitly. See docs/ASCEND_X1_RELEASE_063.md for actual evidence and remaining deployment work.
+
 Proposed next milestone (not execution authorization): qualify a versioned X1 read-only operations
 release through installed component proof, exact workspace capture, representative reviewed
 navigation, field-value comparison and a supervised pilot. Keep V2 migration separate and preserve

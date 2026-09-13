@@ -1,5 +1,12 @@
 # Known issues - audit repair 2026-09-13
 
+The current X1 release is blocked at local native execution qualification: Windows Smart App Control
+denied three synthetic launcher tests (3077 / VerifiedAndReputableDesktop / 0xc0e90002). Error4551 is
+now surfaced as SELF_TEST_APPLICATION_CONTROL_BLOCKED. No policy bypass or blocked-file retry occurred.
+Source0.6.3 is not installed/qualified; the last loaded card is0.6.2 and native binary is unchanged.
+Signing/trust for reviewed native bytes and coherent full-release rollback remain prerequisites.
+See [0.6.3 handoff](docs/ASCEND_X1_RELEASE_063.md). No new provider read or lease occurred.
+
 Everyday operations is not yet a released capability. CURRENT_OPERATIONS waits at scope review;
 candidate maps do not provide validated operational values, and the flat context assembler is not
 a complete per-stop appointment model. Installed release/rollback qualification, field contracts,
@@ -9,8 +16,8 @@ coverage and supervised recovery/performance validation remain necessary. See
 Fresh Windows CI exposed two portability defects: CRLF checkout changed the pinned adaptation hash,
 and .NET Framework's redirected-input writer inserted an encoding preamble into native binary frames.
 Git attributes preserve the reviewed LF bytes; the launcher source now prevents the preamble, with
-console/headless synthetic regressions. The installed host is unchanged; deployment and real pairing
-remain outside this work. Hosted full-suite verification of these fixes is tracked in PR #1.
+console/headless synthetic regressions. The installed host is unchanged. PR #1 passed hosted checks;
+the newly authorized deployment is now paused at the Windows policy blocker described above.
 
 A01-A10 repairs are implemented in source; see [the repair handoff](docs/WEBBRIDGE_V2_AUDIT_FIXES.md).
 Earlier unconditional acceptance missed reproduced defects. V2 remains offline, not LIVE_VALIDATED.

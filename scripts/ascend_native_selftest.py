@@ -37,6 +37,12 @@ def probe(executable: str, origin: str, *, timeout: float = 10) -> dict:
         result['safe_error_code'] = 'SELF_TEST_EXIT_BEFORE_RESPONSE'
     except ValueError:
         result['safe_error_code'] = 'SELF_TEST_FRAMING_INVALID'
+    except OSError as error:
+        result['safe_error_code'] = (
+            'SELF_TEST_APPLICATION_CONTROL_BLOCKED'
+            if getattr(error, 'winerror', None) == 4551
+            else 'SELF_TEST_HOST_UNAVAILABLE'
+        )
     except Exception:
         result['safe_error_code'] = 'SELF_TEST_HOST_UNAVAILABLE'
     finally:

@@ -3,10 +3,12 @@
 Execution update 2026-09-13: owner explicitly authorized proceeding. Release preparation and the
 first bounded installed X1 metadata validation are now in progress. Keep later gates dependent on
 their actual evidence; no production write permission or V2 activation is granted by this update.
+Execution subsequently stopped at the Windows native-executable trust gate, before any Ascend read.
+See [the X1 0.6.3 release handoff](ASCEND_X1_RELEASE_063.md); preparation is not installed acceptance.
 
-Prepared 2026-09-13 in response to the owner's readiness question. This is a proposed work plan,
-not deployment approval or a live grant. No installation, browser, host, lease or vendor action was
-performed. The closed five-iteration authorization remains closed. Numerical acceptance targets
+Originally prepared 2026-09-13 in response to the owner's readiness question before execution approval.
+At that planning stage no installation, browser, host, lease or vendor action was performed.
+The closed five-iteration authorization remains closed. Numerical acceptance targets
 below are proposed pilot criteria, not measured reliability or an owner-approved service level.
 
 ## First useful product

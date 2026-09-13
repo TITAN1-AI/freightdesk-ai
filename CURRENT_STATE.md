@@ -1,6 +1,28 @@
 # Current state — 2026-09-13
 
-## Read-only release execution authorized — in progress
+## X1 0.6.3 preparation — local Windows execution blocked
+
+The fresh release work stopped before any Ascend read or real read/mapping authority. Three synthetic
+launcher processes were blocked by Windows Application Control: event 3077, VerifiedAndReputableDesktop,
+status 0xc0e90002 (one surfaced WinError4551; the other two were hidden by generic self-test reporting).
+No blocked executable was retried. The installed native host remains unchanged and the last inspected
+loaded extension card is 0.6.2. No extension reload or new vendor capability promotion occurred.
+
+Source0.6.3 has consistent extension/worker/content/Python versioning, staged-only release preparation,
+hash validation, one-time candidate self-test receipts, unrelated-authority guards, recoverable native
+file replacement and explicit Windows policy-denial reporting. V2/permissions/write gates are unchanged.
+The pre-update snapshot is not a live-qualified rollback; full coherent installed rollback remains open.
+See [release handoff](docs/ASCEND_X1_RELEASE_063.md). Trusted native-host signing is the proposed next
+deployment prerequisite; no signing account or Windows security change has been made.
+
+Current targeted verification covers 73 distinct tests: 72 release/coordinator/trace/integrated cases
+passed, then the final 20-test release run passed (19 overlap, one added receipt-write regression).
+Full repository Ruff, X1 controller/runtime Node checks and helper PowerShell parsing passed.
+The first pre-diagnosis run was 72 passed / 3 Windows-blocked failures, not a passing run. The native
+launcher tests were not repeated locally. Two existing dependency warnings remain. Older CI counts
+below belong to their stated commits, not this candidate.
+
+## Read-only release execution authorized — historical start
 
 Owner approved execution of the proposed setup/validation plan. Fresh local inventory confirms pinned
 installation/manifest bindings, no pending read, expired/revoked last lease and no active mapping job.

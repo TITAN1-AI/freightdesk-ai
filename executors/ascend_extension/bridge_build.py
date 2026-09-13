@@ -3,10 +3,10 @@ from typing import Literal
 from pydantic import Field, field_validator
 from executors.ascend_extension.controller import Strict
 
-BUILD = dict(extension_version="0.6.2", controller_revision=3, native_protocol=1, content_protocol=3)
+BUILD = dict(extension_version="0.6.3", controller_revision=3, native_protocol=1, content_protocol=3)
 
 class BridgeBuild(Strict):
-    extension_version: Literal["0.6.2"]
+    extension_version: Literal["0.6.3"]
     controller_revision: Literal[3]
     native_protocol: Literal[1]
     content_protocol: Literal[3]
@@ -19,8 +19,8 @@ class BridgeBuild(Strict):
         return value
 
 class DocumentHandshake(BridgeBuild):
-    service_worker_version: Literal["0.6.2"]
-    content_script_version: Literal["0.6.2"]
+    service_worker_version: Literal["0.6.3"]
+    content_script_version: Literal["0.6.3"]
     document_generation: int = Field(ge=1)
     tab_id: int = Field(ge=0)
     document_id: str = Field(pattern=r"^[a-f0-9]{32}$")

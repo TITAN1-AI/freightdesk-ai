@@ -1,3 +1,11 @@
+CURRENT BLOCKER 2026-09-13: X1 source0.6.3 release preparation hit Windows Application Control.
+Three synthetic launchers were denied (3077/VerifiedAndReputableDesktop/0xc0e90002; WinError4551).
+Read docs/ASCEND_X1_RELEASE_063.md. Do not rerun denied binaries, bypass policy, deploy/reload or
+create live authority while this execution prerequisite is unresolved. Installed native unchanged;
+loaded card last inspected0.6.2. No new vendor read/lease. Separate staged artifact integrity from
+successful candidate execution/installed handshake. Trusted signing is proposed, not provisioned.
+Current targeted coverage73distinct; fullRuff/Node/parser passed. No new LIVE_VALIDATED claim.
+
 CURRENT OWNER AUTHORIZATION 2026-09-13: owner said "execute you have full access" for the proposed
 daily-operations validation plan. Proceed with reversible release preparation, local installed-component
 inspection/update, existing-profile X1 read-only validation and scoped local fixes/tests. This is fresh
