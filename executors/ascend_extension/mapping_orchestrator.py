@@ -99,7 +99,7 @@ class MappingIntent(Strict):
     scope: Literal["CURRENT_LOAD", "CURRENT_OPERATIONS", "VALIDATION_COHORT", "OWNER_NAVIGATION_OBSERVE"] = "CURRENT_LOAD"
     load_ids: list[str] | None = Field(default=None, min_length=3, max_length=5)
     expected_load_id: str | None = Field(default=None, pattern=r"^[0-9]{1,20}$")
-    starting_section: Literal["Load Basics"] | None = None
+    starting_section: Literal["Load Basics", "Edit Stops"] | None = None
     minutes: int = Field(default=10, ge=1, le=20)
     max_workspaces: int = Field(default=5, ge=1, le=20)
     max_sections: int = Field(default=40, ge=1, le=100)

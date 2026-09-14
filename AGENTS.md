@@ -1,3 +1,24 @@
+CURRENT RELEASE 2026-09-13: owner manually disabled Smart App Control; policy state0 verified.
+No agent security-policy change or denied-binary bypass. X1 0.6.3 candidate synthetic check PASS;
+candidate-selftest.json is consumed, never repeat it. Installed native now matches candidate hash;
+pinned extension reloaded0.6.3 and native/worker channel reconnected with reads REVOKED. First
+replacement recovered unchanged files while old idle host was running; stopping only that verified
+host allowed guarded install. Enrollment/permissions/history unchanged. Read docs/ASCEND_X1_RELEASE_063.md.
+Fresh content/provider proof remains pending: focus helper found no unique Ascend-labelled tab.
+No mapping job, new lease or vendor read created. Owner asked to foreground exact1763/Load Basics.
+Current local release+integrated rerun27passed. CI34776663983:986passed/1V2synthetic failure;
+that failure passes locally but cause remains UNKNOWN. V2 stays off; no new LIVE_VALIDATED claim.
+
+CURRENT OWNER AUTHORIZATION 2026-09-13: owner said "execute you have full access" for the proposed
+daily-operations validation plan. Proceed with reversible release preparation, local installed-component
+inspection/update, existing-profile X1 read-only validation and scoped local fixes/tests. This is fresh
+authorization, not reuse of the closed five-iteration grant. Preserve pinned enrollment/profile,
+identity/presence/session/lease/write protections and unrelated authority/history. First installed
+capture is one exact LOAD/1763 / Load Basics metadata observation if currently proved. Keep V2 off;
+no automatic cohort crawling, unreviewed section traversal, communications, provider mutations or
+canonical writes. Operational field reads follow their separate proved contracts and local-only data
+boundaries. Stop for actual login/MFA or important identity/scope ambiguity. Do not invent live success.
+
 COLLABORATIVE CODING: read CONTRIBUTING.md. Use one scoped codex/<task> branch per change and a
 reviewable PR against main. Preserve Git history and the audited baseline. GitHub access/CI never
 authorizes provider execution, real leases or production writes. Keep runtime/secrets out of Git.

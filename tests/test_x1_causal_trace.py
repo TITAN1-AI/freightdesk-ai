@@ -20,7 +20,7 @@ from tests.test_x1_mapping_notifications import InputPipe, OutputPipe, enrolled_
 def trace_context():
     state = dict(control_revision=3, document_handshake={
         "tab_id": 7, "document_id": "a" * 32, "document_generation": 2,
-        "extension_version": "0.6.2", "service_worker_version": "0.6.2", "content_script_version": "0.6.2",
+        "extension_version": "0.6.4", "service_worker_version": "0.6.4", "content_script_version": "0.6.4",
     })
     lease = dict(generation="b" * 32, mapping=dict(orchestrated=True, causal_trace=True, orchestrator_job_id="c" * 32))
     return state, lease
@@ -61,7 +61,7 @@ def test_causal_trace_pseudonymizes_bindings_and_records_fixed_process_metadata(
         assert evidence["process_id"] == os.getpid() and len(evidence["runtime_instance"]) == 64
         assert evidence["trace_revision"] == 1 and evidence["controller_revision"] == 3
         assert evidence["content_protocol"] == 3 and evidence["native_protocol"] == 1
-        assert evidence["service_worker_version"] == "0.6.2"
+        assert evidence["service_worker_version"] == "0.6.4"
         assert evidence["owner_present"] is True and evidence["production_writes"] is False
         assert evidence["content_trace_revision"] == 1
         assert evidence["mapping_reader_revision"] == 2

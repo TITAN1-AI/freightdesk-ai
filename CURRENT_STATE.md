@@ -1,5 +1,85 @@
 # Current state — 2026-09-13
 
+## Candidate Stops metadata adapter — offline source only
+
+`stops-metadata.js` adds bounded row-local structural capture using existing workspace identity
+checks and the caller's authority guard, with explicit selected-section proof. Source packaging and existing mapping capture now include it; a strict optional host contract
+fingerprints and persists metadata through the existing map store. No new live command is added.
+No value extraction, authority, installation or
+provider action occurred. See [candidate reader](docs/ASCEND_STOPS_METADATA_READER.md).
+
+## X1 0.6.3 installed — exact workspace validation pending
+
+Owner manually disabled Smart App Control and confirmed "off"; local policy state0 was verified.
+The agent did not change Windows security policy or retry the three denied fixture binaries.
+The staged candidate's one-time synthetic check passed SELF_TEST_OK: launcher/Python startup,
+host initialization, valid request/response framing and clean stdout. Its receipt is now consumed.
+
+The first guarded replacement stopped while the old host process was running; both native files
+were verified restored to their prior hashes with no pending files. After verifying all authority
+idle and stopping only that exact installed host, installation succeeded. The installed host matches
+the candidate hash; the pinned extension was reloaded0.6.3. Native/extension pairing and compatible
+worker wakes are connected while read access remains REVOKED. Enrollment/permissions are unchanged.
+
+Fresh document/content handshake and provider capture are still pending. The approved focus helper
+found no unique Ascend-labelled tab in the current Edge window. No new mapping job, lease or vendor
+read was created. Owner was asked to foreground exact Load1763 / Load Basics. Retained0.6.2 content
+handshake and historical board evidence do not establish current readiness.
+
+Current targeted rerun: all27 release/integrated cases passed. The failing CI V2 case also passed
+when run alone. CI34776663983 at192fcf9 remains986passed/1failed: synthetic V2 receipt handling at
+the second mapping-session start returned NATIVE_RECEIPT_FAILED. Its root cause remains UNKNOWN;
+passing locally does not erase the CI failure. V2 is disabled and no production logic was changed
+to accommodate it. Source recovery of27 saved files was rehearsed under TestRuns; this does not
+qualify a live full-release rollback. See [release handoff](docs/ASCEND_X1_RELEASE_063.md).
+
+## Historical preparation — local Windows execution blocked
+
+The fresh release work stopped before any Ascend read or real read/mapping authority. Three synthetic
+launcher processes were blocked by Windows Application Control: event 3077, VerifiedAndReputableDesktop,
+status 0xc0e90002 (one surfaced WinError4551; the other two were hidden by generic self-test reporting).
+No blocked executable was retried. The installed native host remains unchanged and the last inspected
+loaded extension card is 0.6.2. No extension reload or new vendor capability promotion occurred.
+
+Source0.6.3 has consistent extension/worker/content/Python versioning, staged-only release preparation,
+hash validation, one-time candidate self-test receipts, unrelated-authority guards, recoverable native
+file replacement and explicit Windows policy-denial reporting. V2/permissions/write gates are unchanged.
+The pre-update snapshot is not a live-qualified rollback; full coherent installed rollback remains open.
+See [release handoff](docs/ASCEND_X1_RELEASE_063.md). Trusted native-host signing is the proposed next
+deployment prerequisite; no signing account or Windows security change has been made.
+
+Unsigned candidate staging succeeded from source commit5031e49. Artifact verification matched 201
+executable-source/config files plus the native/Python hashes. Signature status is NotSigned; candidate
+execution is NOT_RUN, no self-test/install receipt exists, and the installed host matches its backup.
+This proves staged integrity only. No actual deployment/candidate startup acceptance is claimed.
+
+Current targeted verification covers 73 distinct tests: 72 release/coordinator/trace/integrated cases
+passed, then the final 20-test release run passed (19 overlap, one added receipt-write regression).
+Full repository Ruff, X1 controller/runtime Node checks and helper PowerShell parsing passed.
+The first pre-diagnosis run was 72 passed / 3 Windows-blocked failures, not a passing run. The native
+launcher tests were not repeated locally. Two existing dependency warnings remain. Older CI counts
+below belong to their stated commits, not this candidate.
+
+## Read-only release execution authorized — historical start
+
+Owner approved execution of the proposed setup/validation plan. Fresh local inventory confirms pinned
+installation/manifest bindings, no pending read, expired/revoked last lease and no active mapping job.
+Prepare X1/V1 release identity, recoverable native-host update and one exact installed metadata capture
+before expanding validation. V2 stays off; no new live success is claimed. Earlier planning-only and
+offline-only notes below are historical for this newly authorized bounded release work.
+
+## Proposed daily-operations readiness path
+
+Owner asked how to validate and set up dependable everyday use. The concrete gate sequence is in
+[the proposed validation plan](docs/ASCEND_DAILY_OPERATIONS_VALIDATION_PLAN.md): versioned installed
+release, one exact workspace, representative navigation cohort, separately validated operational
+values, explicit operations coverage, then a supervised daily pilot. This is planning only; no new
+live authority, installation, field activation or capability promotion. CURRENT_OPERATIONS remains
+review-gated. Private runtime evidence remains outside the public repository.
+
+GitHub PR #1 merged the checkout/native-framing portability repairs. Run 34773561853 passed 967
+tests, full Ruff and dashboard checks; two existing dependency warnings remain. Installed host unchanged.
+
 ## GitHub collaboration - 2026-09-13
 
 Repository: https://github.com/TITAN1-AI/freightdesk-ai. Initially created private; the owner changed
