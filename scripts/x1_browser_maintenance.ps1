@@ -6,6 +6,7 @@ param(
 # Local browser chrome only. Never reads or writes Ascend DOM, fields, storage or traffic.
 $ErrorActionPreference = 'Stop'
 $diagnostic = @{}
+. (Join-Path $PSScriptRoot 'x1_browser_selection.ps1')
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
 Add-Type @'
@@ -41,19 +42,30 @@ try {
     $tabCondition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty,[System.Windows.Automation.ControlType]::TabItem)
     $tabs = $window.FindAll([System.Windows.Automation.TreeScope]::Descendants,$tabCondition)
     $candidates = @()
-    foreach ($tab in $tabs) {
+    if ($Action -eq 'FocusAscend') {
+        $currentAddress = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants,[System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::NameProperty,'Address and search bar'))
+        $currentValue = ($currentAddress.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)).Current.Value
+        $originVerified = Test-X1AscendOrigin $currentValue
+        $facts = @()
+        foreach ($tab in $tabs) {
+            $selected = ($tab.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern)).Current.IsSelected
+            $facts += [pscustomobject]@{selected=$selected;title_candidate=($tab.Current.Name -match 'Ascend' -and $tab.Current.Name -notmatch 'FreightDesk')}
+        }
+        $diagnostic.selected_origin_verified = $originVerified
+        $diagnostic.selected_tab_count = @($facts | Where-Object selected).Count
+        $index = Get-X1AscendTabIndex $facts $originVerified
+        $candidates = @($tabs[$index])
+    } else { foreach ($tab in $tabs) {
         $tabLabel = $tab.Current.Name
-        if ($Action -eq 'FocusAscend') {
-            if ($tabLabel -match 'Ascend' -and $tabLabel -notmatch 'FreightDesk') { $candidates += $tab }
-        } elseif ($tabLabel -match '^Extensions(?:\s|$)|^Extensiones(?:\s|$)') { $candidates += $tab }
-    }
+        if ($tabLabel -match '^Extensions(?:\s|$)|^Extensiones(?:\s|$)') { $candidates += $tab }
+    } }
     if ($candidates.Count -ne 1) { throw 'LOCAL_BROWSER_TAB_AMBIGUOUS' }
     ($candidates[0].GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern)).Select()
     Start-Sleep -Milliseconds 400
     $address = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants,[System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::NameProperty,'Address and search bar'))
     $addressValue = ($address.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)).Current.Value.Trim()
     if ($Action -eq 'FocusAscend') {
-        if ($addressValue -notmatch '^(https://)?ascendtms\.com(?:/|$)') { throw 'LOCAL_ASCEND_ORIGIN_UNVERIFIED' }
+        if (-not (Test-X1AscendOrigin $addressValue)) { throw 'LOCAL_ASCEND_ORIGIN_UNVERIFIED' }
         [void][X1BrowserWindow]::ShowWindow([IntPtr]$WindowHandle,9)
         [void][X1BrowserWindow]::SetForegroundWindow([IntPtr]$WindowHandle)
         Start-Sleep -Milliseconds 200
