@@ -1,6 +1,31 @@
 # Current state — 2026-09-13
 
-## X1 0.6.3 preparation — local Windows execution blocked
+## X1 0.6.3 installed — exact workspace validation pending
+
+Owner manually disabled Smart App Control and confirmed "off"; local policy state0 was verified.
+The agent did not change Windows security policy or retry the three denied fixture binaries.
+The staged candidate's one-time synthetic check passed SELF_TEST_OK: launcher/Python startup,
+host initialization, valid request/response framing and clean stdout. Its receipt is now consumed.
+
+The first guarded replacement stopped while the old host process was running; both native files
+were verified restored to their prior hashes with no pending files. After verifying all authority
+idle and stopping only that exact installed host, installation succeeded. The installed host matches
+the candidate hash; the pinned extension was reloaded0.6.3. Native/extension pairing and compatible
+worker wakes are connected while read access remains REVOKED. Enrollment/permissions are unchanged.
+
+Fresh document/content handshake and provider capture are still pending. The approved focus helper
+found no unique Ascend-labelled tab in the current Edge window. No new mapping job, lease or vendor
+read was created. Owner was asked to foreground exact Load1763 / Load Basics. Retained0.6.2 content
+handshake and historical board evidence do not establish current readiness.
+
+Current targeted rerun: all27 release/integrated cases passed. The failing CI V2 case also passed
+when run alone. CI34776663983 at192fcf9 remains986passed/1failed: synthetic V2 receipt handling at
+the second mapping-session start returned NATIVE_RECEIPT_FAILED. Its root cause remains UNKNOWN;
+passing locally does not erase the CI failure. V2 is disabled and no production logic was changed
+to accommodate it. Source recovery of27 saved files was rehearsed under TestRuns; this does not
+qualify a live full-release rollback. See [release handoff](docs/ASCEND_X1_RELEASE_063.md).
+
+## Historical preparation — local Windows execution blocked
 
 The fresh release work stopped before any Ascend read or real read/mapping authority. Three synthetic
 launcher processes were blocked by Windows Application Control: event 3077, VerifiedAndReputableDesktop,

@@ -1,16 +1,34 @@
-# X1 0.6.3 release preparation — Windows execution blocked
+# X1 0.6.3 installed — workspace validation pending
 
-Owner authorized the daily-operations validation plan on 2026-09-13. Preparation remains at the
-installed-release gate. No new Ascend read, mapping grant, extension reload or installed native-host
-replacement has occurred. The code on disk advertises 0.6.3; the inspected loaded extension card
-still showed 0.6.2. Do not treat these as a coherent deployed release.
+Owner authorized the daily-operations validation plan on 2026-09-13. After the initial policy block,
+the owner manually disabled Smart App Control and confirmed "off". Local policy state0 was verified;
+the agent did not change Windows security policy. The staged candidate passed its one-time synthetic
+check, the native host was installed, and the existing pinned extension reloaded0.6.3. Fresh worker
+wakes and local pairing/reconnect work with reads REVOKED. No new Ascend read or mapping grant yet.
 
-Staging completed from source commit `5031e49`: 201 source/config file hashes verified, candidate
-signature status `NotSigned`, candidate execution `NOT_RUN`. The installed host still matches its
-pre-update hash; candidate-selftest/install receipts do not exist. The local release directory holds
-the unsigned candidate and reviewed source manifest; no executable artifact was published to GitHub.
+Staging completed from source commit `5031e49`: 201 source/config hashes verified, signature NotSigned.
+Candidate execution is PASS / SELF_TEST_OK, including Python startup and native framing. Its receipt
+is consumed: do not rerun check-candidate. Installed native SHA256 is
+`5043d3e63395c8c944ae54927b6127e3da9989d138e4cb5e13f7be552f8646db`.
+Private candidate-selftest.json and installed.json receipts exist under the release directory.
+No executable artifact or runtime evidence was published to GitHub.
 
-## Actual inspection and blocker
+The first replacement returned RELEASE_FAILED while the old idle installed host was running.
+Both files were verified restored to their prior hashes, with no pending files or install receipt.
+After rechecking unrelated authority idle and stopping only that exact installed host process,
+the unchanged guarded install succeeded. This is consistent with an executable lock; the first
+generic error did not retain the OS exception and is not claimed to prove an exact WinError.
+
+The approved browser-chrome helper reloaded the pinned0.6.3 card. Compatible worker wake validation
+and transport freshness succeeded; the saved content handshake is still historical0.6.2. The router
+establishes fresh content proof only within scoped read authority, before mapping dispatch. Do not
+misrepresent the host's build projection or an extension card as a fresh content receipt.
+FocusAscend stopped LOCAL_BROWSER_TAB_AMBIGUOUS:9 tab controls,0 Ascend-labelled candidates and
+1 Extensions manager. Unrelated titles/URLs were not printed. Owner was asked to foreground exact
+1763 / Load Basics. No job or lease was created. This is an availability/selection gate, not evidence
+of failed Ascend authentication. No provider selectors or safety gates were changed.
+
+## Historical inspection and policy blocker
 
 The pinned extension and Native Messaging manifest bindings match the existing installation.
 The latest local lease is revoked/expired, no pending read or active mapping job was found, and
@@ -65,6 +83,20 @@ No signing account, paid service, trust-store exception or machine security chan
 
 ## Verification
 
+Post-policy-change targeted run:27 release/integrated cases passed, including every V1/V2 synthetic
+chain variant. The separate reproduction of the failed CI V2 case also passed. Candidate native
+execution passed independently on this PC. A27-file source recovery rehearsal under TestRuns
+restored the saved extension/Python build0.6.2 hashes and both native files without touching any
+installed files or authority. This is source/native recovery evidence, not live rollback qualification.
+
+CI run34776663983 at192fcf9 returned986passed/1failed. The failure was the V2 synthetic integrated
+path at the second mapping-session notification: NATIVE_RECEIPT_FAILED. Its exact cause is not
+persisted and remains UNKNOWN. The production native serve loop serializes responses/notifications;
+the test uses an asynchronous fixture bridge, but a fixture-ordering cause has not been proved.
+Do not call this CI run passing or silently attribute it to provider behavior. V2 remains disabled.
+
+Earlier verification:
+
 The initial targeted run returned 72 passed / 3 failed. All three failures were matched to Windows
 policy blocks; this run is not represented as passing. The native-launcher suite was not repeated
 locally. Later source-only release/orchestrator/causal-trace/integrated tests passed 72 cases,
@@ -80,17 +112,15 @@ commit and cannot qualify this release.
 
 ## Resume procedure and remaining gates
 
-1. Establish a supported signing/trust path for the native host. Do not disable Windows protection,
-   rename/repackage a denied binary to evade policy, or execute it indirectly. The unsigned staged
-   candidate is review material, not a deployable signed release. Signing changes its hash: prepare
-   a reviewed final manifest for the signed bytes before any execution or installation.
-2. Confirm no unrelated authority is active; verify source/native artifact hashes. Run one recorded
-   synthetic candidate check only after the Windows prerequisite is resolved. If denied, stop and
-   preserve the consumed receipt.
-3. Review coherent extension/Python rollback and controlled native replacement. After replacement,
-   reload the existing pinned extension and prove actual worker/content/build/protocol handshakes
-   and local transport while provider reads remain disabled. A card version alone is insufficient.
-4. Only then start a fresh exact LOAD 1763 / Load Basics metadata job through the existing
+1. Do not repeat completed candidate execution or installation. Preserve their receipts and the
+   historical denied fixture attempts. Signing remains a separate future release decision; changed
+   executable bytes require a new reviewed artifact manifest. No indirect policy evasion is allowed.
+2. Resolve the exact foreground workspace with the owner. Verify source/installed hashes and no
+   unrelated authority. Keep existing enrollment/profile and permissions unchanged.
+3. Local transport is connected; a fresh content/worker document handshake must still be established
+   by the normal router preflight under the bounded job lease, before any metadata capture. Never
+   reuse the retained0.6.2 document receipt as current proof.
+4. Start a fresh exact LOAD 1763 / Load Basics metadata job through the existing
    MappingOrchestrator. Fresh session, foreground presence, tab/document/lease/runtime bindings and
    provider identity must agree. Stop on ambiguity, record one CANDIDATE_ONLY map with values=false,
    and complete job-owned cleanup. Do not revive any closed attempt or infer current load identity.

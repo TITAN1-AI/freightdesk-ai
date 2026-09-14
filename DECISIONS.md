@@ -1,5 +1,12 @@
 # GitHub collaboration decision - 2026-09-13
 
+Owner subsequently chose an unsigned local trial and manually disabled Smart App Control. Local
+policy state0 was verified before the staged candidate's first execution. This supersedes the
+signing-first prerequisite for this trial only; no agent security-policy bypass, signing service,
+certificate or trust exception was created. Preserve the three historical denied fixture attempts.
+Candidate PASS, native installation and extension reload authorize no provider capability promotion.
+Use the existing exact workspace gate and scoped authority; never substitute retained evidence.
+
 Owner authorized executing the staged validation plan. Identify the V1 source release as X1 0.6.3;
 preserve enrollment, protocols, permissions and V2 isolation. Keep preparation, candidate execution,
 installed artifact proof and live workspace proof separate. Failed/uncertain candidate execution is

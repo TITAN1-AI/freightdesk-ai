@@ -3,8 +3,10 @@
 Execution update 2026-09-13: owner explicitly authorized proceeding. Release preparation and the
 first bounded installed X1 metadata validation are now in progress. Keep later gates dependent on
 their actual evidence; no production write permission or V2 activation is granted by this update.
-Execution subsequently stopped at the Windows native-executable trust gate, before any Ascend read.
-See [the X1 0.6.3 release handoff](ASCEND_X1_RELEASE_063.md); preparation is not installed acceptance.
+Execution initially stopped at the Windows native-executable trust gate. The owner then manually
+disabled Smart App Control: candidate startup, guarded native installation, pinned0.6.3 reload and
+local reconnect now succeed. Fresh content/workspace proof remains pending; no new lease/read yet.
+See [the X1 0.6.3 release handoff](ASCEND_X1_RELEASE_063.md); installation is not provider acceptance.
 
 Originally prepared 2026-09-13 in response to the owner's readiness question before execution approval.
 At that planning stage no installation, browser, host, lease or vendor action was performed.
