@@ -95,9 +95,9 @@ def test_explicit_owner_gate_precedes_access_to_installation():
 def test_packaged_manifest_and_handshake_share_new_version():
     root = Path(__file__).resolve().parents[1]
     manifest = json.loads((root / 'extensions/ascend-x1/manifest.json').read_text())
-    assert manifest['version'] == BUILD['extension_version'] == '0.6.3'
+    assert manifest['version'] == BUILD['extension_version'] == '0.6.4'
     assert 'webbridge-v2' not in json.dumps(manifest)
-    body = dict(BUILD, service_worker_version='0.6.3', content_script_version='0.6.3',
+    body = dict(BUILD, service_worker_version='0.6.4', content_script_version='0.6.4',
                 document_generation=1, tab_id=1, document_id='a' * 32)
     DocumentHandshake.model_validate(body)
     with pytest.raises(ValueError):

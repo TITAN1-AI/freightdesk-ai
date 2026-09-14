@@ -191,3 +191,16 @@ def test_host_rejects_tampered_stops_metadata(page, mutation):
         stops['rows'][0]['control_count'] = 21
     with pytest.raises(ValidationError):
         AscendProviderMap.model_validate(evidence)
+
+
+def test_exact_stops_start_requires_load_identity():
+    from executors.ascend_extension.mapping_orchestrator import MappingIntent
+    assert MappingIntent(expected_load_id='900001', starting_section='Edit Stops').starting_section == 'Edit Stops'
+    with pytest.raises(ValidationError):
+        MappingIntent(starting_section='Edit Stops')
+
+
+def test_old_build_cannot_claim_new_stops_release():
+    from executors.ascend_extension.bridge_build import BUILD, BridgeBuild
+    with pytest.raises(ValidationError):
+        BridgeBuild.model_validate({**BUILD, 'extension_version': '0.6.3'})

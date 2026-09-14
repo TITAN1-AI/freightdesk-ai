@@ -14,7 +14,7 @@ def main():
     parser.add_argument("--scope", choices=["CURRENT_LOAD", "CURRENT_OPERATIONS", "VALIDATION_COHORT", "OWNER_NAVIGATION_OBSERVE"], default="CURRENT_LOAD")
     parser.add_argument("--load-ids")
     parser.add_argument("--expected-load-id")
-    parser.add_argument("--starting-section", choices=["Load Basics"])
+    parser.add_argument("--starting-section", choices=["Load Basics", "Edit Stops"])
     parser.add_argument("--minutes", type=int, default=10)
     parser.add_argument("--sections")
     parser.add_argument("--advanced", action="store_true")

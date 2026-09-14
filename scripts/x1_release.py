@@ -17,7 +17,7 @@ from executors.ascend_extension.pairing import HOST_NAME, PairingRepository
 from scripts.ascend_native_selftest import probe
 
 ROOT = Path(__file__).resolve().parents[1]
-RELEASE = "x1-0.6.3-20260913"
+RELEASE = "x1-0.6.4-20260914"
 SAFE_ERRORS = frozenset({
     "RELEASE_READ_PENDING", "RELEASE_AUTHORITY_ACTIVE", "RELEASE_JOB_ACTIVE", "RELEASE_FILE_CHANGED",
     "RELEASE_PENDING_FILE_EXISTS", "RELEASE_SOURCE_INVALID", "RELEASE_INSTALLATION_MISMATCH",

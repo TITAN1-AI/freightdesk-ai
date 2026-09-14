@@ -3,13 +3,13 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),{webcrypto}=require('node:crypto');
 const {worker,bundle,challenge,signed,until}=require('./check-ascend-native.js');
 const root=require('node:path').join(__dirname,'../extensions/ascend-x1');
-const build={extension_version:'0.6.3',controller_revision:3,native_protocol:1,content_protocol:3};
+const build={extension_version:'0.6.4',controller_revision:3,native_protocol:1,content_protocol:3};
 const id=()=>webcrypto.randomUUID().replaceAll('-','');
 const event=()=>{const listeners=[];return {addListener:fn=>listeners.push(fn),emit:(...args)=>listeners.forEach(fn=>fn(...args))};};
 function tabsFixture(items){
   const ports=[],reloads=[];
   const tabs={onRemoved:event(),onUpdated:event(),async query(){return items.filter(t=>t.url.startsWith('https://ascendtms.com/'));},
-    async reload(number){reloads.push(number);const t=items.find(t=>t.id===number);if(t.blockRefresh)throw Error('PRIVATE_BROWSER_ERROR');t.version='0.6.3';t.missing=false;t.status='complete';},
+    async reload(number){reloads.push(number);const t=items.find(t=>t.id===number);if(t.blockRefresh)throw Error('PRIVATE_BROWSER_ERROR');t.version='0.6.4';t.missing=false;t.status='complete';},
     async get(number){const t=items.find(t=>t.id===number);if(!t)throw Error('missing');return t;},connect(number){
       const item=items.find(t=>t.id===number),port={onMessage:event(),onDisconnect:event(),disconnect(){port.closed=true;},
         postMessage(message){assert.equal(message.kind,'X1_RUNTIME_DISPATCH_V2');

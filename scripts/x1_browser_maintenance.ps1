@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory=$true)][ValidateSet('Inspect','Reload','FocusAscend','OpenManager')][string]$Action,
     [Parameter(Mandatory=$true)][long]$WindowHandle,
-    [ValidateSet('0.6.2','0.6.3')][string]$ExpectedVersion = '0.6.3'
+    [ValidateSet('0.6.2','0.6.3','0.6.4')][string]$ExpectedVersion = '0.6.4'
 )
 # Local browser chrome only. Never reads or writes Ascend DOM, fields, storage or traffic.
 $ErrorActionPreference = 'Stop'
