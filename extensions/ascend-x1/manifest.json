@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FreightDesk Ascend X1",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Owner-enrolled, host-leased Ascend read-only runtime. Writes unavailable.",
   "permissions": ["nativeMessaging", "storage", "alarms", "scripting"],
   "host_permissions": ["https://ascendtms.com/*"],

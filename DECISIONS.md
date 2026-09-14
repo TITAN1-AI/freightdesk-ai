@@ -1,5 +1,27 @@
 # GitHub collaboration decision - 2026-09-13
 
+Owner subsequently chose an unsigned local trial and manually disabled Smart App Control. Local
+policy state0 was verified before the staged candidate's first execution. This supersedes the
+signing-first prerequisite for this trial only; no agent security-policy bypass, signing service,
+certificate or trust exception was created. Preserve the three historical denied fixture attempts.
+Candidate PASS, native installation and extension reload authorize no provider capability promotion.
+Use the existing exact workspace gate and scoped authority; never substitute retained evidence.
+
+Owner authorized executing the staged validation plan. Identify the V1 source release as X1 0.6.3;
+preserve enrollment, protocols, permissions and V2 isolation. Keep preparation, candidate execution,
+installed artifact proof and live workspace proof separate. Failed/uncertain candidate execution is
+one-time and cannot automatically retry. Retain the original native files and all unrelated authority.
+Windows Application Control denial is not a provider/session failure. Do not disable protection or
+execute denied binaries indirectly; propose trusted signing with a final signed-artifact manifest.
+No signing service purchase/account, trust exception or operational capability release is approved
+implicitly. See docs/ASCEND_X1_RELEASE_063.md for actual evidence and remaining deployment work.
+
+Proposed next milestone (not execution authorization): qualify a versioned X1 read-only operations
+release through installed component proof, exact workspace capture, representative reviewed
+navigation, field-value comparison and a supervised pilot. Keep V2 migration separate and preserve
+metadata/value, board/detail, view-coverage and write boundaries. Numerical targets in
+docs/ASCEND_DAILY_OPERATIONS_VALIDATION_PLAN.md are proposals, not achieved service levels.
+
 Owner requested a shared repository for agentic coding. TITAN1-AI/freightdesk-ai was created PRIVATE;
 the owner subsequently changed it to PUBLIC on 2026-09-13. Preserve this owner-selected visibility,
 audited history, main plus scoped branches/PRs, and synthetic-only Windows CI.

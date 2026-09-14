@@ -1,10 +1,30 @@
 # Known issues - audit repair 2026-09-13
 
+Current X1 0.6.3 native startup/install/reload and local reconnect succeeded after the owner manually
+disabled Smart App Control. Exact workspace proof is pending because the approved focus helper found
+no uniquely identified Ascend tab. No new read job/lease was created; retained document/board evidence
+is not current. The CI V2 integrated case failed NATIVE_RECEIPT_FAILED at its second session start;
+it and the complete27-case release/integrated set pass locally. CI root cause remains UNKNOWN.
+V2 stays disabled. Source recovery is rehearsed; full live rollback remains unqualified.
+
+Historical release blocker, resolved by the owner's manual policy change: Windows Smart App Control
+denied three synthetic launcher tests (3077 / VerifiedAndReputableDesktop / 0xc0e90002). Error4551 is
+now surfaced as SELF_TEST_APPLICATION_CONTROL_BLOCKED. No policy bypass or blocked-file retry occurred.
+Those earlier denials remain preserved; none of those fixture binaries was retried. Signing remains
+unprovisioned, separate from this owner-approved unsigned trial. See
+[0.6.3 handoff](docs/ASCEND_X1_RELEASE_063.md). No new provider read or lease occurred.
+
+Everyday operations is not yet a released capability. CURRENT_OPERATIONS waits at scope review;
+candidate maps do not provide validated operational values, and the flat context assembler is not
+a complete per-stop appointment model. Installed release/rollback qualification, field contracts,
+coverage and supervised recovery/performance validation remain necessary. See
+[the proposed readiness plan](docs/ASCEND_DAILY_OPERATIONS_VALIDATION_PLAN.md). No gate was relaxed.
+
 Fresh Windows CI exposed two portability defects: CRLF checkout changed the pinned adaptation hash,
 and .NET Framework's redirected-input writer inserted an encoding preamble into native binary frames.
 Git attributes preserve the reviewed LF bytes; the launcher source now prevents the preamble, with
-console/headless synthetic regressions. The installed host is unchanged; deployment and real pairing
-remain outside this work. Hosted full-suite verification of these fixes is tracked in PR #1.
+console/headless synthetic regressions. The installed0.6.3 host now includes the framing repair.
+PR #1 passed hosted checks; the subsequent release's CI failure is recorded above.
 
 A01-A10 repairs are implemented in source; see [the repair handoff](docs/WEBBRIDGE_V2_AUDIT_FIXES.md).
 Earlier unconditional acceptance missed reproduced defects. V2 remains offline, not LIVE_VALIDATED.

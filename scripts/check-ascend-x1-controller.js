@@ -29,7 +29,7 @@ const command=()=>({version:1,request_id:webcrypto.randomUUID().replaceAll('-','
 async function contentChecks(){
   let connect,reads=0,wait,failure=null;
   const s={URL,crypto:webcrypto,setTimeout,clearTimeout,location:{origin,pathname:'/loads'},document:{},addEventListener(){},removeEventListener(){},
-    chrome:{runtime:{id:'a'.repeat(32),getManifest:()=>({version:'0.6.2'}),onConnect:{addListener(fn){connect=fn;},removeListener(fn){if(connect===fn)connect=null;}},onMessage:{addListener(){}}}},
+    chrome:{runtime:{id:'a'.repeat(32),getManifest:()=>({version:'0.6.3'}),onConnect:{addListener(fn){connect=fn;},removeListener(fn){if(connect===fn)connect=null;}},onMessage:{addListener(){}}}},
     FreightDeskX1Reader:{async create(){return {viewDiagnostic:()=>({view:'ACTIVE_LOADS'}),detailDiagnostic:()=>({failed_category:'new_containers',measured:9,maximum:8}),boardDiagnostic:()=>({failed_predicate:'ROW_CELL_COUNT_MISMATCH'}),async executeRuntime(c,lease){reads++;if(wait)await wait;lease();if(failure)throw Error(failure);return {authenticated_app:true};}};}}};
   vm.createContext(s);for(const file of ['build.js','contract.js','read-errors.js','content.js'])vm.runInContext(fs.readFileSync(dir+'/'+file,'utf8'),s);
   function port(sender={id:'a'.repeat(32)}){
