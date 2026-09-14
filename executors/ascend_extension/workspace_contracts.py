@@ -15,7 +15,7 @@ SECTIONS = SCOPE["sections"] + ["DISCOVERED_UNCLASSIFIED"]
 FIELDS = set(SCOPE["fields"].values()) | {"UNKNOWN"}
 MAP_OPERATION = "ASCEND_MAP_WORKSPACE"
 AUTO_OPERATION = "ASCEND_MAP_NAVIGATE_SECTION"
-MAPPING_ERRORS = frozenset({"CURRENT_LOAD_CAPTURE_NOT_DISPATCHED", "CAPTURE_ACKNOWLEDGEMENT_TIMEOUT", "WORKSPACE_CAPTURE_TIMEOUT", "SESSION_PROOF_TIMEOUT", "NO_FOREGROUND_ASCEND_WORKSPACE", "EXPECTED_LOAD_NOT_OPEN", "STARTING_SECTION_MISMATCH", "NOT_A_LOAD_WORKSPACE", "WORKSPACE_IDENTITY_MISSING", "WORKSPACE_IDENTITY_CONFLICT", "WORKSPACE_AMBIGUOUS",
+MAPPING_ERRORS = frozenset({'STOPS_AUTHORITY_REQUIRED','STOPS_SCOPE_DENIED','STOPS_TABLE_BOUND','STOPS_TABLE_AMBIGUOUS','STOPS_HEADER_INVALID','STOPS_HEADER_DUPLICATE','STOPS_ROW_BOUND','STOPS_ROW_HIDDEN','STOPS_ROW_INVALID','STOPS_ACTION_AMBIGUOUS','STOPS_CONTROL_BOUND','STOPS_CONTAINMENT_INVALID','STOPS_ACTUAL_AMBIGUOUS',"CURRENT_LOAD_CAPTURE_NOT_DISPATCHED", "CAPTURE_ACKNOWLEDGEMENT_TIMEOUT", "WORKSPACE_CAPTURE_TIMEOUT", "SESSION_PROOF_TIMEOUT", "NO_FOREGROUND_ASCEND_WORKSPACE", "EXPECTED_LOAD_NOT_OPEN", "STARTING_SECTION_MISMATCH", "NOT_A_LOAD_WORKSPACE", "WORKSPACE_IDENTITY_MISSING", "WORKSPACE_IDENTITY_CONFLICT", "WORKSPACE_AMBIGUOUS",
     "WORKSPACE_CHANGED", "WORKSPACE_SECTION_UNVERIFIED", "WORKSPACE_SCOPE_DENIED", "WORKSPACE_BOUND",
     "MAPPING_NOT_ENABLED", "MAPPING_CAPTURE_BOUND", "MAPPING_CAPTURE_PENDING", "MAPPING_SESSION_CONSUMED",
     "MAPPING_CONTRACT_INVALID", "MAPPING_PAYLOAD_BOUND", "MAPPING_COMPLETE", "MAPPING_VALIDATION_REQUIRED",
@@ -212,6 +212,50 @@ class AscendFieldContract(Strict):
         return self
 
 
+STOP_HEADERS = ['Stop Order', 'Action(s)', 'Scheduled Date/Time', 'Actual Date/Time',
+    'Location', 'Address', 'Private Notes', 'Cargo', 'Reference #', 'Show on', 'Reorder']
+
+
+class StopActualSurface(Strict):
+    present: Literal[True]
+    evidence: Literal['PROVIDER_CLASS']
+    value_semantics: Literal['CANDIDATE_ONLY']
+
+
+class StopActualMetadata(Strict):
+    arrival: StopActualSurface
+    departure: StopActualSurface
+
+
+class StopScheduledMetadata(Strict):
+    surface_present: bool
+    subtype: Literal['UNKNOWN']
+
+
+class StopRowMetadata(Strict):
+    capture_row_ref: int = Field(ge=0, lt=20)
+    provider_row_key: None
+    action: Literal['PICKUP', 'DELIVERY']
+    control_count: int = Field(ge=0, le=20)
+    scheduled: StopScheduledMetadata
+    actual: StopActualMetadata
+
+
+class StopsMetadata(Strict):
+    headers: list[str] = Field(min_length=11, max_length=11)
+    rows: list[StopRowMetadata] = Field(max_length=20)
+    auxiliary_row_count: int = Field(ge=0, le=20)
+    coverage: Literal['CURRENT_RENDERED_TABLE_ONLY']
+
+    @model_validator(mode='after')
+    def coherent(self):
+        if (set(self.headers) != set(STOP_HEADERS)
+            or len(self.rows) + self.auxiliary_row_count > 20
+            or [r.capture_row_ref for r in self.rows] != list(range(len(self.rows)))):
+            raise ValueError('MAPPING_CONTRACT_INVALID')
+        return self
+
+
 class AscendLoadSectionContract(Strict):
     contract: Literal["AscendLoadSectionContract"]
     section: str
@@ -223,6 +267,7 @@ class AscendLoadSectionContract(Strict):
     fields: list[AscendFieldContract] = Field(max_length=64)
     coverage: Literal["CURRENT_VISIBLE_SECTION_ONLY"]
     fingerprint: str = Field(pattern=r"^[a-f0-9]{64}$")
+    stops_metadata: StopsMetadata | None = None
 
     @model_validator(mode="after")
     def safe_structure(self):
@@ -230,8 +275,14 @@ class AscendLoadSectionContract(Strict):
             or any(a not in SCOPE["actions"] + SCOPE["sections"] + ["UNCLASSIFIED_LABEL"] for a in self.action_controls)
             or any(f.section != self.section or f.observed_on_load != self.workspace_load_id for f in self.fields)):
             raise ValueError("MAPPING_CONTRACT_INVALID")
-        if self.fingerprint != fingerprint({"section": self.section, "headings": self.headings,
-            "actions": self.action_controls, "fields": [f.contract_fingerprint for f in self.fields]}):
+        structure = {"section": self.section, "headings": self.headings,
+            "actions": self.action_controls, "fields": [f.contract_fingerprint for f in self.fields]}
+        if self.stops_metadata is not None:
+            if (self.section != 'Edit Stops' or self.fields
+                or self.section_signal not in {'SELECTED_CONTROL', 'SELECTED_ROUTE_AND_VISIBLE_HEADING'}):
+                raise ValueError('MAPPING_CONTRACT_INVALID')
+            structure['stops_metadata'] = self.stops_metadata.model_dump()
+        if self.fingerprint != fingerprint(structure):
             raise ValueError("MAPPING_CONTRACT_INVALID")
         return self
 

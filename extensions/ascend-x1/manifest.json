@@ -9,7 +9,7 @@
   "action": {"default_popup": "popup.html"},
   "content_scripts": [{
     "matches": ["https://ascendtms.com/*"],
-    "js": ["build.js", "contract.js", "read-errors.js", "load-board-view.js", "detail-scope.js", "webbridge.js", "mapping-scope.js", "workspace.js", "reader.js", "content.js"],
+    "js": ["build.js", "contract.js", "read-errors.js", "load-board-view.js", "detail-scope.js", "webbridge.js", "mapping-scope.js", "workspace.js", "stops-metadata.js", "reader.js", "content.js"],
     "run_at": "document_idle",
     "all_frames": false,
     "world": "ISOLATED"

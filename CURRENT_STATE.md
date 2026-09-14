@@ -1,5 +1,13 @@
 # Current state — 2026-09-13
 
+## Candidate Stops metadata adapter — offline source only
+
+`stops-metadata.js` adds bounded row-local structural capture using existing workspace identity
+checks and the caller's authority guard, with explicit selected-section proof. Source packaging and existing mapping capture now include it; a strict optional host contract
+fingerprints and persists metadata through the existing map store. No new live command is added.
+No value extraction, authority, installation or
+provider action occurred. See [candidate reader](docs/ASCEND_STOPS_METADATA_READER.md).
+
 ## X1 0.6.3 installed — exact workspace validation pending
 
 Owner manually disabled Smart App Control and confirmed "off"; local policy state0 was verified.

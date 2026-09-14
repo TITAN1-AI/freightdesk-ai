@@ -387,18 +387,22 @@
     if(target.capture_section&&section.name!==target.capture_section)throw Error('STARTING_SECTION_MISMATCH');
     hooks.onVerified?.({workspace:before,section});check();
     await new Promise(r=>setTimeout(r,0));check();
-    const metadata=await W.LocatorGraph.mappingFields(section,before.contract.load_id,at,check);
+    const stops = section.name==='Edit Stops' && globalThis.FreightDeskStopsMetadata ? FreightDeskStopsMetadata.inspect(section.root,check) : null;
+    if(stops && !['SELECTED_CONTROL','SELECTED_ROUTE_AND_VISIBLE_HEADING'].includes(section.signal))throw Error('WORKSPACE_SECTION_UNVERIFIED');
+    const metadata=stops?[]:await W.LocatorGraph.mappingFields(section,before.contract.load_id,at,check);
     const headings=bound([...query(section.root,'h1,h2,h3,legend,[role="heading"]')].filter(visible),24).map(e=>sectionName(staticText(e))==='DISCOVERED_UNCLASSIFIED'?'UNCLASSIFIED_LABEL':sectionName(staticText(e)));
-    const actions=bound([...query(section.root,'button,a,[role="button"]')].filter(visible),32).map(e=>S.actions.find(a=>key(a)===key(staticText(e)))||S.sections.find(a=>key(a)===key(staticText(e)))||'UNCLASSIFIED_LABEL');
+    const actions=stops?[]:bound([...query(section.root,'button,a,[role="button"]')].filter(visible),32).map(e=>S.actions.find(a=>key(a)===key(staticText(e)))||S.sections.find(a=>key(a)===key(staticText(e)))||'UNCLASSIFIED_LABEL');
     await new Promise(r=>setTimeout(r,150));check();
     const after=observeWorkspace(doc,allowed,at,check,()=>{},before.shell),current=observeSection(after);
     if(W.DOMDiff.workspaceChanged(before,after)||current.root!==section.root||current.name!==section.name||
-      JSON.stringify(metadata)!==JSON.stringify(await fields(current,after.contract.load_id,at,check)))throw Error('WORKSPACE_CHANGED');
+      JSON.stringify(metadata)!==JSON.stringify(stops?[]:await fields(current,after.contract.load_id,at,check)))throw Error('WORKSPACE_CHANGED');
+    if(stops){const refreshed=FreightDeskStopsMetadata.inspect(current.root,check);if(stops.bindings.length!==refreshed.bindings.length||stops.bindings.some((e,i)=>e!==refreshed.bindings[i])||JSON.stringify(stops.metadata)!==JSON.stringify(refreshed.metadata))throw Error('WORKSPACE_CHANGED');}
     check();
     before.contract.shell_fingerprint=await W.ProviderContract.fingerprint({signals:[...new Set(before.contract.signals.map(s=>s.kind))].sort(),sections:before.contract.section_controls});
     before.contract.navigation_candidates=await navigationCandidates(before);
     const contract={contract:'AscendLoadSectionContract',section:section.name,workspace_load_id:before.contract.load_id,identity_source:'INHERITED_FROM_REVALIDATED_WORKSPACE',section_signal:section.signal,
       headings,action_controls:actions,fields:metadata,coverage:'CURRENT_VISIBLE_SECTION_ONLY',fingerprint:await W.ProviderContract.fingerprint({section:section.name,headings,actions,fields:metadata.map(f=>f.contract_fingerprint)})};
+    if(stops){contract.stops_metadata=stops.metadata;contract.fingerprint=await W.ProviderContract.fingerprint({section:section.name,headings,actions,fields:[],stops_metadata:stops.metadata});}
     const output={schema_version:1,provider:'AscendTMS',source:'live extension DOM',workspace:before.contract,section:contract,revalidated_after_capture:true,activation:'CANDIDATE_ONLY',values_included:false,writes_allowed:false,owner_present:doc.visibilityState==='visible'&&doc.hasFocus()};
     if(new TextEncoder().encode(JSON.stringify(output)).length>45000)throw Error('MAPPING_PAYLOAD_BOUND');
     mark('STRUCTURE_CAPTURED');check();return output;

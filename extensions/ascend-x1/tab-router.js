@@ -109,7 +109,7 @@
       });
     }
     const recovered=new Set();
-    const packagedFiles=Object.freeze(['build.js','contract.js','read-errors.js','load-board-view.js','detail-scope.js','webbridge.js','mapping-scope.js','workspace.js','reader.js','content.js']);
+    const packagedFiles=Object.freeze(['build.js','contract.js','read-errors.js','load-board-view.js','detail-scope.js','webbridge.js','mapping-scope.js','workspace.js','stops-metadata.js','reader.js','content.js']);
     async function select(id){
       // A routine proof refresh must preserve the document's passive observer and private port.
       if(runtime&&selected===id&&route&&channel){

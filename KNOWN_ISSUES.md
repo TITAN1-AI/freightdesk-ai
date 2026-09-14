@@ -1,5 +1,11 @@
 # Known issues - audit repair 2026-09-13
 
+Candidate Stops metadata reader is connected to mapping capture/host persistence in source only;
+installed extension/host remain unchanged and no live validation has occurred.
+Provider row keys and scheduled appointment subtype remain UNKNOWN; capture-local row references
+must not be used for cross-capture reconciliation. Other stop actions/localized or changed layouts
+remain unsupported and fail closed. See [reader limitations](docs/ASCEND_STOPS_METADATA_READER.md).
+
 Current X1 0.6.3 native startup/install/reload and local reconnect succeeded after the owner manually
 disabled Smart App Control. Exact workspace proof is pending because the approved focus helper found
 no uniquely identified Ascend tab. No new read job/lease was created; retained document/board evidence

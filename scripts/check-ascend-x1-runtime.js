@@ -63,7 +63,7 @@ async function routingChecks(){
   async function setup(items,enabled=true,hint=null,initialError=null){
     const fixture=tabsFixture(items),s={URL,crypto:webcrypto,setTimeout,clearTimeout,TextEncoder,chrome:{scripting:{async executeScript(options){
       assert.deepEqual(Array.from(options.target.frameIds),[0]);assert.equal(options.world,'ISOLATED');assert.equal('func' in options,false);
-      assert.equal(options.files.join(','),'build.js,contract.js,read-errors.js,load-board-view.js,detail-scope.js,webbridge.js,mapping-scope.js,workspace.js,reader.js,content.js');
+      assert.equal(options.files.join(','),'build.js,contract.js,read-errors.js,load-board-view.js,detail-scope.js,webbridge.js,mapping-scope.js,workspace.js,stops-metadata.js,reader.js,content.js');
       const item=fixture.items.find(t=>t.id===options.target.tabId);if(item.blockRefresh)throw Error('PRIVATE');
       fixture.reloads.push(item.id);item.version=build.extension_version;item.missing=false;item.traceOld=false;item.mappingOld=false;item.mappingRevision=2;
     }}}};vm.createContext(s);
