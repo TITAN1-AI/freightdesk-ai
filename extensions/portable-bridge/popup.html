@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>FreightDesk Bridge</title>
+<style>
+  :root { color-scheme: light; font-family: Segoe UI, sans-serif; }
+  body { width: 360px; margin: 0; padding: 16px; color: #10233f; background: #f4f7fb; }
+  h1 { font-size: 1.05rem; margin: 0 0 8px; }
+  p, label, li { font-size: 0.85rem; line-height: 1.4; }
+  .status { padding: 10px 12px; border-radius: 8px; background: #fff; border: 1px solid #c9d6e8; }
+  .warn { border-color: #c47b1a; background: #fff7ea; }
+  .ok { border-color: #2f6f4e; background: #eef8f2; }
+  dl { display: grid; grid-template-columns: 7.5rem 1fr; gap: 4px 8px; margin: 12px 0; font-size: 0.8rem; }
+  dt { color: #4d5f78; } dd { margin: 0; word-break: break-word; }
+  button, input { font: inherit; }
+  button { margin: 4px 4px 0 0; }
+  input { width: 100%; box-sizing: border-box; margin: 4px 0 8px; padding: 6px; }
+  .row { display: flex; flex-wrap: wrap; gap: 4px; }
+  small { color: #4d5f78; display: block; margin-top: 10px; }
+</style>
+<body>
+  <h1>FreightDesk Bridge</h1>
+  <p>Portable Chromium adapter. Harvest is CANDIDATE / VISIBLE_BOARD_ONLY. No native host. Zero Ascend writes.</p>
+  <p id="banner" class="status warn" role="status">Not signed in.</p>
+  <label for="api">Demo lease API</label>
+  <input id="api" value="http://127.0.0.1:8787" autocomplete="off" spellcheck="false">
+  <div class="row">
+    <button id="save-api" type="button">Save API</button>
+    <button id="sign-in" type="button">Demo sign-in</button>
+    <button id="sign-out" type="button">Sign out</button>
+  </div>
+  <dl>
+    <dt>Lease</dt><dd id="lease">none</dd>
+    <dt>Harvest</dt><dd id="harvest">stopped</dd>
+    <dt>Last snapshot</dt><dd id="last">none</dd>
+  </dl>
+  <div class="row">
+    <button id="create" type="button">Create lease</button>
+    <button id="start" type="button">Start harvest</button>
+    <button id="stop" type="button">Stop harvest</button>
+    <button id="revoke" type="button">Revoke lease</button>
+  </div>
+  <small>Track B product foundation. Booking Logistics live ops stay on the separate Avery stack. X1 native host is unchanged. Not LIVE_VALIDATED.</small>
+  <script src="popup.js"></script>
+</body>
+</html>

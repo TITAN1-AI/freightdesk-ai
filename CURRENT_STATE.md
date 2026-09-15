@@ -1,4 +1,25 @@
+# Current state — 2026-09-15
+
+## Portable browser bridge v0 — implemented offline (Track B)
+
+Product-foundation slice: [portable handoff](docs/PORTABLE_BRIDGE.md),
+[north star](docs/PORTABLE_BRIDGE_PRODUCT.md), unpacked extension
+[extensions/portable-bridge/](extensions/portable-bridge/). Demo lease stub is
+`/v1/portable/session|leases|harvest|status` on the existing `run.py` / `scripts/start.ps1`
+demo server. Harvest is VISIBLE_BOARD_ONLY, CANDIDATE, `live_validated=false`,
+`production_writes=false`. No native messaging, no X1/host changes, no store submission,
+no cloud OAuth, and no LIVE_VALIDATED Ascend claim. Booking Logistics live ops remain
+on the separate Avery stack.
+
+Verification: 10 focused portable tests passed (`tests/test_portable_leases.py`,
+`tests/test_portable_bridge_extension.py`); existing `tests/test_api.py` (7) still passed;
+X1 manifest restriction test still passed; `node --check` on packaged JS passed; Ruff passed
+on the new modules. Full-suite `scripts/test.ps1` results stay in the audit-repair section
+below until a complete Windows run is recorded. Two existing Starlette/AnyIO deprecation
+warnings remain. No vendor capability is newly LIVE_VALIDATED.
+
 # Current state — 2026-09-13
+
 
 ## GitHub collaboration - 2026-09-13
 
