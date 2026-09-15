@@ -3,6 +3,7 @@
 Start with [AGENTS.md](AGENTS.md), [CURRENT_STATE.md](CURRENT_STATE.md),
 [KNOWN_ISSUES.md](KNOWN_ISSUES.md), and the handoff for the component being changed.
 The latest browser repair is [X1 / WebBridge V2 audit fixes](docs/WEBBRIDGE_V2_AUDIT_FIXES.md).
+Unpacked MV3 load is [Load unpacked Ascend X1](docs/ASCEND_X1_UNPACKED_LOAD.md).
 
 ## Branches and handoffs
 

@@ -1,3 +1,21 @@
+# Current state — 2026-09-15
+
+## X1 unpacked MV3 package load — implemented offline
+
+The V1 Ascend X1 0.6.2 package under `extensions/ascend-x1` now has a complete MV3 identity
+(icons, popup markup, content-script/package list agreement) and a dormant offline path that
+does not call the native host on non-Windows. See [ASCEND_X1_UNPACKED_LOAD.md](docs/ASCEND_X1_UNPACKED_LOAD.md).
+WebBridge V2 remains absent from the live manifest. Maps stay CANDIDATE_ONLY. No live package,
+installed extension, native-host registration, lease or vendor action ran here.
+
+Verification: `check-ascend-x1-package.js`, `check-ascend-extension.js`, `check-ascend-native.js`,
+`check-ascend-pairing-popup.js`, `check-ascend-x1-runtime.js`, `check-ascend-x1-controller.js`,
+`check-x1-immediate-capture.js`, `check-x1-mapping-mode.js` and `check-x1-observe-lifecycle-review.js`
+passed. `tests/test_ascend_x1_package.py` passed (collected with `--noconftest` in this Linux
+environment). Chrome `--pack-extension` of `extensions/ascend-x1` succeeded. Branded Chrome
+command-line `--load-extension` is blocked in Chrome 148 and was not used as Load unpacked
+evidence. No vendor capability is newly LIVE_VALIDATED.
+
 # Current state — 2026-09-13
 
 ## GitHub collaboration - 2026-09-13

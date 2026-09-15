@@ -1,33 +1,58 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><title>FreightDesk Ascend X1</title>
-<body><h1>FreightDesk Ascend X1</h1><p>Persistent read-only access. All write commands remain unavailable.</p>
-<section aria-label="Ascend runtime"><h2>ASCEND</h2>
-<p id="runtime-state" role="status">NOT_ENROLLED</p><p id="runtime-action"></p>
-<dl id="runtime-health"></dl>
-<p><a href="http://localhost:8787/#x1-runtime" target="_blank" rel="noopener">Enable or disable read-only access / Pause Avery</a></p>
-<button id="runtime-rebind" type="button">Rebind tab</button>
-<label>Ascend tab <select id="runtime-tab"><option value="">Choose only when multiple tabs are authenticated</option></select></label>
-<button id="runtime-list" type="button">Show Ascend tabs</button><button id="runtime-select" type="button">Use selected tab</button>
-<p>Mapping Mode requires a separate owner-enabled lease. OBSERVE learns owner-visited sections. AUTO_MAP traverses only reviewed read-only sections of the current load. Metadata only.</p><button id="mapping-capture" type="button" disabled>Capture current workspace section</button>
-<p>Sign into Ascend normally. An active owner lease lets FreightDesk reconnect and read automatically.</p>
-</section>
-<details><summary>One-time enrollment / Re-pair</summary>
-<p id="state">OFFLINE_PROTOTYPE</p><p id="result" role="status">PAIRING_FILE_NOT_SELECTED</p><p id="remediation"></p>
-<p><a href="popup.html" target="_blank" rel="noopener">Open persistent pairing panel</a></p>
-<button id="check" type="button">Check local host</button>
-<p><label>Import owner-created enrollment file <input id="bundle" type="file" accept=".json"></label></p>
-<button id="import" type="button">Import selected file</button>
-<button id="disconnect" type="button">Disconnect current channel</button>
-<p>Enrollment does not authorize reads. Edge stores only an opaque enrollment handle. Revocation is managed in FreightDesk.</p>
-</details>
-<details><summary>Historical bootstrap validation tools</summary><h2>First identity-only validation</h2>
-<p>Before selecting a tab, open Ascend's Active Loads view manually. Keep that tab unchanged during all four steps.</p>
-<p>Use the persistent panel for this test. Each button press requests one bounded read; there is no automatic retry.</p>
-<button id="read-tabs" type="button">List eligible Ascend tabs</button>
-<label>Explicit tab selection <select id="read-tab"><option value="">Select a tab</option></select></label>
-<button id="read-select" type="button">Use selected tab</button>
-<button id="read-plan" type="button">Load local read authorization</button>
-<p id="read-state" role="status">PAIRED transport does not grant reads.</p>
-<button id="read-next" type="button" disabled>1. Verify session</button>
-<pre id="read-receipt" aria-label="Sanitized read receipt"></pre>
-<p>Stop after identity. Carrier, driver, phone, stops, rates, notes, operational reads and all writes remain blocked.</p>
-</details><script src="diagnostics.js"></script><script src="popup.js"></script><script src="read-popup.js"></script><script src="runtime-popup.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FreightDesk Ascend X1</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>FreightDesk Ascend X1</h1>
+  <p>Persistent read-only access. All write commands remain unavailable.</p>
+  <p id="package-status" class="note">Unpacked V1 extension. Native host is Windows-only. Production connection disabled. Maps stay CANDIDATE_ONLY.</p>
+  <section aria-label="Ascend runtime">
+    <h2>ASCEND</h2>
+    <p id="runtime-state" role="status">NOT_ENROLLED</p>
+    <p id="runtime-action"></p>
+    <dl id="runtime-health"></dl>
+    <p><a href="http://localhost:8787/#x1-runtime" target="_blank" rel="noopener">Enable or disable read-only access / Pause Avery</a></p>
+    <button id="runtime-rebind" type="button">Rebind tab</button>
+    <label>Ascend tab <select id="runtime-tab"><option value="">Choose only when multiple tabs are authenticated</option></select></label>
+    <button id="runtime-list" type="button">Show Ascend tabs</button>
+    <button id="runtime-select" type="button">Use selected tab</button>
+    <p>Mapping Mode requires a separate owner-enabled lease. OBSERVE learns owner-visited sections. AUTO_MAP traverses only reviewed read-only sections of the current load. Metadata only.</p>
+    <button id="mapping-capture" type="button" disabled>Capture current workspace section</button>
+    <p>Sign into Ascend normally. An active owner lease lets FreightDesk reconnect and read automatically.</p>
+  </section>
+  <details>
+    <summary>One-time enrollment / Re-pair</summary>
+    <p id="state">OFFLINE_PROTOTYPE</p>
+    <p id="result" role="status">PAIRING_FILE_NOT_SELECTED</p>
+    <p id="remediation"></p>
+    <p><a href="popup.html" target="_blank" rel="noopener">Open persistent pairing panel</a></p>
+    <button id="check" type="button">Check local host</button>
+    <p><label>Import owner-created enrollment file <input id="bundle" type="file" accept=".json"></label></p>
+    <button id="import" type="button">Import selected file</button>
+    <button id="disconnect" type="button">Disconnect current channel</button>
+    <p>Enrollment does not authorize reads. Edge stores only an opaque enrollment handle. Revocation is managed in FreightDesk. The native host <code>com.freightdesk.ascend_x1</code> (<code>FreightDeskAscendHost.exe</code>) exists only on Windows.</p>
+  </details>
+  <details>
+    <summary>Historical bootstrap validation tools</summary>
+    <h2>First identity-only validation</h2>
+    <p>Before selecting a tab, open Ascend's Active Loads view manually. Keep that tab unchanged during all four steps.</p>
+    <p>Use the persistent panel for this test. Each button press requests one bounded read; there is no automatic retry.</p>
+    <button id="read-tabs" type="button">List eligible Ascend tabs</button>
+    <label>Explicit tab selection <select id="read-tab"><option value="">Select a tab</option></select></label>
+    <button id="read-select" type="button">Use selected tab</button>
+    <button id="read-plan" type="button">Load local read authorization</button>
+    <p id="read-state" role="status">PAIRED transport does not grant reads.</p>
+    <button id="read-next" type="button" disabled>1. Verify session</button>
+    <pre id="read-receipt" aria-label="Sanitized read receipt"></pre>
+    <p>Stop after identity. Carrier, driver, phone, stops, rates, notes, operational reads and all writes remain blocked.</p>
+  </details>
+  <script src="build.js"></script>
+  <script src="diagnostics.js"></script>
+  <script src="popup.js"></script>
+  <script src="read-popup.js"></script>
+  <script src="runtime-popup.js"></script>
+</body>
+</html>
