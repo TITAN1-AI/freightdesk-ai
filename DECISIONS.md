@@ -1,3 +1,12 @@
+# Unpacked X1 load without claiming a live host - 2026-09-15
+
+Keep the installed V1 0.6.2 identity. Make the unpacked MV3 folder loadable in Edge/Chrome
+developer mode, including icons and a dormant non-Windows path that does not call
+`connectNative`. Document that pairing, enrollment and reads still require the Windows
+native host and a matching extension ID. Do not add V2 to the live manifest, do not bump
+to the unmerged 0.6.3 release branch, and do not register or rebuild the host from this
+work. See [ASCEND_X1_UNPACKED_LOAD.md](docs/ASCEND_X1_UNPACKED_LOAD.md).
+
 # GitHub collaboration decision - 2026-09-13
 
 Owner requested a shared repository for agentic coding. TITAN1-AI/freightdesk-ai was created PRIVATE;

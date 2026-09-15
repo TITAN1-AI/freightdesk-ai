@@ -6,8 +6,16 @@ let state='OFFLINE_PROTOTYPE',resultCode='PAIRING_FILE_NOT_SELECTED';
 let port=null,pairing=null,timer=null,deadline=null,epoch=0;
 let sending=Promise.resolve();
 let enrollmentHandle=null,reconnectFailures=0,reconnectTimer=null;
+const WORKER_UI_STATES=Object.freeze(['OFFLINE_PROTOTYPE','NOT_ENROLLED','HOST_NOT_REGISTERED','HOST_UNAVAILABLE','PAIRING_STALE','PAIRING_REQUIRED','ERROR']);
 const reads=FreightDeskReadController.create(chrome.tabs,()=>state==='PAIRED'&&!!pairing&&!!port,sendSigned);
 const runtime=FreightDeskRuntime.create(chrome.tabs,()=>state==='PAIRED'&&!!pairing&&!!port,sendSigned,()=>queueMicrotask(()=>runtime.wake()));
+async function platform(){
+  if(!chrome.runtime.getPlatformInfo)return null;
+  try{
+    const info=await chrome.runtime.getPlatformInfo();
+    return info&&typeof info.os==='string'?info.os:null;
+  }catch{return null;}
+}
 function sendSigned(body){
   const current=port,bound=pairing;
   const next=sending.then(async()=>{
@@ -19,7 +27,8 @@ function sendSigned(body){
   sending=next.catch(()=>{});return next;
 }
 const requestId=()=>crypto.randomUUID().replaceAll('-','');
-const view=()=>D.result(state,resultCode);
+const view=()=>({...D.result(state,resultCode),extension_version:FreightDeskBuild.extension_version,
+  native_host_name:NATIVE_HOST,native_host_windows_only:true,production_connection_enabled:PRODUCTION_CONNECTION_ENABLED});
 function stop(next,code){
   epoch++;state=next;resultCode=D.safe(code);pairing=null;
   reads.reset();
@@ -38,7 +47,11 @@ async function resumeEnrolled(){
   if(port&&pairing?.enrollment&&pairing.expires*1000-Date.now()<60000){stop('HOST_UNAVAILABLE','PAIRING_INTERRUPTED');return;}
   if(port||['PAIRING_STALE','ERROR'].includes(state))return;
   if(!enrollmentHandle&&chrome.storage?.local)enrollmentHandle=await FreightDeskEnrollment.load(chrome.storage.local);
-  if(!enrollmentHandle){state='NOT_ENROLLED';return;}
+  if(!enrollmentHandle){
+    const os=await platform();
+    if(os&&os!=='win'){state='HOST_NOT_REGISTERED';resultCode='NATIVE_HOST_WINDOWS_ONLY';return;}
+    state='NOT_ENROLLED';return;
+  }
   try{connect(null,null,enrollmentHandle);}catch{stop('HOST_UNAVAILABLE','HOST_HANDSHAKE_FAILED');}
 }
 function connect(localPairing,diagnostic=null,resumeHandle=null){
@@ -126,7 +139,8 @@ function connect(localPairing,diagnostic=null,resumeHandle=null){
     const error=chrome.runtime.lastError;
     if(port!==current)return;
     const missing=error&&/not found|not registered/i.test(error.message||'');
-    stop(missing?'HOST_NOT_REGISTERED':'HOST_UNAVAILABLE',diagnostic?'PAIRING_PERSIST_FAILED':'HOST_HANDSHAKE_FAILED');
+    stop(missing?'HOST_NOT_REGISTERED':'HOST_UNAVAILABLE',
+      diagnostic?'PAIRING_PERSIST_FAILED':missing?'HOST_NOT_REGISTERED':'HOST_HANDSHAKE_FAILED');
   });
   if(diagnostic)current.postMessage({kind:'PAIRING_DIAGNOSTIC',protocol:1,request_id:requestId(),diagnostic});
   else if(resumeHandle)current.postMessage({kind:'RESUME',protocol:1,request_id:requestId(),enrollment_handle:resumeHandle});
@@ -143,8 +157,9 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   if(!message||typeof message!=='object')return false;
   if(['RUNTIME_MAPPING_CAPTURE','RUNTIME_STATUS','RUNTIME_TABS','RUNTIME_REBIND','RUNTIME_SELECT'].includes(message.action)){
     runtime.handle(message).then(result=>reply(message.action==='RUNTIME_STATUS'?{...result,
-      ...(state!=='PAIRED'?{state:['NOT_ENROLLED','HOST_UNAVAILABLE','PAIRING_STALE','ERROR'].includes(state)?state:'NOT_ENROLLED'}:{}),
-      extension:'CONNECTED',native_host:port&&state==='PAIRED'?'CONNECTED':'DISCONNECTED',pairing:state==='PAIRED'?'VALID':'UNKNOWN'}:result))
+      ...(state!=='PAIRED'?{state:WORKER_UI_STATES.includes(state)?state:'NOT_ENROLLED'}:{}),
+      extension:'CONNECTED',native_host:port&&state==='PAIRED'?'CONNECTED':'DISCONNECTED',pairing:state==='PAIRED'?'VALID':'UNKNOWN',
+      native_host_name:NATIVE_HOST,native_host_windows_only:true,production_connection_enabled:PRODUCTION_CONNECTION_ENABLED}:result))
       .catch(()=>reply({state:'ERROR',error_code:'COMMAND_NOT_ALLOWED'}));return true;
   }
   if(['READ_STATUS','LIST_ASCEND_TABS','SELECT_ASCEND_TAB','LOAD_READ_PLAN','READ_NEXT'].includes(message.action)){
@@ -154,8 +169,13 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   if(message.action==='STATUS'&&Object.keys(message).length===1){reply(view());return false;}
   if(message.action==='DISCONNECT'&&Object.keys(message).length===1){stop('PAIRING_REQUIRED','PAIRING_INTERRUPTED');reply(view());return false;}
   if(message.action==='CHECK_HOST'&&Object.keys(message).length===1){
-    if(!port)try{connect(null);}catch{stop('HOST_UNAVAILABLE','HOST_HANDSHAKE_FAILED');}
-    reply(view());return false;
+    (async()=>{
+      const os=await platform();
+      if(os&&os!=='win'){state='HOST_NOT_REGISTERED';resultCode='NATIVE_HOST_WINDOWS_ONLY';}
+      else if(!port)try{connect(null);}catch{stop('HOST_UNAVAILABLE','HOST_HANDSHAKE_FAILED');}
+      reply(view());
+    })();
+    return true;
   }
   if(message.action==='PAIR_DIAGNOSTIC'&&Object.keys(message).sort().join()==='action,diagnostic'){
     const m=message.diagnostic;

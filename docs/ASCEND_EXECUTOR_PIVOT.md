@@ -135,6 +135,9 @@ Actual stops, appointments and non-fixture detail mapping remain unknown.
 
 ## Manual installation — offline prototype only
 
+Current Load unpacked steps, Windows-only native-host gaps and offline checks:
+[ASCEND_X1_UNPACKED_LOAD.md](ASCEND_X1_UNPACKED_LOAD.md). Historical 0.1.0 notes below.
+
 1. Do not run any Playwright identity command. The final grant remains consumed and the entry point is disabled.
 2. In Edge, manually open edge://extensions (Chrome: chrome://extensions). Enable Developer mode.
 3. Choose Load unpacked and select the project folder `extensions/ascend-x1` containing manifest.json.

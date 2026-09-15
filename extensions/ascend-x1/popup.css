@@ -1,0 +1,9 @@
+body{font:14px/1.4 system-ui,sans-serif;margin:12px;width:360px;color:#0b1f33}
+h1{font-size:16px;margin:0 0 8px}
+h2{font-size:14px;margin:12px 0 6px}
+p,dl{margin:0 0 8px}
+button,select,input{margin:4px 4px 4px 0}
+.note{padding:8px;background:#f3f6fa;border:1px solid #c5d0dc}
+code{font-size:12px}
+dt{font-weight:600}
+dd{margin:0 0 6px}

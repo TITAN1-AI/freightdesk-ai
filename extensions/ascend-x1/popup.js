@@ -9,6 +9,14 @@ function render(result){
   document.getElementById('state').textContent=safe.state;
   document.getElementById('result').textContent=safe.error_code;
   document.getElementById('remediation').textContent=safe.remediation;
+  const meta=document.getElementById('package-status');
+  if(meta){
+    const version=result?.extension_version||globalThis.FreightDeskBuild?.extension_version||'0.6.2';
+    const host=result?.native_host_name||'com.freightdesk.ascend_x1';
+    meta.textContent='V1 unpacked '+version+' (WebBridge V2 not packaged). Native host '+host+
+      ' is Windows-only. Production connection '+(result?.production_connection_enabled?'must stay disabled.':'disabled.')+
+      ' Maps stay CANDIDATE_ONLY. Writes, wizard New Load and production CarrierView writes remain unavailable.';
+  }
 }
 async function diagnostic(code,stage){
   const current=++uiEpoch;

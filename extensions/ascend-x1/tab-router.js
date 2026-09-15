@@ -6,6 +6,7 @@
   function create(tabs,paired,onInvalid=()=>{},runtime=false,recoveryAllowed=async()=>false,onMappingHint=()=>{},onMappingProgress=()=>{},onCausalTrace=()=>{}){
     let handshake=null;
     let selected=null,channel=null,pending=null,route=null,generation=0,baseUrl=null,lastInvalid='TAB_SELECTION_REQUIRED';
+    const recovered=new Set();
     const trace=(event,reason=null,binding=null)=>{
       const source=binding||handshake||route||{tab_id:selected};
       onCausalTrace({event,...(reason?{reason}:{}),...(Number.isInteger(source.tab_id)?{tab_id:source.tab_id}:{}),
@@ -108,7 +109,6 @@
         });
       });
     }
-    const recovered=new Set();
     const packagedFiles=Object.freeze(['build.js','contract.js','read-errors.js','load-board-view.js','detail-scope.js','webbridge.js','mapping-scope.js','workspace.js','reader.js','content.js']);
     async function select(id){
       // A routine proof refresh must preserve the document's passive observer and private port.

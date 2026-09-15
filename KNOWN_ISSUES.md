@@ -1,3 +1,12 @@
+# Known issues - unpacked X1 load 2026-09-15
+
+The MV3 package is source-complete for Load unpacked. Remaining gaps are Windows-native-host
+only: `com.freightdesk.ascend_x1` / `FreightDeskAscendHost.exe`, HKCU registration, DPAPI
+enrollment, and the historical pinned ID `opckmnldaebecjphbmdmelfflikinpif`. A fresh unpacked
+ID will not match that allow-list. Linux/macOS can load the extension and must stop at
+`NATIVE_HOST_WINDOWS_ONLY`. No live host, lease or Ascend read is validated by the package
+checks. See [ASCEND_X1_UNPACKED_LOAD.md](docs/ASCEND_X1_UNPACKED_LOAD.md).
+
 # Known issues - audit repair 2026-09-13
 
 Fresh Windows CI exposed two portability defects: CRLF checkout changed the pinned adaptation hash,
