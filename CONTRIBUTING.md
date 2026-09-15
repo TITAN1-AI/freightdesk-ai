@@ -3,6 +3,7 @@
 Start with [AGENTS.md](AGENTS.md), [CURRENT_STATE.md](CURRENT_STATE.md),
 [KNOWN_ISSUES.md](KNOWN_ISSUES.md), and the handoff for the component being changed.
 The latest browser repair is [X1 / WebBridge V2 audit fixes](docs/WEBBRIDGE_V2_AUDIT_FIXES.md).
+The portable product track is [Portable Bridge v0](docs/PORTABLE_BRIDGE.md).
 
 ## Branches and handoffs
 

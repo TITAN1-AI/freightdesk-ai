@@ -12,11 +12,19 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from app.api.portable_leases import (
+    PORTABLE_PATH_PREFIX,
+    apply_portable_cors,
+    install_portable_routes,
+    portable_origin_allowed,
+    portable_preflight,
+)
 from app.core.config import ROOT, Settings
 from app.core.runtime import RuntimePaths
 from app.models.domain import ActionPolicy, AuthorizedIdentity, ExternalEvent, Model, Role
 from app.scheduler.worker import scheduler_loop
 from app.services.control_plane import ControlPlane
+from app.services.portable_leases import PortableLeaseService
 from app.services.store import Store
 from app.services.carrierview_poc import live_projection
 from app.services.live_access import redeem_grant, session_valid
@@ -74,6 +82,7 @@ def create_app(db_path: Path | None = None, token: str | None = None, run_schedu
     async def lifespan(application):
         store = Store(database_path)
         application.state.control = ControlPlane(store, settings)
+        application.state.portable = PortableLeaseService(store, settings.tenant)
         worker = asyncio.create_task(scheduler_loop(application.state.control)) if run_scheduler else None
         from app.api.ascend_mapping import mapping_loop
         mapping_worker = asyncio.create_task(mapping_loop()) if run_scheduler else None
@@ -99,12 +108,21 @@ def create_app(db_path: Path | None = None, token: str | None = None, run_schedu
         if request.client and request.client.host not in {"127.0.0.1", "::1", "testclient"}:
             return JSONResponse({"detail": "Local access only"}, status_code=403)
         origin = request.headers.get("origin")
-        expected = f"{request.url.scheme}://{request.headers.get('host', '')}"
-        if origin and origin != expected:
-            return JSONResponse({"detail": "Cross-origin access denied"}, status_code=403)
-        if request.headers.get("sec-fetch-site") == "cross-site":
-            return JSONResponse({"detail": "Cross-site access denied"}, status_code=403)
+        portable = request.url.path.startswith(PORTABLE_PATH_PREFIX)
+        if portable:
+            if not portable_origin_allowed(origin):
+                return JSONResponse({"detail": "Cross-origin access denied"}, status_code=403)
+            if request.method == "OPTIONS":
+                return portable_preflight(origin)
+        else:
+            expected = f"{request.url.scheme}://{request.headers.get('host', '')}"
+            if origin and origin != expected:
+                return JSONResponse({"detail": "Cross-origin access denied"}, status_code=403)
+            if request.headers.get("sec-fetch-site") == "cross-site":
+                return JSONResponse({"detail": "Cross-site access denied"}, status_code=403)
         response = await call_next(request)
+        if portable:
+            apply_portable_cors(response, origin)
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
@@ -245,6 +263,7 @@ def create_app(db_path: Path | None = None, token: str | None = None, run_schedu
     install_x1_runtime_routes(api, x1_owner_boundary)
     from app.api.ascend_mapping import install_routes as install_mapping_routes
     install_mapping_routes(api, x1_owner_boundary)
+    install_portable_routes(api)
 
     @api.get("/api/mail/summary")
     @api.get("/api/mail/shipments/{shipment_id}")
