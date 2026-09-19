@@ -14,11 +14,13 @@ def install_ascend_facade_routes(api, identity):
         return request.app.state.portable
 
     def facade_reader(request: Request) -> AuthorizedIdentity:
-        """Owner dashboard session or a portable device token may read harvest evidence."""
+        """Owner, demo agent Bearer, or portable device token may read harvest evidence."""
         token = bearer_token(request)
         portable = service(request)
         if portable.has_device_session(token):
             return AuthorizedIdentity(id="portable-device", tenant_id=portable.tenant, role=Role.OWNER)
+        if portable.has_agent_session(token):
+            return AuthorizedIdentity(id="demo-agent", tenant_id=portable.tenant, role=Role.OWNER)
         return identity(request)
 
     @api.get("/v1/ascend/status")

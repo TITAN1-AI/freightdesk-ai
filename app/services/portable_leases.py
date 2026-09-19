@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-import hashlib
 import hmac
 import secrets
 from datetime import timedelta
+from pathlib import Path
 
 from pydantic import ValidationError
 
 from app.core.config import Settings
 from app.models.domain import AuditEvent, Model, utcnow
+from app.services.agent_sessions import AgentSessionService
+from app.services.auth_tokens import token_digest
 
 ALLOWED_ORIGIN = "https://ascendtms.com"
 HARVEST_SCOPE = "VISIBLE_BOARD_ONLY"
@@ -26,10 +28,6 @@ LOAD_STATUSES = frozenset({
     "Active", "Available", "Assigned", "Booked", "Dispatched",
     "In Transit", "Delivered", "Completed", "UNKNOWN",
 })
-
-
-def token_digest(value: str) -> str:
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 class HarvestRow(Model):
@@ -109,9 +107,11 @@ def _invalid_board_date(value: str) -> bool:
 
 
 class PortableLeaseService:
-    def __init__(self, store, tenant: str):
+    def __init__(self, store, tenant: str, agents: AgentSessionService | None = None,
+                 agent_bootstrap_path: Path | None = None):
         self.store = store
         self.tenant = tenant
+        self.agents = agents or AgentSessionService(store, tenant, bootstrap_path=agent_bootstrap_path)
 
     def create_device_session(self) -> dict:
         self._require_demo()
@@ -145,7 +145,7 @@ class PortableLeaseService:
 
     def create_lease(self, device_token: str, origin: str, scope: str, ttl_seconds: int) -> dict:
         self._require_demo()
-        device = self._require_device(device_token)
+        principal = self._require_principal(device_token)
         if origin != ALLOWED_ORIGIN:
             raise ValueError("origin_not_allowlisted")
         if scope != HARVEST_SCOPE:
@@ -162,7 +162,8 @@ class PortableLeaseService:
             record = {
                 "id": secrets.token_hex(16),
                 "token_digest": token_digest(token),
-                "device_id": device["id"],
+                "device_id": principal["id"],
+                "owner_kind": principal["kind"],
                 "origin": origin,
                 "scope": scope,
                 "status": "ACTIVE",
@@ -179,10 +180,10 @@ class PortableLeaseService:
         return self._lease_view(record, lease_token=token)
 
     def revoke_lease(self, device_token: str, lease_id: str) -> dict:
-        device = self._require_device(device_token)
+        principal = self._require_principal(device_token)
         with self.store.transaction():
             record = self._lease_record(lease_id)
-            if record["device_id"] != device["id"]:
+            if record["device_id"] != principal["id"]:
                 raise PermissionError("lease_not_owned")
             record["status"] = "REVOKED"
             record["revoked_at"] = utcnow().isoformat()
@@ -251,13 +252,9 @@ class PortableLeaseService:
         }
         if not device_token:
             return base
-        device = self._device_from_token(device_token)
-        if device is None:
-            raise PermissionError("device_session_required")
+        principal = self._require_principal(device_token)
         now = utcnow().isoformat()
-        if device["status"] != "ACTIVE" or device["expires_at"] <= now:
-            raise PermissionError("device_session_required")
-        leases = [item for item in self._leases() if item["device_id"] == device["id"]]
+        leases = [item for item in self._leases() if item["device_id"] == principal["id"]]
         current = next((item for item in leases if item["status"] == "ACTIVE" and item["expires_at"] > now), None)
         harvest = None
         if current:
@@ -273,12 +270,14 @@ class PortableLeaseService:
                 }
             except KeyError:
                 harvest = None
+        extra = {"device_id": principal["id"], "device_expires_at": principal["expires_at"]}
+        if principal["kind"] == "agent":
+            extra = {"agent_id": principal["id"], "agent_expires_at": principal["expires_at"]}
         return {
             **base,
             "signed_in": True,
-            "auth_kind": "PLACEHOLDER",
-            "device_id": device["id"],
-            "device_expires_at": device["expires_at"],
+            "auth_kind": principal["auth_kind"],
+            **extra,
             "lease": None if current is None else self._lease_view(current),
             "harvest": harvest,
         }
@@ -291,6 +290,12 @@ class PortableLeaseService:
             return True
         except PermissionError:
             return False
+
+    def has_agent_session(self, token: str | None) -> bool:
+        return self.agents.has_session(token)
+
+    def has_api_caller(self, token: str | None) -> bool:
+        return self.has_device_session(token) or self.has_agent_session(token)
 
     def facade_status(self) -> dict:
         self._require_demo()
@@ -390,6 +395,29 @@ class PortableLeaseService:
         if device is None or device["status"] != "ACTIVE" or device["expires_at"] <= now:
             raise PermissionError("device_session_required")
         return device
+
+    def _require_principal(self, token: str) -> dict:
+        """Extension device placeholder or demo agent Bearer. Both may own leases."""
+        try:
+            device = self._require_device(token)
+            return {
+                "id": device["id"],
+                "kind": "device",
+                "auth_kind": device.get("auth_kind", "PLACEHOLDER"),
+                "expires_at": device["expires_at"],
+            }
+        except PermissionError:
+            pass
+        try:
+            agent = self.agents.require(token)
+            return {
+                "id": agent["id"],
+                "kind": "agent",
+                "auth_kind": agent["auth_kind"],
+                "expires_at": agent["expires_at"],
+            }
+        except PermissionError:
+            raise PermissionError("device_session_required") from None
 
     def _lease_record(self, lease_id: str) -> dict:
         return self.store.get(self.tenant, "portable_lease", lease_id)

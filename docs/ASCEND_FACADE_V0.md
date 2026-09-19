@@ -21,8 +21,12 @@ last harvest time, extension last seen (last accepted post), row count.
 `GET /v1/ascend/loads` — stable board shape: `load_id`, `pick_date`, `drop_date`, plus raw
 candidate fields under `fields` (currently sanitized `load_status`).
 
-Auth: local demo owner session (dashboard cookie or `Authorization: Bearer`) **or** a portable
-device token from `POST /v1/portable/session`.
+Auth (any one):
+
+- Demo **agent** Bearer from `POST /v1/agent/session` or `Tokens/demo-agent-token.txt`
+  (Avery / agent path; no popup). See [AGENT_ASCEND_API_V0.md](AGENT_ASCEND_API_V0.md).
+- Local demo owner session (dashboard cookie or owner `Authorization: Bearer`).
+- Portable **device** token from the extension popup (`POST /v1/portable/session`).
 
 These paths are a **facade**. They do not prove Ascend API support, operational field semantics,
 or Booking Logistics live cutover. See [PORTABLE_BRIDGE.md](PORTABLE_BRIDGE.md) and

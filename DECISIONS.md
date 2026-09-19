@@ -1,5 +1,14 @@
 # Decisions - 2026-09-19
 
+## Agents authenticate with a demo Bearer, not the extension popup
+
+Avery and other local agents mint a demo-gated `DEMO_AGENT` token
+(`POST /v1/agent/session` or `Tokens/demo-agent-token.txt`) and send
+`Authorization: Bearer` to `/v1/ascend/*` and `/v1/portable` lease routes. Humans keep
+popup Demo sign-in (`PLACEHOLDER` device session). Harvest still requires Bridge on an
+Ascend tab; the agent token is not a Playwright stand-in and is not cloud OAuth.
+See docs/AGENT_ASCEND_API_V0.md.
+
 ## Prefer isolated reinject over asking for a tab reload
 
 After Load unpacked, already-open Ascend tabs have no content script. Recover with a ping, then

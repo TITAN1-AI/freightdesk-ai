@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from app.api.agent_sessions import install_agent_routes
 from app.api.ascend_facade import install_ascend_facade_routes
 from app.api.portable_leases import (
     PORTABLE_PATH_PREFIX,
@@ -20,6 +21,7 @@ from app.api.portable_leases import (
     portable_origin_allowed,
     portable_preflight,
 )
+from app.services.agent_sessions import AgentSessionService
 from app.core.config import ROOT, Settings
 from app.core.runtime import RuntimePaths
 from app.models.domain import ActionPolicy, AuthorizedIdentity, ExternalEvent, Model, Role
@@ -73,7 +75,8 @@ def local_token():
     return path.read_text(encoding="utf-8").strip()
 
 
-def create_app(db_path: Path | None = None, token: str | None = None, run_scheduler: bool = True):
+def create_app(db_path: Path | None = None, token: str | None = None, run_scheduler: bool = True,
+               agent_bootstrap_path: Path | None = None):
     settings = Settings.from_env()
     owner_token = token or local_token()
     session_token = secrets.token_urlsafe(48)
@@ -82,8 +85,15 @@ def create_app(db_path: Path | None = None, token: str | None = None, run_schedu
     @asynccontextmanager
     async def lifespan(application):
         store = Store(database_path)
+        bootstrap = agent_bootstrap_path
+        if bootstrap is None and db_path is None:
+            try:
+                bootstrap = RuntimePaths.from_environment().path("Tokens", "demo-agent-token.txt")
+            except ValueError:
+                bootstrap = None
+        agents = AgentSessionService(store, settings.tenant, bootstrap_path=bootstrap)
         application.state.control = ControlPlane(store, settings)
-        application.state.portable = PortableLeaseService(store, settings.tenant)
+        application.state.portable = PortableLeaseService(store, settings.tenant, agents=agents)
         worker = asyncio.create_task(scheduler_loop(application.state.control)) if run_scheduler else None
         from app.api.ascend_mapping import mapping_loop
         mapping_worker = asyncio.create_task(mapping_loop()) if run_scheduler else None
@@ -265,6 +275,7 @@ def create_app(db_path: Path | None = None, token: str | None = None, run_schedu
     from app.api.ascend_mapping import install_routes as install_mapping_routes
     install_mapping_routes(api, x1_owner_boundary)
     install_portable_routes(api)
+    install_agent_routes(api)
     install_ascend_facade_routes(api, identity)
 
     @api.get("/api/mail/summary")

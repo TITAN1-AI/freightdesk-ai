@@ -8,6 +8,8 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
 
 - MV3 extension `extensions/portable-bridge/` named **FreightDesk Bridge**. No `nativeMessaging`.
 - Demo lease API under `/v1/portable/*` (session, leases, revoke, harvest, status).
+- Demo **agent** Bearer under `/v1/agent/session` for Avery/API callers (no popup).
+  See [AGENT_ASCEND_API_V0.md](AGENT_ASCEND_API_V0.md).
 - Ascend **facade** `GET /v1/ascend/loads` and `GET /v1/ascend/status` over stored harvest.
   See [ASCEND_FACADE_V0.md](ASCEND_FACADE_V0.md).
 - VISIBLE_BOARD_ONLY Active Loads harvest, stored as **CANDIDATE** evidence.
@@ -32,5 +34,6 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
 | Lease overreach | Scope is VISIBLE_BOARD_ONLY; writes flags rejected; identity columns only | Cloud policy engine must remain the source of capability |
 | Provider origin calling the API | `https://ascendtms.com` is denied as a CORS origin | Cloud must keep the same deny |
 | Demo session minting | Local process + `X-FreightDesk-Portable: 1` | Replace with OAuth / device code |
+| Agent API auth | Demo Bearer (`DEMO_AGENT`) or bootstrap file | Cloud OAuth, multi-tenant, rotation |
 
 X1 (`extensions/ascend-x1/` + `FreightDeskAscendHost.exe`) is unchanged Track A.

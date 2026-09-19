@@ -12,7 +12,7 @@ from app.services.store import Store
 def no_production_credentials_in_tests(monkeypatch):
     for variable in ["CARRIERVIEW_API_TOKEN", "CARRIERVIEW_AGENT_API_TOKEN", "CARRIERVIEW_TENANT_API_TOKEN",
                      "CARRIERVIEW_BASE_URL", "CARRIERVIEW_ORIGIN_VERIFIED", "CARRIERVIEW_READS_AUTHORIZED",
-                     "FREIGHTDESK_LIVE_VIEW_TOKEN"]:
+                     "FREIGHTDESK_LIVE_VIEW_TOKEN", "FREIGHTDESK_AGENT_TOKEN"]:
         monkeypatch.delenv(variable, raising=False)
 
 

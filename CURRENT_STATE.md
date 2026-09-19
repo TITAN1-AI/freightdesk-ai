@@ -1,5 +1,22 @@
 # Current state — 2026-09-19
 
+## Agent session auth v0 — Bearer for Avery, no popup
+
+Demo-gated agent tokens let Avery call `GET /v1/ascend/status`, `GET /v1/ascend/loads`, and
+existing `/v1/portable/leases` routes with `Authorization: Bearer` instead of the Bridge
+popup “Demo sign-in”. Mint via `POST /v1/agent/session` or read
+`Tokens/demo-agent-token.txt` (optional `FREIGHTDESK_AGENT_TOKEN`). Labeled
+`auth_kind=DEMO_AGENT`, not cloud OAuth. Extension harvest path is unchanged: Bridge still
+must sit on an authenticated Ascend tab to post harvest; the agent token is API auth only.
+Handoff: [AGENT_ASCEND_API_V0.md](docs/AGENT_ASCEND_API_V0.md). X1 untouched. Not
+LIVE_VALIDATED beyond the existing portable harvest.
+
+Verification: 36 focused tests passed (`tests/test_agent_sessions.py`,
+`tests/test_portable_leases.py`, `tests/test_ascend_facade.py`, `tests/test_api.py`,
+`tests/test_portable_bridge_extension.py`). Ruff passed on the changed modules. Two
+existing Starlette/AnyIO deprecation warnings remain. No vendor writes and no new
+LIVE_VALIDATED claim.
+
 ## Portable bridge content attach after Load unpacked
 
 Field test on main `8b0bb4a` passed harvest after a **manual** Ascend tab reload; without that
