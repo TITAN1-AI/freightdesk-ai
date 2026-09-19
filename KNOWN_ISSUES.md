@@ -1,7 +1,9 @@
 # Known issues - portable bridge v0 2026-09-19
 
 Track B is a demo/unpacked foundation, not a store product. The Ascend facade reads stored harvest
-only; it is not an Ascend API and not LIVE_VALIDATED. Remaining gaps: FreightDesk Cloud
+only; it is not an Ascend API and not LIVE_VALIDATED. After Load unpacked, 0.1.1 tries isolated
+reinject on open Ascend tabs; a full Active Loads reload is still required when the browser blocks
+that inject or the tab is not exact `/` or `/loads`. Remaining gaps: FreightDesk Cloud
 OAuth/device-code auth, HTTPS cloud API origin, Chrome/Edge store listing and icons, Firefox,
 full dashboard shipment list from harvest, stronger token storage, operational values, writes,
 AUTO_MAP, and any LIVE_VALIDATED harvest. Localhost host permissions must be replaced before store

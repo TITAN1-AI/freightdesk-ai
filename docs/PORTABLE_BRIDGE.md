@@ -12,6 +12,9 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
   See [ASCEND_FACADE_V0.md](ASCEND_FACADE_V0.md).
 - VISIBLE_BOARD_ONLY Active Loads harvest, stored as **CANDIDATE** evidence.
 - CORS for `chrome-extension://` origins on the portable prefix only. Other demo routes stay same-origin.
+- After Load unpacked, the service worker tries isolated-world reinject on open Ascend tabs
+  (and a conservative `/` or `/loads` reload on install/update only). If that is blocked, the
+  popup/README tell the owner to reload Active Loads and press Start harvest again.
 
 ## What this is not
 

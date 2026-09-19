@@ -8,13 +8,16 @@ const apiEl = document.getElementById('api');
 function paint(view) {
   const code = view.code || (view.signed_in ? 'LEASE_READY' : 'NOT_SIGNED_IN');
   const message = view.message || view.last_error?.message || defaultMessage(code, view);
+  const attachFailed = view.last_error?.code === 'CONTENT_UNAVAILABLE';
   banner.textContent = message;
-  banner.className = 'status ' + (code === 'HARVESTING' || code === 'LEASE_READY' ? 'ok' : 'warn');
+  banner.className = 'status ' + ((code === 'HARVESTING' || code === 'LEASE_READY') && !attachFailed ? 'ok' : 'warn');
   const lease = view.lease;
   leaseEl.textContent = lease
     ? (lease.status + ' · ' + lease.scope + ' · expires ' + lease.expires_at)
     : 'none';
-  harvestEl.textContent = view.harvest_enabled ? 'running (CANDIDATE, one-minute poll)' : 'stopped';
+  harvestEl.textContent = view.harvest_enabled
+    ? (attachFailed ? 'running, but reload the Ascend tab first' : 'running (CANDIDATE, one-minute poll)')
+    : 'stopped';
   const last = view.last_harvest;
   lastEl.textContent = last
     ? (last.row_count + ' rows · ' + last.revision.slice(0, 12) + '… · not LIVE_VALIDATED')

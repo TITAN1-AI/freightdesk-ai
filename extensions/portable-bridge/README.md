@@ -48,6 +48,20 @@ evidence-only. Booking Logistics live ops stay on the Avery stack until a separa
    - Start harvest
    - Revoke to stop further posts within one alarm interval (1 minute)
 
+**After Load unpacked (or the chrome://extensions Reload button):** already-open Ascend tabs
+do not receive the new content script automatically. The bridge first tries a safe isolated
+reinject (`chrome.scripting.executeScript` of the packaged files, main frame only). On
+install/update it may reload only `https://ascendtms.com/` or `https://ascendtms.com/loads`
+with no query or fragment. It does **not** reload detail/other paths.
+
+If harvest stays **running** with 0 rows, `extension_last_seen` null, or no snapshot:
+
+1. Reload the Ascend **Active Loads** tab now (F5 or the browser reload button).
+2. Press **Start harvest** again.
+
+The popup banner repeats that action. A full manual reload is still required when the browser
+blocks programmatic injection (policy, discarded tab, or a path the extension will not reload).
+
 The popup shows distinct states for not signed in, missing lease, allowlist/origin failures,
 and an unreachable API. Harvest posts only to `http://127.0.0.1` / `http://localhost` in this
 package.
@@ -94,7 +108,13 @@ Focused:
 ```
 
 An existing Python 3.12+ environment can run the same pytest modules. The extension test also
-runs `node --check` on packaged JS.
+runs `node --check` on packaged JS and checks the inject-first / manual-reload copy.
+
+Field smoke (owner-manual, after Load unpacked on an already-open Active Loads tab):
+
+- Prefer: Start harvest without a manual reload and see a CANDIDATE snapshot / facade rows.
+- Fallback: banner says to reload Active Loads (F5) then Start harvest; after that reload,
+  harvest_count > 0. No Ascend writes. Demo mode only.
 
 ## Remaining gaps (not in v0)
 
