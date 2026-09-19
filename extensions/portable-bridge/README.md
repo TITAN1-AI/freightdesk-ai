@@ -69,26 +69,28 @@ package.
 ## Facade curl (demo)
 
 After the demo server is up, product/Avery can read the last harvest through the Ascend **facade**
-(`GET /v1/ascend/loads`). That is UI-harvest evidence, not an Ascend retail API. See
-[docs/ASCEND_FACADE_V0.md](../../docs/ASCEND_FACADE_V0.md).
+(`GET /v1/ascend/loads`). That is UI-harvest evidence, not an Ascend retail API. Agents should
+use [docs/AGENT_ASCEND_API_V0.md](../../docs/AGENT_ASCEND_API_V0.md) (Bearer, no popup).
+Humans keep Demo sign-in in this popup. See [docs/ASCEND_FACADE_V0.md](../../docs/ASCEND_FACADE_V0.md).
 
 ```bash
-# 1. Placeholder device session
-DEVICE=$(curl -sS -X POST http://127.0.0.1:8787/v1/portable/session \
-  -H 'X-FreightDesk-Portable: 1' -H 'Content-Type: application/json' \
-  -d '{"placeholder":true}' | python -c 'import json,sys; print(json.load(sys.stdin)["device_token"])')
+# Agent path (no X-FreightDesk-Portable, no popup)
+AGENT=$(curl -sS -X POST http://127.0.0.1:8787/v1/agent/session \
+  | python -c 'import json,sys; print(json.load(sys.stdin)["agent_token"])')
+# Or: C:\FreightDeskRuntime\Tokens\demo-agent-token.txt
 
-# 2. VISIBLE_BOARD_ONLY lease
-LEASE=$(curl -sS -X POST http://127.0.0.1:8787/v1/portable/leases \
-  -H "Authorization: Bearer $DEVICE" -H 'Content-Type: application/json' \
-  -d '{"origin":"https://ascendtms.com","scope":"VISIBLE_BOARD_ONLY","ttl_seconds":900}')
-echo "$LEASE"
+# Optional lease — harvest still needs Bridge on an Ascend tab
+curl -sS -X POST http://127.0.0.1:8787/v1/portable/leases \
+  -H "Authorization: Bearer $AGENT" -H 'Content-Type: application/json' \
+  -d '{"origin":"https://ascendtms.com","scope":"VISIBLE_BOARD_ONLY","ttl_seconds":900}'
 
-# 3. Assume the unpacked extension posted POST /v1/portable/harvest (or post a fixture).
-# 4. Read the facade
-curl -sS http://127.0.0.1:8787/v1/ascend/status -H "Authorization: Bearer $DEVICE"
-curl -sS http://127.0.0.1:8787/v1/ascend/loads -H "Authorization: Bearer $DEVICE"
+# Read the facade after Bridge has posted harvest (or when harvest is empty)
+curl -sS http://127.0.0.1:8787/v1/ascend/status -H "Authorization: Bearer $AGENT"
+curl -sS http://127.0.0.1:8787/v1/ascend/loads -H "Authorization: Bearer $AGENT"
 ```
+
+Extension/device path (popup Demo sign-in) is unchanged: `POST /v1/portable/session` with
+`X-FreightDesk-Portable: 1`, then the same lease/harvest/facade routes using the device token.
 
 Empty harvest returns `loads: []` and `harvest_available: false` (HTTP 200). A revoked lease keeps
 the last snapshot readable and rejects further harvest posts.
