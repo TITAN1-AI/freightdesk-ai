@@ -1,4 +1,24 @@
+# Decisions - 2026-09-19
+
+## Avery/product reads Ascend through a harvest facade, not X1
+
+`GET /v1/ascend/loads` and `GET /v1/ascend/status` are demo-gated facades over portable UI harvest.
+They return CANDIDATE_ONLY identity fields (and sanitized candidate extras) without claiming a
+retail Ascend API or LIVE_VALIDATED capability. Empty harvest is an empty list. Revoke does not
+delete already-accepted evidence. X1 remains the BL native-host track. See docs/ASCEND_FACADE_V0.md.
+
+# Decisions - 2026-09-15
+
+## Portable product track is parallel to X1, not a replacement
+
+Ship Track B as `extensions/portable-bridge/` plus a demo-gated `/v1/portable` lease stub.
+Keep X1 native messaging and Booking Logistics live ops untouched. v0 harvest is CANDIDATE
+VISIBLE_BOARD_ONLY evidence with zero Ascend writes. Cloud auth and store listing stay explicit
+gaps. Do not describe this as LIVE_VALIDATED or as a BL production cutover.
+See docs/PORTABLE_BRIDGE_PRODUCT.md and docs/PORTABLE_BRIDGE.md.
+
 # GitHub collaboration decision - 2026-09-13
+
 
 Owner requested a shared repository for agentic coding. TITAN1-AI/freightdesk-ai was created PRIVATE;
 the owner subsequently changed it to PUBLIC on 2026-09-13. Preserve this owner-selected visibility,

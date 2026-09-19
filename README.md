@@ -7,10 +7,11 @@ Avery, Booking Logistics' AI Operations Assistant, will execute bounded operatio
 through replaceable adapters and workers. FreightDesk owns shipment facts, workflow,
 authorization, policy, scheduling and audit history.
 
-**Current work:** the X1 / WebBridge V2 audit fixes are implemented and tested offline. V1 remains
-default; V2 remains fixture/TestRuns-gated and OBSERVE-only. Read [CURRENT_STATE.md](CURRENT_STATE.md)
-and [the repair handoff](docs/WEBBRIDGE_V2_AUDIT_FIXES.md) before starting a task.
-Opening the demo dashboard or a pull request does not authorize live vendor activity.
+**Current work:** Track B portable browser bridge v0 is the product-foundation slice beside X1.
+X1 / WebBridge V2 audit repairs remain the Track A baseline. V1 remains default; V2 remains
+fixture/TestRuns-gated and OBSERVE-only. Read [CURRENT_STATE.md](CURRENT_STATE.md),
+[the portable handoff](docs/PORTABLE_BRIDGE.md) and [the repair handoff](docs/WEBBRIDGE_V2_AUDIT_FIXES.md)
+before starting a task. Opening the demo dashboard or a pull request does not authorize live vendor activity.
 
 **Collaborative development:** see [CONTRIBUTING.md](CONTRIBUTING.md) for branches, agent handoffs,
 Windows setup, offline checks and source/runtime boundaries. Live validation is capability-specific.
@@ -79,7 +80,7 @@ claims are recorded in CURRENT_STATE.md and LIVE_POC.md.
 
 ```text
 app/
-  api/          FastAPI routes and local security boundary
+  api/          FastAPI routes and local security boundary, including /v1/portable demo leases
   core/         settings, state machine, tracking gates, risk
   models/       typed canonical records
   services/     transactional control plane, SQLite, demo fixtures
@@ -97,6 +98,7 @@ config/         default action policies
 scripts/        bootstrap, start, test, encrypted token helpers
 tests/          core, control-plane and HTTP tests
 docs/           access handoff and verification evidence
+extensions/     Ascend X1 (Track A) and portable-bridge (Track B; no native host)
 workflows/      incremental workflow specification
 ```
 

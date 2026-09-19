@@ -1,4 +1,15 @@
+# Known issues - portable bridge v0 2026-09-19
+
+Track B is a demo/unpacked foundation, not a store product. The Ascend facade reads stored harvest
+only; it is not an Ascend API and not LIVE_VALIDATED. Remaining gaps: FreightDesk Cloud
+OAuth/device-code auth, HTTPS cloud API origin, Chrome/Edge store listing and icons, Firefox,
+full dashboard shipment list from harvest, stronger token storage, operational values, writes,
+AUTO_MAP, and any LIVE_VALIDATED harvest. Localhost host permissions must be replaced before store
+submission. Revoke stops further accepted posts; the last snapshot stays readable on the facade.
+BL live ops and X1 native enrollment are unchanged. See docs/ASCEND_FACADE_V0.md.
+
 # Known issues - audit repair 2026-09-13
+
 
 Fresh Windows CI exposed two portability defects: CRLF checkout changed the pinned adaptation hash,
 and .NET Framework's redirected-input writer inserted an encoding preamble into native binary frames.

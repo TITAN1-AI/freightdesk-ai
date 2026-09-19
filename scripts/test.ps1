@@ -19,5 +19,11 @@ node scripts/check-mail-view.js
 if ($LASTEXITCODE -ne 0) { throw 'Mail-view rendering checks failed' }
 node --check app/dashboard/ascend.js
 if ($LASTEXITCODE -ne 0) { throw 'Ascend JS syntax failed' }
+node --check app/dashboard/portable-facade.js
+if ($LASTEXITCODE -ne 0) { throw 'Portable facade JS syntax failed' }
 node scripts/check-ascend-view.js
 if ($LASTEXITCODE -ne 0) { throw 'Ascend-view rendering checks failed' }
+Get-ChildItem extensions/portable-bridge/*.js | ForEach-Object {
+  node --check $_.FullName
+  if ($LASTEXITCODE -ne 0) { throw "Portable bridge JS syntax failed: $($_.Name)" }
+}
