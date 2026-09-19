@@ -1,3 +1,18 @@
+# Current state — 2026-09-19
+
+## Ascend facade v0 — portable harvest reads for Avery/product
+
+Closed-loop slice on the portable-bridge track: `GET /v1/ascend/loads` and `GET /v1/ascend/status`
+normalize the latest stored `POST /v1/portable/harvest` snapshot. Empty harvest is `loads: []`
+plus `harvest_available: false` (HTTP 200). Revoked leases keep last CANDIDATE evidence and reject
+new posts. This is a **facade over UI harvest**, not an Ascend retail API and not LIVE_VALIDATED.
+Handoff: [ASCEND_FACADE_V0.md](docs/ASCEND_FACADE_V0.md). Demo dashboard shows last harvest
+count/timestamp on the existing Ascend panel. X1 native host is unchanged.
+
+Verification: 5 facade tests plus prior portable/API checks passed (20 combined in the focused
+rerun). Dashboard `portable-facade.js` and existing ascend-view rendering checks passed. No
+LIVE_VALIDATED claim.
+
 # Current state — 2026-09-15
 
 ## Portable browser bridge v0 — implemented offline (Track B)

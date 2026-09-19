@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from app.api.ascend_facade import install_ascend_facade_routes
 from app.api.portable_leases import (
     PORTABLE_PATH_PREFIX,
     apply_portable_cors,
@@ -264,6 +265,7 @@ def create_app(db_path: Path | None = None, token: str | None = None, run_schedu
     from app.api.ascend_mapping import install_routes as install_mapping_routes
     install_mapping_routes(api, x1_owner_boundary)
     install_portable_routes(api)
+    install_ascend_facade_routes(api, identity)
 
     @api.get("/api/mail/summary")
     @api.get("/api/mail/shipments/{shipment_id}")

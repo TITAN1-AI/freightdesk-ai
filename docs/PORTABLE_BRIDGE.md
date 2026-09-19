@@ -8,6 +8,8 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
 
 - MV3 extension `extensions/portable-bridge/` named **FreightDesk Bridge**. No `nativeMessaging`.
 - Demo lease API under `/v1/portable/*` (session, leases, revoke, harvest, status).
+- Ascend **facade** `GET /v1/ascend/loads` and `GET /v1/ascend/status` over stored harvest.
+  See [ASCEND_FACADE_V0.md](ASCEND_FACADE_V0.md).
 - VISIBLE_BOARD_ONLY Active Loads harvest, stored as **CANDIDATE** evidence.
 - CORS for `chrome-extension://` origins on the portable prefix only. Other demo routes stay same-origin.
 

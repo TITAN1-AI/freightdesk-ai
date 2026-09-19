@@ -204,6 +204,9 @@ class PortableLeaseService:
             stored = {
                 "lease_id": record["id"],
                 "accepted_at": now.isoformat(),
+                "captured_at": snapshot.captured_at,
+                "origin": snapshot.origin,
+                "view": snapshot.view,
                 "revision": snapshot.revision,
                 "row_count": snapshot.row_count,
                 "coverage": snapshot.coverage,
@@ -278,6 +281,90 @@ class PortableLeaseService:
             "device_expires_at": device["expires_at"],
             "lease": None if current is None else self._lease_view(current),
             "harvest": harvest,
+        }
+
+    def has_device_session(self, token: str | None) -> bool:
+        if not token:
+            return False
+        try:
+            self._require_device(token)
+            return True
+        except PermissionError:
+            return False
+
+    def facade_status(self) -> dict:
+        self._require_demo()
+        lease, harvest = self._facade_lease_and_harvest()
+        row_count = 0 if harvest is None else int(harvest["row_count"])
+        last_at = None if harvest is None else harvest.get("accepted_at")
+        return {
+            "facade": "ascend",
+            "source": "portable_harvest",
+            "actuator": "portable-bridge",
+            "mode": "demo",
+            "live_validated": False,
+            "production_writes": False,
+            "evidence_class": EVIDENCE_CLASS,
+            "coverage": HARVEST_SCOPE,
+            "not_a_retail_api": True,
+            "lease_active": bool(lease and lease["status"] == "ACTIVE"
+                                 and lease["expires_at"] > utcnow().isoformat()),
+            "lease_status": "NONE" if lease is None else lease["status"],
+            "lease_id": None if lease is None else lease["id"],
+            "lease_expires_at": None if lease is None else lease["expires_at"],
+            "harvest_available": harvest is not None,
+            "harvest_count": 0 if lease is None else int(lease.get("harvest_count") or 0),
+            "last_harvest_at": last_at,
+            "extension_last_seen": last_at,
+            "row_count": row_count,
+            "revision": None if harvest is None else harvest.get("revision"),
+        }
+
+    def facade_loads(self) -> dict:
+        self._require_demo()
+        lease, harvest = self._facade_lease_and_harvest()
+        loads = [] if harvest is None else [self._facade_load(row) for row in harvest.get("rows") or []]
+        return {
+            "facade": "ascend",
+            "source": "portable_harvest",
+            "not_a_retail_api": True,
+            "view": "ACTIVE_LOADS",
+            "coverage": HARVEST_SCOPE,
+            "evidence_class": EVIDENCE_CLASS,
+            "live_validated": False,
+            "production_writes": False,
+            "lease_id": None if harvest is None else harvest.get("lease_id"),
+            "lease_status": "NONE" if lease is None else lease["status"],
+            "harvested_at": None if harvest is None else harvest.get("accepted_at"),
+            "revision": None if harvest is None else harvest.get("revision"),
+            "load_count": len(loads),
+            "loads": loads,
+        }
+
+    def _facade_lease_and_harvest(self) -> tuple[dict | None, dict | None]:
+        now = utcnow().isoformat()
+        harvests = sorted(self.store.all(self.tenant, "portable_harvest"),
+                          key=lambda item: item.get("accepted_at") or "", reverse=True)
+        harvest = harvests[0] if harvests else None
+        leases = self._leases()
+        active = next((item for item in leases
+                       if item["status"] == "ACTIVE" and item["expires_at"] > now), None)
+        owning = None
+        if harvest is not None:
+            owning = next((item for item in leases if item["id"] == harvest["lease_id"]), None)
+        return active or owning, harvest
+
+    def _facade_load(self, row: dict) -> dict:
+        fields = {}
+        status = row.get("load_status")
+        if status is not None:
+            fields["load_status"] = {"value": status, "evidence_class": EVIDENCE_CLASS}
+        return {
+            "load_id": row["load_id"],
+            "pick_date": row.get("pick_date"),
+            "drop_date": row.get("drop_date"),
+            "evidence_class": EVIDENCE_CLASS,
+            "fields": fields,
         }
 
     def _require_demo(self):
