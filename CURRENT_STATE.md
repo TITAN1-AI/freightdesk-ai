@@ -10,6 +10,10 @@ when install-time inject is not enough. Lease/facade contracts are unchanged. If
 blocked, the popup is action-first: reload Active Loads (F5), then Start harvest. Not
 LIVE_VALIDATED.
 
+Verification: 5 portable-bridge extension tests passed (`tests/test_portable_bridge_extension.py`),
+including Node syntax checks and an isolated inject/no-reload rehearsal. Ruff passed on the
+changed Python test. Lease/facade contracts were not modified. No LIVE_VALIDATED claim.
+
 ## Ascend facade v0 — portable harvest reads for Avery/product
 
 Closed-loop slice on the portable-bridge track: `GET /v1/ascend/loads` and `GET /v1/ascend/status`
