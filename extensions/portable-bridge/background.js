@@ -3,6 +3,8 @@ const DEFAULT_API = 'http://127.0.0.1:8787';
 const ASCEND_ORIGIN = 'https://ascendtms.com';
 const ALARM = 'portable-harvest';
 const PORTABLE_HEADER = { 'X-FreightDesk-Portable': '1' };
+const CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'content.js']);
+const CONTENT_RELOAD_MESSAGE = 'Reload the Ascend Active Loads tab now (F5), then press Start harvest.';
 
 async function stored() {
   return chrome.storage.local.get({
@@ -71,6 +73,9 @@ async function publicStatus() {
   if (!state.lease || state.lease.status !== 'ACTIVE') {
     return { ...view, code: 'LEASE_MISSING', message: 'Create a VISIBLE_BOARD_ONLY harvest lease before starting.' };
   }
+  if (state.harvest_enabled && state.last_error?.code === 'CONTENT_UNAVAILABLE') {
+    return { ...view, code: 'HARVESTING', message: state.last_error.message || CONTENT_RELOAD_MESSAGE };
+  }
   return { ...view, code: state.harvest_enabled ? 'HARVESTING' : 'LEASE_READY' };
 }
 
@@ -133,6 +138,7 @@ async function setHarvest(enabled) {
     }
     await chrome.alarms.create(ALARM, { periodInMinutes: 1 });
     await save({ harvest_enabled: true, last_error: null });
+    await ensureOpenAscendTabs({ allowReload: false });
     await harvestOnce();
     return stored();
   }
@@ -149,11 +155,12 @@ async function harvestOnce() {
     return;
   }
   const tab = tabs.find((item) => item.active) || tabs[0];
+  await ensureAscendContent(tab, { allowReload: false });
   let result;
   try {
     result = await chrome.tabs.sendMessage(tab.id, { action: 'HARVEST_BOARD' });
   } catch {
-    await save({ last_error: { code: 'CONTENT_UNAVAILABLE', message: 'Reload the Ascend tab after loading this unpacked extension.' } });
+    await save({ last_error: { code: 'CONTENT_UNAVAILABLE', message: CONTENT_RELOAD_MESSAGE } });
     return;
   }
   if (!result?.ok) {
@@ -198,14 +205,88 @@ function harvestMessage(code) {
     BOARD_SCHEMA_INVALID: 'The visible grid did not match the identity board contract.',
     NO_VISIBLE_GRID: 'No visible Active Loads grid was found.',
     API_UNREACHABLE: 'The local lease API was unreachable. Start the FreightDesk demo server.',
+    CONTENT_UNAVAILABLE: CONTENT_RELOAD_MESSAGE,
     lease_revoked: 'The lease was revoked. Harvest stopped.',
     lease_expired: 'The lease expired. Harvest stopped.',
     ASCEND_TAB_MISSING: 'Open Ascend Active Loads at https://ascendtms.com.'
   })[code] || ('Harvest did not complete (' + (code || 'UNKNOWN') + '). Evidence remains CANDIDATE.');
 }
 
-chrome.runtime.onInstalled.addListener(() => {
+function ascendTabUrl(url) {
+  try {
+    const parsed = new URL(String(url || ''));
+    return parsed.origin === ASCEND_ORIGIN && parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function isSafeReloadTarget(tab) {
+  try {
+    const parsed = new URL(String(tab?.url || ''));
+    if (parsed.origin !== ASCEND_ORIGIN || parsed.protocol !== 'https:') return false;
+    if (parsed.search || parsed.hash) return false;
+    if (parsed.pathname !== '/' && parsed.pathname !== '/loads') return false;
+    return tab.status === 'complete' || !!tab.discarded;
+  } catch {
+    return false;
+  }
+}
+
+async function pingTab(tabId) {
+  try {
+    const reply = await chrome.tabs.sendMessage(tabId, { action: 'PING' });
+    return !!reply?.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function injectIsolatedContent(tabId) {
+  if (!chrome.scripting?.executeScript) return false;
+  await chrome.scripting.executeScript({
+    target: { tabId, frameIds: [0] },
+    world: 'ISOLATED',
+    files: [...CONTENT_FILES]
+  });
+  return true;
+}
+
+async function ensureAscendContent(tab, { allowReload = false } = {}) {
+  if (!tab?.id || !ascendTabUrl(tab.url)) return 'skipped';
+  if (await pingTab(tab.id)) return 'ready';
+  try {
+    await injectIsolatedContent(tab.id);
+  } catch {
+    // Injection can fail on a discarded or still-loading tab.
+  }
+  if (await pingTab(tab.id)) return 'injected';
+  if (allowReload && isSafeReloadTarget(tab)) {
+    try {
+      await chrome.tabs.reload(tab.id);
+      return 'reloaded';
+    } catch {
+      return 'reload_required';
+    }
+  }
+  return 'reload_required';
+}
+
+async function ensureOpenAscendTabs({ allowReload = false } = {}) {
+  const tabs = await chrome.tabs.query({ url: ASCEND_ORIGIN + '/*' });
+  for (const tab of tabs) {
+    await ensureAscendContent(tab, { allowReload });
+  }
+}
+
+chrome.runtime.onInstalled.addListener((details) => {
   chrome.storage.local.set({ api_base: DEFAULT_API, harvest_enabled: false, live_validated: false });
+  const allowReload = details.reason === 'install' || details.reason === 'update';
+  ensureOpenAscendTabs({ allowReload });
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  ensureOpenAscendTabs({ allowReload: false });
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {

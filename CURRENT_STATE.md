@@ -1,5 +1,15 @@
 # Current state — 2026-09-19
 
+## Portable bridge content attach after Load unpacked
+
+Field test on main `8b0bb4a` passed harvest after a **manual** Ascend tab reload; without that
+reload the popup stayed on harvest running, `harvest_count` 0, `extension_last_seen` null. Source
+0.1.1 now pings the isolated content script, reinjects the packaged files on install/update and
+harvest start, and may reload only exact `https://ascendtms.com/` or `/loads` (no query/fragment)
+when install-time inject is not enough. Lease/facade contracts are unchanged. If reinject is
+blocked, the popup is action-first: reload Active Loads (F5), then Start harvest. Not
+LIVE_VALIDATED.
+
 ## Ascend facade v0 — portable harvest reads for Avery/product
 
 Closed-loop slice on the portable-bridge track: `GET /v1/ascend/loads` and `GET /v1/ascend/status`

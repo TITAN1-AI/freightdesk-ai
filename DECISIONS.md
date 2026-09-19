@@ -1,5 +1,13 @@
 # Decisions - 2026-09-19
 
+## Prefer isolated reinject over asking for a tab reload
+
+After Load unpacked, already-open Ascend tabs have no content script. Recover with a ping, then
+`chrome.scripting.executeScript` of the fixed packaged files in the isolated main frame. Reload
+the tab only for exact `https://ascendtms.com/` or `/loads` (no query/fragment) on extension
+install/update. Harvest start never auto-reloads. If attach still fails, the popup/README keep an
+action-first manual F5. Do not change lease or facade contracts.
+
 ## Avery/product reads Ascend through a harvest facade, not X1
 
 `GET /v1/ascend/loads` and `GET /v1/ascend/status` are demo-gated facades over portable UI harvest.
