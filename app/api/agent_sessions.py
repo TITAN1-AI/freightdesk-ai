@@ -35,6 +35,7 @@ def install_agent_routes(api):
         if not token:
             raise HTTPException(status_code=401, detail="agent_session_required")
         try:
-            return service(request).agents.public_status(token)
+            service(request).agents.require(token)
         except PermissionError as exc:
             raise HTTPException(status_code=401, detail=str(exc)) from None
+        return service(request).agents.public_status(token)

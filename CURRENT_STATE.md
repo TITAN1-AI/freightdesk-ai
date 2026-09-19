@@ -11,8 +11,11 @@ must sit on an authenticated Ascend tab to post harvest; the agent token is API 
 Handoff: [AGENT_ASCEND_API_V0.md](docs/AGENT_ASCEND_API_V0.md). X1 untouched. Not
 LIVE_VALIDATED beyond the existing portable harvest.
 
-Verification: focused agent/facade/portable tests in this slice. No vendor writes and no
-new LIVE_VALIDATED claim.
+Verification: 36 focused tests passed (`tests/test_agent_sessions.py`,
+`tests/test_portable_leases.py`, `tests/test_ascend_facade.py`, `tests/test_api.py`,
+`tests/test_portable_bridge_extension.py`). Ruff passed on the changed modules. Two
+existing Starlette/AnyIO deprecation warnings remain. No vendor writes and no new
+LIVE_VALIDATED claim.
 
 ## Portable bridge content attach after Load unpacked
 
