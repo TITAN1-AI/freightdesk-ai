@@ -75,9 +75,14 @@ def test_portable_reinjects_content_and_keeps_manual_reload_copy():
 
 
 def _extract_function(source: str, name: str) -> str:
-    start = source.index("function " + name)
+    token = "function " + name
+    start = source.index(token)
+    if start >= 6 and source[start - 6:start] == "async ":
+        start -= 6
+    header_end = source.index(")", start)
+    body_start = source.index("{", header_end)
     depth = 0
-    for index, char in enumerate(source[source.index("{", start):], start=source.index("{", start)):
+    for index, char in enumerate(source[body_start:], start=body_start):
         if char == "{":
             depth += 1
         elif char == "}":
