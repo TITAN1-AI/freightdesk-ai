@@ -14,8 +14,13 @@ untouched. **Not LIVE_VALIDATED.** Avery smokes B on a different
 Active/Available load first; 1763 To Be Billed is later. Do not merge.
 Handoff: [ASCEND_WRITE_STATUS_V0.md](docs/ASCEND_WRITE_STATUS_V0.md).
 
-Verification: focused tests listed after this update. Ruff + Node `--check`
-on the touched modules. **Do not merge** until Avery VERIFIED.
+Verification: 117 focused tests passed (`tests/test_ascend_status.py`,
+`tests/test_ascend_notes.py`, `tests/test_ascend_capabilities.py`,
+`tests/test_portable_bridge_extension.py`, `tests/test_ascend_facade.py`,
+`tests/test_agent_sessions.py`, `tests/test_portable_leases.py`,
+`tests/test_api.py`, `tests/test_control_plane.py`). Ruff + Node `--check`
+passed on the touched modules. Two existing Starlette/AnyIO deprecation
+warnings remain. **Do not merge** until Avery VERIFIED.
 
 ## Ascend write note v0.1.10 — FIELD LIVE_VALIDATED (Avery 1763 SAVE_STAY)
 
