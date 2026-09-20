@@ -15,8 +15,11 @@ call HTTP; Bridge remains the authenticated Ascend actuator. Delivered:
 Demo-gated. No X1 changes. No Playwright secret path. No silent Save Load. Next LIVE field
 **after private-note VERIFIED** is status change. Not LIVE_VALIDATED.
 
-Verification: focused capability/facade/agent/portable tests plus Ruff on the new modules.
-Harvest, agent Bearer, and existing board routes are unchanged.
+Verification: 45 focused tests passed (`tests/test_ascend_capabilities.py`,
+`tests/test_ascend_facade.py`, `tests/test_agent_sessions.py`, `tests/test_portable_leases.py`,
+`tests/test_api.py`, `tests/test_portable_bridge_extension.py`). Ruff passed on the new modules.
+Two existing Starlette/AnyIO deprecation warnings remain. Harvest, agent Bearer, and existing
+board routes are unchanged. No vendor writes and no LIVE_VALIDATED claim.
 
 # Current state — 2026-09-19
 
