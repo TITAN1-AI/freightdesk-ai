@@ -1,5 +1,14 @@
 # Decisions - 2026-09-20
 
+## Load status change is APPROVAL_REQUIRED with catalog gate, not ALLOW
+
+Status write reuses the note mint/claim/complete/verify queue. Default
+`ASCEND_CHANGE_LOAD_STATUS` is APPROVAL_REQUIRED. Allowed targets are the harvest
+catalog minus UNKNOWN. FreightDesk does not invent a from→to graph; VERIFIED is
+read-back of the requested status after stay-on-load Save when the approval
+acknowledges WHOLE_FORM_SAVE. Bridge 0.1.11 force-reinjects write scripts.
+Not LIVE_VALIDATED until Avery VERIFIED. See docs/ASCEND_WRITE_STATUS_V0.md.
+
 ## Avery 0.1.10 SAVE_STAY on 1763 is FIELD LIVE_VALIDATED
 
 Owner-reported Avery smoke on `04e0617`: 403 without approval PASS; A `d5c8a6cd`

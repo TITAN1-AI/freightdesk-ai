@@ -41,6 +41,7 @@ def test_atlas_wires_scratch_and_load_basics():
     catalog = load_capabilities()
     assert catalog["next_live_field_after_note_verified"] == "write_status"
     assert catalog["capabilities"]["write_status"]["policy"] == "APPROVAL_REQUIRED"
+    assert catalog["capabilities"]["write_status"]["implementation"] == "IMPLEMENTED"
     assert catalog["capabilities"]["assign_carrier"]["policy"] == "FORBIDDEN"
     assert catalog["capabilities"]["write_expenses"]["policy"] == "FORBIDDEN"
     assert catalog["capabilities"]["write_public_note"]["implementation"] == "FORBIDDEN"
@@ -56,7 +57,9 @@ def test_capability_catalog_is_demo_gated_and_not_live(client):
     assert body["atlas"]["public_note_selector"] == "#notes"
     assert body["atlas"]["commit_kind"] == "WHOLE_FORM_SAVE"
     assert "write_status" in body["capabilities"]
-    assert body["capabilities"]["write_private_note"]["implementation"] == "IN_FLIGHT"
+    assert body["capabilities"]["write_private_note"]["implementation"] == "IMPLEMENTED"
+    assert body["capabilities"]["write_status"]["implementation"] == "IMPLEMENTED"
+    assert body["capabilities"]["write_status"]["live_validated"] is False
     assert body["next_live_field_after_note_verified"] == "write_status"
 
 
@@ -95,24 +98,21 @@ def test_load_by_id_rejects_invalid_identity(client):
     assert client.get("/v1/ascend/loads/" + "1" * 21).status_code == 409
 
 
-def test_status_stub_is_not_implemented_and_approval_required(client):
+def test_status_write_is_approval_required_not_a_stub(client):
     response = client.post("/v1/ascend/loads/1763/status", json={"status": "Dispatched"})
-    assert response.status_code == 501
+    assert response.status_code == 403
     body = response.json()
-    assert body["result"] == "NOT_IMPLEMENTED"
-    assert body["capability"] == "write_status"
-    assert body["intended_policy"] == "APPROVAL_REQUIRED"
+    assert body["status"] == "PENDING_APPROVAL"
+    assert body["action"] == "ASCEND_CHANGE_LOAD_STATUS"
     assert body["policy"] == "APPROVAL_REQUIRED"
-    assert body["implementation"] == "NOT_STARTED"
     assert body["silent_save_forbidden"] is True
-    assert body["whole_form_save"] is False
     assert body["production_writes"] is False
     assert body["live_validated"] is False
-    assert body["requested"]["status"] == "Dispatched"
+    assert body["requested_status"] == "Dispatched"
     flagged = client.post("/v1/ascend/loads/1763/status",
                           json={"status": "Dispatched", "approval_token": "x" * 32})
-    assert flagged.status_code == 501
-    assert flagged.json()["requested"]["approval_present"] is True
+    assert flagged.status_code == 403
+    assert flagged.json()["error_code"] == "approval_invalid"
 
 
 def test_assign_and_expenses_are_forbidden_stubs(client):
@@ -149,4 +149,5 @@ def test_existing_board_and_agent_paths_stay_intact(client):
     assert client.get("/v1/ascend/loads/1763", headers=headers).json()["found"] is True
     assert client.get("/v1/ascend/capabilities", headers=headers).status_code == 200
     stub = client.post("/v1/ascend/loads/1763/status", json={"status": "Dispatched"}, headers=headers)
-    assert stub.status_code == 501
+    assert stub.status_code == 403
+    assert stub.json()["status"] == "PENDING_APPROVAL"

@@ -59,24 +59,28 @@ function formatLastWrite(write) {
 }
 
 function claimBanner(write) {
-  if (write.stage === 'claimed') return 'Bridge claimed the note write and is running on the Ascend tab.';
-  return 'Waiting to claim a dispatched note write. Keep this popup or the Ascend tab focused.';
+  if (write.stage === 'claimed') return 'Bridge claimed the write and is running on the Ascend tab.';
+  return 'Waiting to claim a dispatched write. Keep this popup or the Ascend tab focused.';
 }
 
 function writeBanner(write) {
   const code = safeCode(write.error_code) || 'NOTE_WRITE_FAILED';
   return ({
-    LOAD_OPENER_UNVERIFIED: 'Could not reopen the load after Save & Exit. Reload unpacked 0.1.10 and restart the demo API. Bridge force-reinjects, waits seconds, then unique row / search+Enter /loads/{id}.',
-    typed_but_not_saved: 'Private Load Note already has the text, but Save / Save & Exit was not clicked. Reload unpacked 0.1.10 and retry with whole-form approval.',
+    LOAD_OPENER_UNVERIFIED: 'Could not reopen the load after Save & Exit. Reload unpacked 0.1.11 and restart the demo API. Bridge force-reinjects, waits seconds, then unique row / search+Enter /loads/{id}.',
+    typed_but_not_saved: 'Private Load Note already has the text, but Save / Save & Exit was not clicked. Reload unpacked 0.1.11 and retry with whole-form approval.',
     LOAD_IDENTITY_UNVERIFIED: 'A private note control is visible, but this tab is not proven as the requested load.',
     LOAD_DETAIL_UNVERIFIED: 'Opened a load control, but the load workspace did not settle.',
     NOTE_COMMIT_REQUIRES_OWNER_PATH: 'Private Load Note (#scratch) needs a whole-form Save approval (allow_whole_form_save). Without it, Bridge will not click Save / Save & Exit.',
+    STATUS_COMMIT_REQUIRES_OWNER_PATH: 'Load Status needs a whole-form Save approval (allow_whole_form_save). Without it, Bridge will not change status or click Save.',
     NOTE_SAVE_CONTROL_UNVERIFIED: 'No note-specific Add/Save Note control was found. Bridge will not click Save Load.',
-    BRIDGE_CLAIM_TIMEOUT: 'Bridge did not claim the write in time. Reload unpacked 0.1.10, keep the popup open, and retry.',
-    ASCEND_TAB_MISSING: 'Open an authenticated Ascend tab, then retry the note write.',
+    STATUS_SAVE_CONTROL_UNVERIFIED: 'No stay-on-load Save or unique Save & Exit was found for the status change.',
+    STATUS_CONTROL_NOT_FOUND: 'Load Status / Status was not found on Load Basics.',
+    STATUS_OPTION_NOT_FOUND: 'The requested status is not an option on the Load Status control.',
+    BRIDGE_CLAIM_TIMEOUT: 'Bridge did not claim the write in time. Reload unpacked 0.1.11, keep the popup open, and retry.',
+    ASCEND_TAB_MISSING: 'Open an authenticated Ascend tab, then retry the write.',
     PRIVATE_NOTE_NOT_FOUND: 'Private Load Note / Private Notes was not found on the load workspace.',
-    CONTENT_UNAVAILABLE: 'Reload the Ascend tab (F5) so the Bridge can attach, then retry the note write.'
-  })[code] || ('Private note write failed (' + code + '). Receipt is FAILED, not success.');
+    CONTENT_UNAVAILABLE: 'Reload the Ascend tab (F5) so the Bridge can attach, then retry the write.'
+  })[code] || ('Write failed (' + code + '). Receipt is FAILED, not success.');
 }
 
 function defaultMessage(code, view) {

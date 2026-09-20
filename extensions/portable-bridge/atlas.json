@@ -27,13 +27,19 @@
     "load_status": {
       "canonical": "load_status",
       "section": "Load Basics",
-      "kind": "label",
+      "kind": "select",
       "labels": ["Load Status", "Status"],
-      "read": "input",
+      "read": "select",
       "harvest_board": true,
       "policy": "APPROVAL_REQUIRED",
-      "implementation": "NOT_STARTED",
-      "write_route": "POST /v1/ascend/loads/{id}/status"
+      "implementation": "IMPLEMENTED",
+      "write_method": "WHOLE_FORM_SAVE",
+      "write_route": "POST /v1/ascend/loads/{id}/status",
+      "allowed_values": [
+        "Active", "Available", "Assigned", "Booked", "Dispatched",
+        "In Transit", "Delivered", "Completed"
+      ],
+      "note": "Labeled select/input on Load Basics. No per-field save. UNKNOWN is harvest-only."
     },
     "pick_date": {
       "canonical": "pick_date",
@@ -120,9 +126,8 @@
       "access": "OBSERVE_OR_FILL",
       "write_method": "WHOLE_FORM_SAVE",
       "policy": "APPROVAL_REQUIRED",
-      "implementation": "IN_FLIGHT",
-      "in_flight_pr": 8,
-      "note": "Booking Logistics atlas: private Load Note is textarea#scratch. No per-field save."
+      "implementation": "IMPLEMENTED",
+      "note": "Booking Logistics atlas: private Load Note is textarea#scratch. No per-field save. FIELD LIVE_VALIDATED for 1763 SAVE_STAY already_open only."
     },
     "public_notes": {
       "canonical": "public_notes",

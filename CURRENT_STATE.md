@@ -1,5 +1,25 @@
 # Current state — 2026-09-20
 
+## Ascend write status v0.1.11 — IMPLEMENTED / TESTED, not LIVE_VALIDATED
+
+Offline load-status write on the portable/agent facade. `POST /v1/ascend/loads/{id}/status`
+after a one-use demo approval (`ASCEND_CHANGE_LOAD_STATUS`, default
+**APPROVAL_REQUIRED**). Catalog statuses except `UNKNOWN`. No from→to graph.
+Portable Bridge **0.1.11** force-reinjects write scripts, prefers stay-on-load Save,
+and requires status read-back for `VERIFIED`. Receipts include `tab_hint`,
+`bridge_version`, `verify_reason`, `requested_status`, `observed_status`.
+Note write, harvest, and agent Bearer are unchanged. X1 untouched. **Not
+LIVE_VALIDATED** until Avery field-tests 1763. Do not merge on fixtures.
+Handoff: [ASCEND_WRITE_STATUS_V0.md](docs/ASCEND_WRITE_STATUS_V0.md).
+
+Verification: 114 focused tests passed (`tests/test_ascend_status.py`,
+`tests/test_ascend_notes.py`, `tests/test_ascend_capabilities.py`,
+`tests/test_portable_bridge_extension.py`, `tests/test_ascend_facade.py`,
+`tests/test_agent_sessions.py`, `tests/test_portable_leases.py`,
+`tests/test_api.py`, `tests/test_control_plane.py`). Ruff + Node `--check`
+passed on the touched modules. Two existing Starlette/AnyIO deprecation
+warnings remain. **Do not merge** until Avery 1763 VERIFIED.
+
 ## Ascend write note v0.1.10 — FIELD LIVE_VALIDATED (Avery 1763 SAVE_STAY)
 
 Avery 0.1.10-only smoke on load 1763 (`04e0617`):
@@ -145,11 +165,11 @@ Delivered:
 - Atlas JSON `extensions/portable-bridge/atlas.json` (`textarea#scratch`, `#notes`, Load Basics)
 - `GET /v1/ascend/loads/{id}` last-known CANDIDATE fields, empty-safe
 - `GET /v1/ascend/capabilities`
-- `POST /v1/ascend/loads/{id}/status` → 501 NOT_IMPLEMENTED, intended **APPROVAL_REQUIRED**
+- `POST /v1/ascend/loads/{id}/status` → IMPLEMENTED, **APPROVAL_REQUIRED**, not LIVE_VALIDATED
 - Assign / expenses → 403 FORBIDDEN stubs
 
-Demo-gated. No X1 changes. No Playwright secret path. No silent Save Load. Next LIVE field
-**after private-note VERIFIED** is status change. Not LIVE_VALIDATED.
+Demo-gated. No X1 changes. No Playwright secret path. No silent Save Load. Status write
+is IMPLEMENTED offline; not LIVE_VALIDATED until Avery VERIFIED.
 
 Verification: 45 focused tests passed (`tests/test_ascend_capabilities.py`,
 `tests/test_ascend_facade.py`, `tests/test_agent_sessions.py`, `tests/test_portable_leases.py`,

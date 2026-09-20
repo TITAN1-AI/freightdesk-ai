@@ -30,6 +30,8 @@ from app.scheduler.worker import scheduler_loop
 from app.services.agent_sessions import AgentSessionService
 from app.services.ascend_capabilities import AscendCapabilityService
 from app.services.ascend_notes import AscendNoteService
+from app.services.ascend_status import AscendStatusService
+from app.services.ascend_writes import AscendWriteBroker
 from app.services.control_plane import ControlPlane
 from app.services.portable_leases import PortableLeaseService
 from app.services.store import Store
@@ -100,6 +102,10 @@ def create_app(db_path: Path | None = None, token: str | None = None, run_schedu
         application.state.portable = PortableLeaseService(store, settings.tenant, agents=agents)
         application.state.notes = AscendNoteService(
             store, settings.tenant, application.state.control.policies, application.state.portable)
+        application.state.status = AscendStatusService(
+            store, settings.tenant, application.state.control.policies, application.state.portable)
+        application.state.writes = AscendWriteBroker(
+            application.state.notes, application.state.status)
         application.state.capabilities = AscendCapabilityService(
             store, settings.tenant, application.state.portable)
         worker = asyncio.create_task(scheduler_loop(application.state.control)) if run_scheduler else None

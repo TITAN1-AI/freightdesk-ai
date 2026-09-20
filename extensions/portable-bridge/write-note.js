@@ -115,7 +115,7 @@
       tab_hint: null,
       reopen_attempts: 0,
       verify_reason: null,
-      bridge_version: '0.1.10',
+      bridge_version: '0.1.11',
       ...partial
     };
   }

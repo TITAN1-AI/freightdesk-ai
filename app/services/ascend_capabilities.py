@@ -127,5 +127,5 @@ def _refusal_detail(capability: str, policy: ActionPolicy, implementation: str) 
         return f"{capability} is FORBIDDEN on the portable Bridge. Money and assign stay stubs."
     return (
         f"{capability} is not implemented. Intended policy is {policy.value}. "
-        "No silent Save Load. Private note remains the in-flight LIVE write (PR #8)."
+        "No silent Save Load. Assign and expenses stay FORBIDDEN."
     )

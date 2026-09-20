@@ -37,10 +37,11 @@ def install_ascend_capability_routes(api, identity):
         return capabilities(request).facade_load(load_id)
 
     @api.post("/v1/ascend/loads/{load_id}/status")
-    def ascend_status_stub(load_id: str, body: StatusChangeBody, request: Request,
-                           _actor=Depends(facade_reader)):
-        """Status change is APPROVAL_REQUIRED when implemented. Stub returns 501."""
-        code, receipt = capabilities(request).refuse_status(load_id, body.status, body.approval_token)
+    def change_load_status(load_id: str, body: StatusChangeBody, request: Request,
+                           actor=Depends(facade_reader)):
+        """Queue a load-status change. APPROVAL_REQUIRED. Not LIVE_VALIDATED."""
+        code, receipt = request.app.state.status.change_status(
+            actor.id, load_id, body.status, body.approval_token)
         return JSONResponse(receipt, status_code=code)
 
     @api.post("/v1/ascend/loads/{load_id}/assign")
