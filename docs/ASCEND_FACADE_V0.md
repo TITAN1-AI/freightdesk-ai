@@ -1,8 +1,10 @@
 # Ascend facade v0
 
 Read endpoints for product/Avery over **portable UI harvest**, not the X1 native host and not an
-Ascend retail API. Demo-gated (`FREIGHTDESK_MODE=demo`). The only write on this facade is an
-APPROVAL_REQUIRED private internal note; see [ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md).
+Ascend retail API. Demo-gated (`FREIGHTDESK_MODE=demo`). The only implemented write on this
+facade is an APPROVAL_REQUIRED private internal note; see
+[ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md). Status / assign / expenses are **stubs**
+with receipts. Capability matrix: [ASCEND_CAPABILITY_MAP_V0.md](ASCEND_CAPABILITY_MAP_V0.md).
 
 | Claim | v0 |
 | --- | --- |
@@ -21,6 +23,17 @@ last harvest time, extension last seen (last accepted post), row count.
 
 `GET /v1/ascend/loads` — stable board shape: `load_id`, `pick_date`, `drop_date`, plus raw
 candidate fields under `fields` (currently sanitized `load_status`).
+
+`GET /v1/ascend/loads/{id}` — last known CANDIDATE fields for one harvested load. Missing harvest
+or unknown ID is HTTP 200 with `found: false` and `fields: {}` (never 500). Atlas Load Basics
+names are listed without inventing values.
+
+`GET /v1/ascend/capabilities` — READ / WRITE / AUTOMATION map. Writes are not LIVE.
+
+`POST /v1/ascend/loads/{id}/status` — stub. HTTP 501 `NOT_IMPLEMENTED`, intended policy
+**APPROVAL_REQUIRED**. No Save Load.
+
+`POST /v1/ascend/loads/{id}/assign` and `.../expenses` — HTTP 403 **FORBIDDEN** stubs.
 
 Auth (any one):
 

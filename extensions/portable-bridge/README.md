@@ -96,8 +96,10 @@ curl -sS -X POST http://127.0.0.1:8787/v1/portable/leases \
 # Read the facade after Bridge has posted harvest (or when harvest is empty)
 curl -sS http://127.0.0.1:8787/v1/ascend/status -H "Authorization: Bearer $AGENT"
 curl -sS http://127.0.0.1:8787/v1/ascend/loads -H "Authorization: Bearer $AGENT"
+curl -sS http://127.0.0.1:8787/v1/ascend/loads/1763 -H "Authorization: Bearer $AGENT"
+curl -sS http://127.0.0.1:8787/v1/ascend/capabilities -H "Authorization: Bearer $AGENT"
 
-# Optional: approved private internal note (not LIVE_VALIDATED)
+# Optional: approved private internal note (FIELD LIVE_VALIDATED on 1763 SAVE_STAY only)
 # APPROVAL=$(curl -sS -X POST http://127.0.0.1:8787/v1/ascend/approvals \
 #   -H "Authorization: Bearer $AGENT" -H 'Content-Type: application/json' \
 #   -d '{"action":"ASCEND_ADD_INTERNAL_NOTE","load_id":"1763"}' \
@@ -107,6 +109,10 @@ curl -sS http://127.0.0.1:8787/v1/ascend/loads -H "Authorization: Bearer $AGENT"
 #   -d "{\"text\":\"internal ops note\",\"approval_token\":\"$APPROVAL\"}"
 ```
 See [ASCEND_WRITE_NOTE_V0.md](../../docs/ASCEND_WRITE_NOTE_V0.md) for approval, receipts, and LIVE gaps.
+
+Atlas selectors (`textarea#scratch`, `#notes`, Load Basics) are in `atlas.json`.
+Capability matrix: [docs/ASCEND_CAPABILITY_MAP_V0.md](../../docs/ASCEND_CAPABILITY_MAP_V0.md).
+Status / assign / expenses HTTP writes are stubs only (501 / 403). No silent Save Load.
 
 Extension/device path (popup Demo sign-in) is unchanged: `POST /v1/portable/session` with
 `X-FreightDesk-Portable: 1`, then the same lease/harvest/facade routes using the device token.
@@ -125,7 +131,7 @@ From a full Windows checkout (same suite as CI):
 Focused:
 
 ```powershell
-.\.tools\python\python.exe -m pytest tests/test_portable_leases.py tests/test_portable_bridge_extension.py tests/test_ascend_facade.py tests/test_ascend_notes.py --basetemp=C:\FreightDeskRuntime\Data\TestRuns\portable-bridge
+.\.tools\python\python.exe -m pytest tests/test_portable_leases.py tests/test_portable_bridge_extension.py tests/test_ascend_facade.py tests/test_ascend_notes.py tests/test_ascend_capabilities.py --basetemp=C:\FreightDeskRuntime\Data\TestRuns\portable-bridge
 ```
 
 An existing Python 3.12+ environment can run the same pytest modules. The extension test also

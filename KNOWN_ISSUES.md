@@ -1,15 +1,23 @@
 # Known issues - Ascend write note v0 2026-09-20
 
-Private-internal-note write is implemented offline and **not LIVE_VALIDATED**.
-0.1.6 UI proof: B2 text is on 1763. 0.1.8 tab prefer worked. 0.1.9 B `6e63295e`
-failed reopen in ~1s (`tab_hint` null) because the tab kept a stale content
-script. 0.1.10 force-reinjects and the worker owns second-scale reopen. Whether
-1763 has a stay-on-load Save, and SPA vs full navigation after Save & Exit,
-remain UNKNOWN until Avery re-tests 0.1.10 (reload unpacked **and restart the
-demo API**). Whole-form Save can submit unrelated dirty fields — documented on
-the receipt, not eliminated. Harvest `ACTIVE_VIEW_UNVERIFIED` is independent.
-Demo approval mint is not production authority. Other writes stay blocked.
-See docs/ASCEND_WRITE_NOTE_V0.md.
+Private-internal-note write is **FIELD LIVE_VALIDATED** for Avery 0.1.10 smoke on
+load 1763 only (`04e0617`: 403 PASS; A `d5c8a6cd` OWNER_PATH/`already_open`;
+B `9eff223c` VERIFIED SAVE_STAY `already_open` `note_present=true`
+`bridge_version=0.1.10`). Whole-form Save can still submit unrelated dirty fields —
+documented on the receipt, not eliminated. Harvest `ACTIVE_VIEW_UNVERIFIED` is
+independent. Demo approval mint is not production authority. Other writes stay
+blocked. See docs/ASCEND_WRITE_NOTE_V0.md.
+
+# Known issues - capability map v0 2026-09-20
+
+The capability matrix is a foundation, not a complete LIVE Ascend API. `GET /v1/ascend/loads/{id}`
+returns only last harvested board fields (ID / pick / drop / load_status). Load Basics atlas
+labels other than those board columns have no cached values. Status write is a 501 stub
+(APPROVAL_REQUIRED when implemented). Assign, expenses, public notes, documents, and
+communications stay FORBIDDEN or NOT_STARTED. Private-note `#scratch` / WHOLE_FORM_SAVE
+landed with PR #8 and is FIELD LIVE_VALIDATED for the 1763 SAVE_STAY already_open path
+only. No scheduled server board sync and no verify-after-write on this slice. Next LIVE
+field after note VERIFIED: status change.
 
 # Known issues - portable bridge v0 2026-09-19
 

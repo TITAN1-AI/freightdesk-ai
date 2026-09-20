@@ -1,5 +1,12 @@
 # Decisions - 2026-09-20
 
+## Avery 0.1.10 SAVE_STAY on 1763 is FIELD LIVE_VALIDATED
+
+Owner-reported Avery smoke on `04e0617`: 403 without approval PASS; A `d5c8a6cd`
+`NOTE_COMMIT_REQUIRES_OWNER_PATH` `already_open`; B `9eff223c` VERIFIED
+`SAVE_STAY` `already_open` `note_present=true` `bridge_version=0.1.10`. Scope is
+that exact private-internal-note path only. See docs/ASCEND_WRITE_NOTE_V0.md.
+
 ## Worker owns post–Save & Exit reopen; never trust a stale content script
 
 0.1.9 B completed in ~1s with `opener_strategy=none` and `tab_hint` null.
@@ -82,6 +89,15 @@ Bridge may type Private/Internal Notes; it still refuses Save Load, assign, stat
 money, New Load and customer-visible notes. Harvest/agent Bearer paths stay intact.
 X1 is untouched. Do not mark LIVE_VALIDATED until Avery field-passes.
 See docs/ASCEND_WRITE_NOTE_V0.md.
+
+## Capability map first; one write at a time
+
+Ship a documented READ / WRITE / AUTOMATION map before enabling more LIVE writes. Avery calls
+HTTP; Bridge stays on the authenticated Ascend tab. Status change is the next LIVE field after
+private-note VERIFIED, and it remains APPROVAL_REQUIRED with a 501 stub until implemented.
+Money and assign stay FORBIDDEN stubs. Atlas `#scratch` / Load Basics selectors live in Bridge
+config JSON so read and future write paths share one binding. No silent Save Load. Keep this
+work additive on `main` while PR #8 owns the note write. See docs/ASCEND_CAPABILITY_MAP_V0.md.
 
 # Decisions - 2026-09-19
 

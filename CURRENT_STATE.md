@@ -1,19 +1,21 @@
 # Current state — 2026-09-20
 
-## Ascend write note v0.1.10 — background-owned reopen, tab_hint never null
+## Ascend write note v0.1.10 — FIELD LIVE_VALIDATED (Avery 1763 SAVE_STAY)
 
-Avery 0.1.9 `a1187b7` on 1763: A `b4b0cc97` PASS OWNER_PATH/`already_open`. B
-`6e63295e` FAIL `SAVE_AND_EXIT` `stage=reopen` `LOAD_OPENER_UNVERIFIED` `none`
-~1s after claim (`tab_hint` still null). Content-only reopen did not run
-second-scale retries — PING skipped reinject of write-note.js. Portable Bridge
-**0.1.10** force-reinjects write content before every write, then the worker
+Avery 0.1.10-only smoke on load 1763 (`04e0617`):
+- 403 without approval: PASS
+- A `d5c8a6cd…` PASS `NOTE_COMMIT_REQUIRES_OWNER_PATH` `already_open` `tab_hint` set `bridge_version=0.1.10`
+- B `9eff223c…` VERIFIED `SAVE_STAY` `already_open` `note_present=true` `bridge_version=0.1.10`
+
+Portable Bridge **0.1.10** force-reinjects write content before every write, then the worker
 owns reopen (1s/2s/3s backoff): scratch scan → `REOPEN_AND_VERIFY` →
 `https://ascendtms.com/loads/{id}`. Save (any casing / Save Changes) wins over
-Save & Exit. Reopen fail + `#scratch` text → `VERIFIED` /
-`verified_via_scratch_scan`. Complete always stores `tab_hint` (or `missing`)
-plus `reopen_attempts` / `bridge_version` on `GET /v1/ascend/writes/{id}`.
-Harvest and agent Bearer unchanged. X1 untouched. **Not LIVE_VALIDATED.**
-Handoff: [ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+Save & Exit. Complete always stores `tab_hint` (or `missing`) plus
+`reopen_attempts` / `bridge_version` on `GET /v1/ascend/writes/{id}`. Harvest and
+agent Bearer unchanged. X1 untouched. **FIELD LIVE_VALIDATED** for this exact
+private-internal-note / 1763 / SAVE_STAY / already_open path only. Status, assign,
+money, New Load, public notes, and comms remain blocked. Handoff:
+[ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
 
 ## Ascend write note v0.1.9 — reopen after Save & Exit, tab_hint on receipts
 
@@ -130,8 +132,30 @@ Verification: 89 focused tests passed (`tests/test_ascend_notes.py`,
 Save & Exit; Save & Exit reopen takes ≥3 attempts (not instant fail); background
 scratch-scan `verified_via_scratch_scan`; complete without `tab_hint` stores
 `missing` on GET. Ruff + Node `--check` passed. Two existing Starlette/AnyIO
-deprecation warnings remain. No vendor write and no LIVE_VALIDATED claim until
-the receipt is VERIFIED.
+deprecation warnings remain. Avery 0.1.10 B `9eff223c` is FIELD LIVE_VALIDATED
+for 1763 SAVE_STAY already_open only.
+
+## Ascend capability map v0 — foundation, not every write LIVE
+
+Additive portable-bridge slice on `main`. Avery/agents call HTTP; Bridge remains the
+authenticated Ascend actuator. Private-note write is FIELD LIVE_VALIDATED on PR #8.
+Delivered:
+
+- [ASCEND_CAPABILITY_MAP_V0.md](docs/ASCEND_CAPABILITY_MAP_V0.md) READ / WRITE / AUTOMATION matrix
+- Atlas JSON `extensions/portable-bridge/atlas.json` (`textarea#scratch`, `#notes`, Load Basics)
+- `GET /v1/ascend/loads/{id}` last-known CANDIDATE fields, empty-safe
+- `GET /v1/ascend/capabilities`
+- `POST /v1/ascend/loads/{id}/status` → 501 NOT_IMPLEMENTED, intended **APPROVAL_REQUIRED**
+- Assign / expenses → 403 FORBIDDEN stubs
+
+Demo-gated. No X1 changes. No Playwright secret path. No silent Save Load. Next LIVE field
+**after private-note VERIFIED** is status change. Not LIVE_VALIDATED.
+
+Verification: 45 focused tests passed (`tests/test_ascend_capabilities.py`,
+`tests/test_ascend_facade.py`, `tests/test_agent_sessions.py`, `tests/test_portable_leases.py`,
+`tests/test_api.py`, `tests/test_portable_bridge_extension.py`). Ruff passed on the new modules.
+Two existing Starlette/AnyIO deprecation warnings remain. Harvest, agent Bearer, and existing
+board routes are unchanged. No vendor writes and no LIVE_VALIDATED claim.
 
 # Current state — 2026-09-19
 

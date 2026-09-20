@@ -8,6 +8,7 @@ The Avery/product harvest read is [Ascend facade v0](docs/ASCEND_FACADE_V0.md).
 Agent Bearer (no popup) is [Agent Ascend API v0](docs/AGENT_ASCEND_API_V0.md).
 The first write (private internal note, APPROVAL_REQUIRED) is
 [Ascend write note v0](docs/ASCEND_WRITE_NOTE_V0.md).
+The portable capability matrix is [Ascend capability map v0](docs/ASCEND_CAPABILITY_MAP_V0.md).
 
 ## Branches and handoffs
 

@@ -10,10 +10,14 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
 - Demo lease API under `/v1/portable/*` (session, leases, revoke, harvest, status).
 - Demo **agent** Bearer under `/v1/agent/session` for Avery/API callers (no popup).
   See [AGENT_ASCEND_API_V0.md](AGENT_ASCEND_API_V0.md).
-- Ascend **facade** `GET /v1/ascend/loads` and `GET /v1/ascend/status` over stored harvest.
+- Ascend **facade** `GET /v1/ascend/loads`, `GET /v1/ascend/loads/{id}`, and
+  `GET /v1/ascend/status` over stored harvest. Capability map:
+  [ASCEND_CAPABILITY_MAP_V0.md](ASCEND_CAPABILITY_MAP_V0.md).
   See [ASCEND_FACADE_V0.md](ASCEND_FACADE_V0.md).
 - First write: APPROVAL_REQUIRED private internal note
   (`POST /v1/ascend/loads/{id}/notes`). See [ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md).
+- Atlas bindings in [extensions/portable-bridge/atlas.json](../extensions/portable-bridge/atlas.json)
+  (`textarea#scratch`, `#notes`, Load Basics labels) for read/write paths.
 - VISIBLE_BOARD_ONLY Active Loads harvest, stored as **CANDIDATE** evidence.
 - CORS for `chrome-extension://` origins on the portable prefix only. Other demo routes stay same-origin.
 - After Load unpacked, the service worker tries isolated-world reinject on open Ascend tabs
@@ -24,9 +28,11 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
 
 - Not LIVE_VALIDATED Ascend.
 - Not cloud OAuth / tenant billing / store listing.
-- Not a general write path. Save, assign, status, money, uploads and New Load remain blocked.
-  The only write is an APPROVAL_REQUIRED private internal note; see
-  [ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md). Not LIVE_VALIDATED.
+- Not a general write path. Status is a 501 stub (APPROVAL_REQUIRED when implemented). Assign,
+  expenses, public notes, uploads and New Load remain FORBIDDEN or out of the capture.
+  The only implemented write is an APPROVAL_REQUIRED private internal note; see
+  [ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md). FIELD LIVE_VALIDATED for Avery
+  0.1.10 / load 1763 / SAVE_STAY / already_open only.
 - Not a cutover of BL operations onto portable leases.
 
 ## Threat model (v0)
