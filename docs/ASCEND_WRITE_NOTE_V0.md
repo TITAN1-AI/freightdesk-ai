@@ -12,7 +12,7 @@ X1 / native host is unchanged. Harvest and agent Bearer reads stay as they were.
 | Action | `ASCEND_ADD_INTERNAL_NOTE` (policy). Mint alias `ASCEND_ADD_INTERNAL_NOTE_VIA_SAVE` sets the whole-form flag |
 | Policy | **APPROVAL_REQUIRED** (default). Other writes stay unavailable / FORBIDDEN at this facade |
 | Auth | Same as the read facade: demo agent Bearer, owner session, or portable device token |
-| Actuator | Portable Bridge 0.1.6 on an already-authenticated Ascend tab |
+| Actuator | Portable Bridge 0.1.7 on an already-authenticated Ascend tab |
 | Evidence | CANDIDATE receipts. `live_validated=false`. `production_writes=false` |
 | Note kind | Private / internal only — atlas `textarea#scratch` / Private Load Note. `#notes` (Public Load Note) is blocked |
 | Whole-form Save | Allowed only when the approval sets `allow_whole_form_save: true`. Otherwise `NOTE_COMMIT_REQUIRES_OWNER_PATH` |
@@ -20,7 +20,7 @@ X1 / native host is unchanged. Harvest and agent Bearer reads stay as they were.
 
 ## Atlas (Booking Logistics sitemap)
 
-Authoritative for this brokerage’s Ascend. Bridge 0.1.6 binds these selectors:
+Authoritative for this brokerage’s Ascend. Bridge 0.1.7 binds these selectors:
 
 | Control | Atlas | Bridge |
 | --- | --- | --- |
@@ -100,7 +100,7 @@ Without the flag: do not type or click; `NOTE_COMMIT_REQUIRES_OWNER_PATH`.
 
 ## Bridge path
 
-Portable Bridge **0.1.6** claims `GET /v1/portable/writes/pending` (sets `claimed_at`;
+Portable Bridge **0.1.7** claims `GET /v1/portable/writes/pending` (sets `claimed_at`;
 includes `allow_whole_form_save`). Wake sources: 1-minute write alarm, one-shot
 `WRITE_SOON` (+1s / +4s), popup `POLL_WRITES` every 4s, tab complete / activate.
 The same principal may reclaim an incomplete dispatch. Complete ignores extra body
@@ -147,14 +147,20 @@ whole-form writes `c5275de` / `12eaed94` / `6cef42f0` claimed then
 `LOAD_OPENER_UNVERIFIED`; `#scratch` showed B2 text but `note_present=false`
 and Save never clicked.
 
-0.1.6: `#scratch` / Private Load Note already present is `already_open` (id lookup
-+ same-origin frames). Worker probes tabs for scratch. After type, click Save /
-Save & Exit when `allow_whole_form_save`. If `#scratch` already has the text but
-Save is missing → `typed_but_not_saved`.
+0.1.6: `#scratch` already-open + tab probe. Field win: whole-form B2 text
+persisted on Ascend. Receipt fail: `86373c6a` `SAVE_AND_EXIT` then
+`stage=reopen` `LOAD_OPENER_UNVERIFIED`; first whole-form `aadfc9ab` also
+opener-failed. Note is on the load; Bridge did not verify.
+
+0.1.7: after Save & Exit, settle the board and reopen 1763 (search / unique
+row / id), then read `#scratch`. Matching text → `VERIFIED` + `note_present=true`.
+If `#scratch` is still on screen after Save, verify in-place (no Active Loads
+opener). Wait for `#scratch` / Load Basics before the first opener so an already
+open workspace is not `LOAD_OPENER_UNVERIFIED`. Prefer stay-on-load Save.
 
 ## Avery re-test checklist (load 1763)
 
-Reload unpacked Bridge **0.1.6**. Demo-sign-in and **keep the popup open**.
+Reload unpacked Bridge **0.1.7**. Demo-sign-in and **keep the popup open**.
 **Start already on 1763 Load Basics with `#scratch` / Private Load Note visible.**
 Active Loads does **not** need to be the verified view. Do not start from the
 board tab.
@@ -163,12 +169,12 @@ board tab.
 2. Mint **without** `allow_whole_form_save` + POST → `claimed_at` set, then
    `FAILED` / `NOTE_COMMIT_REQUIRES_OWNER_PATH` / `already_open`. Textarea untyped.
    **Do not click Save**
-3. Mint **with** `allow_whole_form_save: true` while still on 1763 Load Basics + POST
-4. Expect `already_open` (not `LOAD_OPENER_UNVERIFIED`), type `#scratch` only,
-   click **Save** if present else **Save & Exit**, then `note_present=true`
-5. Poll `GET /v1/ascend/writes/{id}` → `VERIFIED` + `commit_kind=WHOLE_FORM_SAVE`.
-   Or `FAILED` with a clear string code (`typed_but_not_saved` if text is in
-   `#scratch` but Save was not clicked) — not silent success
+3. Stay on 1763 Load Basics. Mint **with** `allow_whole_form_save: true` + POST
+4. Expect `already_open`, type `#scratch` only, prefer **Save** if present else
+   **Save & Exit**. After Save & Exit, Bridge must reopen 1763 and read `#scratch`
+5. Poll `GET /v1/ascend/writes/{id}` → **`VERIFIED`** + `note_present=true` +
+   `commit_kind=WHOLE_FORM_SAVE` when the Private Load Note text matches. Not
+   `LOAD_OPENER_UNVERIFIED` after a successful Save & Exit
 6. Popup **Last write** shows the write code, not harvest `ACTIVE_VIEW_UNVERIFIED`
 7. Still no status / assign / money / New Load / public note / communications
 
@@ -187,7 +193,8 @@ Existing `GET /v1/ascend/status`, `GET /v1/ascend/loads`, `/v1/agent/session`, a
 
 ## LIVE field gaps (Avery)
 
-These stay UNKNOWN until a 0.1.6 field pass. Do not promote LIVE_VALIDATED from fixtures.
+These stay UNKNOWN until a 0.1.7 **VERIFIED receipt**. The 0.1.6 UI note is not
+a receipt. Do not promote LIVE_VALIDATED from fixtures.
 
 - Whether stay-on-load **Save** is distinguishable from **Save & Exit** on 1763
 - Whether `#scratch` retains the text after Save / after Save & Exit + re-open

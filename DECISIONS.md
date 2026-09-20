@@ -1,5 +1,13 @@
 # Decisions - 2026-09-20
 
+## After Save & Exit, reopen the load and verify #scratch before failing
+
+0.1.6 wrote the B2 note on 1763 then failed the receipt because Save & Exit
+returned to the board and one-shot reopen hit `LOAD_OPENER_UNVERIFIED`. 0.1.7
+verifies in-place when `#scratch` is still visible; otherwise settles the board,
+reopens 1763, and `VERIFIED` only when `#scratch` contains the text. Prefer
+stay-on-load Save so reopen is unnecessary. See docs/ASCEND_WRITE_NOTE_V0.md.
+
 ## Visible #scratch is already-open; do not require Active Loads to write
 
 0.1.5 whole-form writes failed `LOAD_OPENER_UNVERIFIED` while Private Load Note

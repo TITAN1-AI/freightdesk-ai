@@ -16,7 +16,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     manifest = json.loads((EXT / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["manifest_version"] == 3
     assert manifest["name"] == "FreightDesk Bridge"
-    assert manifest["version"] == "0.1.6"
+    assert manifest["version"] == "0.1.7"
     assert "nativeMessaging" not in manifest["permissions"]
     assert manifest["permissions"] == ["storage", "alarms", "scripting"]
     assert manifest["host_permissions"][0] == "https://ascendtms.com/*"
@@ -28,7 +28,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     assert "externally_connectable" not in manifest
     assert "web_accessible_resources" not in manifest
     identity = (EXT / "build.js").read_text(encoding="utf-8")
-    assert "extension_version: '0.1.6'" in identity
+    assert "extension_version: '0.1.7'" in identity
     assert "native_messaging: false" in identity
     assert "live_validated: false" in identity
     assert "production_writes: false" in identity
@@ -88,6 +88,7 @@ def test_portable_reinjects_content_and_keeps_manual_reload_copy():
     assert "NOTE_COMMIT_REQUIRES_OWNER_PATH" in popup_js
     assert "BRIDGE_CLAIM_TIMEOUT" in popup_js
     assert "typed_but_not_saved" in popup_js
+    assert "reopenAfterSave" in (EXT / "write-note.js").read_text(encoding="utf-8")
     assert "formatLastWrite" in popup_js
     assert "safeCode" in popup_js
     assert "POLL_WRITES" in popup_js
@@ -607,6 +608,108 @@ def test_portable_write_note_already_open_scratch_skips_opener():
         "    }",
         "  };",
         "  if (!W.findScratch(framed) || W.findScratch(framed).id !== 'scratch') throw new Error('iframe #scratch missed');",
+        "})().catch((error) => { console.error(error); process.exit(1); });",
+    ])
+    completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+def test_portable_write_note_reopen_after_save_and_exit_verifies():
+    script = "\n".join([
+        "const fs = require('fs');",
+        "globalThis.getComputedStyle = () => ({ visibility: 'visible' });",
+        "globalThis.MouseEvent = class { constructor(type, init) { this.type = type; Object.assign(this, init || {}); } };",
+        "globalThis.Event = class { constructor(type, init) { this.type = type; Object.assign(this, init || {}); } };",
+        "function el(tag, attrs) {",
+        "  attrs = attrs || {};",
+        "  const node = {",
+        "    id: attrs.id || '',",
+        "    tagName: String(tag).toUpperCase(),",
+        "    textContent: attrs.text || attrs.label || '',",
+        "    value: attrs.value || '',",
+        "    placeholder: attrs.placeholder || '',",
+        "    labels: attrs.label ? [{ textContent: attrs.label }] : [],",
+        "    events: [],",
+        "    children: attrs.children || [],",
+        "    getClientRects: () => (attrs.hidden ? [] : [{}]),",
+        "    getAttribute: (name) => name === 'id' ? (attrs.id || '') : ((attrs.attrs || {})[name] || null),",
+        "    closest: () => null,",
+        "    matches: () => false,",
+        "    focus() { node.focused = true; },",
+        "    dispatchEvent(ev) { node.events.push(ev.type); if (typeof node.onActivate === 'function' && ev.type === 'click') node.onActivate(); return true; },",
+        "    querySelectorAll(sel) {",
+        "      return (node.children || []).filter((child) => {",
+        "        if (sel.includes('td') && child.tagName === 'TD') return true;",
+        "        if (sel.includes('a') && child.tagName === 'A') return true;",
+        "        if (sel.includes('button') && child.tagName === 'BUTTON') return true;",
+        "        return false;",
+        "      });",
+        "    },",
+        "    querySelector() { return null; }",
+        "  };",
+        "  return node;",
+        "}",
+        "let phase = 'workspace';",
+        "const noteText = 'FreightDesk PR8 0.1.7 WHOLE-FORM B2';",
+        "const scratch = el('textarea', { id: 'scratch', label: 'Private Load Note', value: '' });",
+        "const saveExit = el('button', { label: 'Save & Exit to Load Board', text: 'Save & Exit to Load Board' });",
+        "const idCell = el('td', { text: '1763' });",
+        "const view = el('a', { text: 'View', label: 'View' });",
+        "const row = { tagName: 'TR', getClientRects: () => [{}], closest: () => null, children: [idCell, view], querySelectorAll(sel) { return this.children.filter((child) => (sel.includes('td') && child.tagName === 'TD') || (sel.includes('a') && child.tagName === 'A')); } };",
+        "saveExit.onActivate = () => { phase = 'board'; scratch.getClientRects = () => []; };",
+        "view.onActivate = () => { phase = 'workspace'; scratch.getClientRects = () => [{}]; scratch.value = noteText; };",
+        "const heading = el('h2', { text: 'Load Basics' });",
+        "const doc = {",
+        "  title: 'AscendTMS',",
+        "  defaultView: { location: { origin: 'https://ascendtms.com', href: 'https://ascendtms.com/loads' } },",
+        "  getElementById: (id) => (id === 'scratch' && phase === 'workspace') ? scratch : null,",
+        "  querySelectorAll(sel) {",
+        "    if (sel.includes('iframe')) return [];",
+        "    if (sel.includes('textarea')) return phase === 'workspace' ? [scratch] : [];",
+        "    if (sel.includes('button,input[type=\"submit\"]')) return phase === 'workspace' ? [saveExit] : [];",
+        "    if (sel.includes('h1,h2')) return phase === 'workspace' ? [heading] : [];",
+        "    if (sel.includes('input[type=\"search\"]')) return [];",
+        "    if (sel.includes('tbody')) return phase === 'board' ? [row] : [];",
+        "    if (sel.includes('input,select')) return [];",
+        "    if (sel === 'label') return [];",
+        "    if (sel.includes('[data-note-kind')) return [];",
+        "    if (sel.includes('a,[role=\"link\"]')) return phase === 'board' ? [view] : [];",
+        "    return [];",
+        "  }",
+        "};",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-note.js")) + ", 'utf8'));",
+        "const W = globalThis.FreightDeskPortableWriteNote;",
+        "(async () => {",
+        "  const result = await W.execute(doc, { action: 'ADD_INTERNAL_NOTE', load_id: '1763', text: noteText, note_kind: 'PRIVATE_INTERNAL', origin: 'https://ascendtms.com', allow_whole_form_save: true });",
+        "  if (!result.ok || !result.verified || !result.note_present) throw new Error('reopen verify failed: ' + JSON.stringify(result));",
+        "  if (result.save_variant !== 'SAVE_AND_EXIT' || result.commit_kind !== 'WHOLE_FORM_SAVE') throw new Error('variant: ' + JSON.stringify(result));",
+        "  if (!saveExit.events.includes('click')) throw new Error('did not click Save & Exit');",
+        "  if (!view.events.includes('click')) throw new Error('did not reopen 1763 after Save & Exit');",
+        "  if (scratch.value !== noteText) throw new Error('scratch lost note text');",
+        "  const stayScratch = el('textarea', { id: 'scratch', label: 'Private Load Note', value: '' });",
+        "  const staySave = el('button', { label: 'Save', text: 'Save' });",
+        "  const stayExit = el('button', { label: 'Save & Exit to Load Board', text: 'Save & Exit to Load Board' });",
+        "  const stayDoc = {",
+        "    title: 'AscendTMS',",
+        "    defaultView: { location: { origin: 'https://ascendtms.com', href: 'https://ascendtms.com/loads' } },",
+        "    getElementById: (id) => id === 'scratch' ? stayScratch : null,",
+        "    querySelectorAll(sel) {",
+        "      if (sel.includes('iframe')) return [];",
+        "      if (sel.includes('textarea')) return [stayScratch];",
+        "      if (sel.includes('button,input[type=\"submit\"]')) return [staySave, stayExit];",
+        "      if (sel.includes('h1,h2')) return [heading];",
+        "      if (sel.includes('input[type=\"search\"]')) return [];",
+        "      if (sel.includes('tbody')) return [];",
+        "      if (sel.includes('input,select')) return [];",
+        "      if (sel === 'label') return [];",
+        "      if (sel.includes('[data-note-kind')) return [];",
+        "      if (sel.includes('a,[role=\"link\"]')) return [];",
+        "      return [];",
+        "    }",
+        "  };",
+        "  const stayed = await W.execute(stayDoc, { action: 'ADD_INTERNAL_NOTE', load_id: '1763', text: noteText, note_kind: 'PRIVATE_INTERNAL', origin: 'https://ascendtms.com', allow_whole_form_save: true });",
+        "  if (!stayed.ok || stayed.save_variant !== 'SAVE_STAY') throw new Error('prefer stay: ' + JSON.stringify(stayed));",
+        "  if (!staySave.events.includes('click') || stayExit.events.includes('click')) throw new Error('should prefer stay-on-load Save');",
         "})().catch((error) => { console.error(error); process.exit(1); });",
     ])
     completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)

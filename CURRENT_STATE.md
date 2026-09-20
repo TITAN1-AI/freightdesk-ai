@@ -1,5 +1,18 @@
 # Current state — 2026-09-20
 
+## Ascend write note v0.1.7 — reopen after Save & Exit, then verify
+
+Avery 0.1.6: no-whole-form OWNER_PATH passed. Whole-form B2 **persisted** on
+1763 (`FreightDesk PR8 0.1.6 WHOLE-FORM B2 …`) but the receipt failed
+`stage=reopen` `LOAD_OPENER_UNVERIFIED` after Save & Exit. First whole-form
+attempt also failed opener. Portable Bridge **0.1.7** waits for `#scratch` /
+Load Basics before the board opener, prefers stay-on-load Save, verifies
+in-place when `#scratch` is still visible, and after Save & Exit reopens 1763
+(search / unique row) then reads `#scratch`. Matching text → `VERIFIED` +
+`note_present=true`. Harvest and agent Bearer unchanged. X1 untouched.
+**Not LIVE_VALIDATED** until the receipt is VERIFIED. Handoff:
+[ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
 ## Ascend write note v0.1.6 — already-open #scratch, then Save
 
 Avery 0.1.5: claim and no-whole-form `NOTE_COMMIT_REQUIRES_OWNER_PATH` passed.
@@ -68,16 +81,14 @@ status, money, New Load and public notes stay blocked. Harvest and
 agent Bearer reads are unchanged. X1 untouched. **Not LIVE_VALIDATED.** Handoff:
 [ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
 
-Verification: 82 focused tests passed (`tests/test_ascend_notes.py`,
+Verification: 84 focused tests passed (`tests/test_ascend_notes.py`,
 `tests/test_portable_bridge_extension.py`, `tests/test_portable_leases.py`,
 `tests/test_ascend_facade.py`, `tests/test_agent_sessions.py`, `tests/test_api.py`,
-`tests/test_control_plane.py`). New coverage: reclaim sets `claimed_at`; unclaimed
-dispatch becomes `BRIDGE_CLAIM_TIMEOUT`; complete accepts extra
-`allow_whole_form_save` without 422; object `error_code` stringifies; popup never
-paints `[object Object]`; Save-as-`<a>` is `OWNER_PATH` / flagged `SAVE_STAY`.
-Ruff passed on the changed modules. Node syntax passed on portable-bridge JS and
-`portable-notes.js`. Two existing Starlette/AnyIO deprecation warnings remain.
-No vendor write and no LIVE_VALIDATED claim.
+`tests/test_control_plane.py`). New coverage: Save & Exit returns to the board,
+unique-row reopen of 1763, `#scratch` text match → VERIFIED; stay-on-load Save
+still preferred. Ruff + Node `--check` passed. Two existing Starlette/AnyIO
+deprecation warnings remain. No vendor write and no LIVE_VALIDATED claim until
+the receipt is VERIFIED.
 
 # Current state — 2026-09-19
 

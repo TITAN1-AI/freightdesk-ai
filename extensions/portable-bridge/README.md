@@ -66,8 +66,9 @@ blocks programmatic injection (policy, discarded tab, or a path the extension wi
 The popup shows distinct states for not signed in, missing lease, allowlist/origin failures,
 and an unreachable API. **Last write** is separate from harvest: a harvest
 `ACTIVE_VIEW_UNVERIFIED` banner does not describe a note-write failure. Keep the
-popup open during a note write so 0.1.6 can claim within seconds (`claimed_at`);
-sit on 1763 Load Basics with `#scratch` visible for whole-form Save. Unclaimed
+popup open during a note write so 0.1.7 can claim within seconds (`claimed_at`);
+sit on 1763 Load Basics with `#scratch` visible for whole-form Save. After
+Save & Exit the Bridge reopens 1763 and reads `#scratch`. Unclaimed
 dispatches fail `BRIDGE_CLAIM_TIMEOUT`. Harvest posts only
 to `http://127.0.0.1` / `http://localhost` in this package.
 

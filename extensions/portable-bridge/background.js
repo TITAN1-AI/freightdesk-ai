@@ -251,6 +251,9 @@ async function pollWritesOnce() {
     });
     return;
   }
+  for (const candidate of tabs) {
+    await ensureAscendContent(candidate, { allowReload: false });
+  }
   const tab = await pickWriteTab(tabs, pending.load_id);
   await ensureAscendContent(tab, { allowReload: false });
   let result;
