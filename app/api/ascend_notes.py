@@ -53,4 +53,5 @@ def install_ascend_note_routes(api, identity):
         return notes(request).complete(
             token, write_id, body.verified, body.note_present, body.error_code,
             body.live_validated, body.production_writes, body.stage, body.opener_strategy,
-            body.note_label, body.commit_kind, body.save_variant, body.tab_hint)
+            body.note_label, body.commit_kind, body.save_variant, body.tab_hint,
+            body.reopen_attempts, body.verify_reason, body.bridge_version)

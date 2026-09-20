@@ -1,5 +1,14 @@
 # Decisions - 2026-09-20
 
+## Worker owns post–Save & Exit reopen; never trust a stale content script
+
+0.1.9 B completed in ~1s with `opener_strategy=none` and `tab_hint` null.
+PING-ready tabs skipped reinject, so 0.1.9 reopen helpers never ran. 0.1.10
+always injects write content before ADD_INTERNAL_NOTE, then the background
+retries reopen for real seconds (scratch scan, REOPEN_AND_VERIFY, then
+`/loads/{id}`). Complete stores `tab_hint` or `missing`. See
+docs/ASCEND_WRITE_NOTE_V0.md.
+
 ## After Save & Exit, wait for the board then reopen 1763 before failing
 
 0.1.8 tab prefer worked, but whole-form `07a344d3` failed `stage=reopen`

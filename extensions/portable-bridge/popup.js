@@ -51,7 +51,9 @@ function formatLastWrite(write) {
     write.stage,
     write.opener_strategy,
     write.commit_kind,
-    write.tab_hint
+    write.tab_hint,
+    write.reopen_attempts != null ? ('reopen×' + write.reopen_attempts) : null,
+    write.verify_reason
   ].filter(Boolean);
   return parts.join(' · ') + ' · not LIVE_VALIDATED';
 }
@@ -64,13 +66,13 @@ function claimBanner(write) {
 function writeBanner(write) {
   const code = safeCode(write.error_code) || 'NOTE_WRITE_FAILED';
   return ({
-    LOAD_OPENER_UNVERIFIED: 'Could not reopen the load after Save & Exit. Reload unpacked 0.1.9. Prefer stay-on-load Save when it exists. Bridge waits for the board, then unique row / search+Enter /loads/{id}.',
-    typed_but_not_saved: 'Private Load Note already has the text, but Save / Save & Exit was not clicked. Reload unpacked 0.1.9 and retry with whole-form approval.',
+    LOAD_OPENER_UNVERIFIED: 'Could not reopen the load after Save & Exit. Reload unpacked 0.1.10 and restart the demo API. Bridge force-reinjects, waits seconds, then unique row / search+Enter /loads/{id}.',
+    typed_but_not_saved: 'Private Load Note already has the text, but Save / Save & Exit was not clicked. Reload unpacked 0.1.10 and retry with whole-form approval.',
     LOAD_IDENTITY_UNVERIFIED: 'A private note control is visible, but this tab is not proven as the requested load.',
     LOAD_DETAIL_UNVERIFIED: 'Opened a load control, but the load workspace did not settle.',
     NOTE_COMMIT_REQUIRES_OWNER_PATH: 'Private Load Note (#scratch) needs a whole-form Save approval (allow_whole_form_save). Without it, Bridge will not click Save / Save & Exit.',
     NOTE_SAVE_CONTROL_UNVERIFIED: 'No note-specific Add/Save Note control was found. Bridge will not click Save Load.',
-    BRIDGE_CLAIM_TIMEOUT: 'Bridge did not claim the write in time. Reload unpacked 0.1.9, keep the popup open, and retry.',
+    BRIDGE_CLAIM_TIMEOUT: 'Bridge did not claim the write in time. Reload unpacked 0.1.10, keep the popup open, and retry.',
     ASCEND_TAB_MISSING: 'Open an authenticated Ascend tab, then retry the note write.',
     PRIVATE_NOTE_NOT_FOUND: 'Private Load Note / Private Notes was not found on the load workspace.',
     CONTENT_UNAVAILABLE: 'Reload the Ascend tab (F5) so the Bridge can attach, then retry the note write.'

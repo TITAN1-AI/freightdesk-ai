@@ -247,19 +247,22 @@ async function pollWritesOnce() {
       live_validated: false,
       production_writes: false,
       stage: 'tab',
-      opener_strategy: 'none'
+      opener_strategy: 'none',
+      tab_hint: 'no_tab',
+      bridge_version: '0.1.10'
     });
     return;
   }
   for (const candidate of tabs) {
-    await ensureAscendContent(candidate, { allowReload: false });
+    await ensureWriteContent(candidate);
   }
   const choice = await pickWriteTab(tabs, pending.load_id);
   const tab = choice?.tab;
+  const tabHint = choice.tab_hint || (tab?.id ? ('tab:' + tab.id) : 'no_tab');
   if (tab?.id && chrome.tabs?.update) {
     try { await chrome.tabs.update(tab.id, { active: true }); } catch { /* keep going */ }
   }
-  await ensureAscendContent(tab, { allowReload: false });
+  await ensureWriteContent(tab);
   let result;
   try {
     result = await chrome.tabs.sendMessage(tab.id, {
@@ -270,12 +273,19 @@ async function pollWritesOnce() {
       note_kind: pending.note_kind || 'PRIVATE_INTERNAL',
       allow_whole_form_save: !!pending.allow_whole_form_save,
       forbid_searchbox: !!choice.scratch_present,
-      tab_hint: choice.tab_hint || null
+      tab_hint: tabHint
     });
   } catch {
     result = { verified: false, note_present: false, error_code: 'CONTENT_UNAVAILABLE', stage: 'content' };
   }
-  if (!result?.verified || !result?.note_present) {
+  const shouldReopen = result?.save_variant === 'SAVE_AND_EXIT'
+    || result?.stage === 'reopen'
+    || result?.error_code === 'LOAD_OPENER_UNVERIFIED'
+    || result?.error_code === 'CONTENT_UNAVAILABLE'
+    || result?.error_code === 'note_not_present';
+  if (shouldReopen && (!result?.verified || !result?.note_present)) {
+    result = await reopenFromBackground(tabs, tab, pending, result, tabHint);
+  } else if (!result?.verified || !result?.note_present) {
     const recovered = await recoverNoteOnAnyTab(tabs, pending.load_id, pending.text);
     if (recovered.note_present) {
       result = {
@@ -285,7 +295,8 @@ async function pollWritesOnce() {
         error_code: null,
         stage: 'verify',
         opener_strategy: result?.opener_strategy || 'already_open',
-        tab_hint: recovered.tab_hint || result?.tab_hint || choice.tab_hint || null
+        verify_reason: 'verified_via_scratch_scan',
+        tab_hint: recovered.tab_hint || tabHint
       };
     }
   }
@@ -300,9 +311,160 @@ async function pollWritesOnce() {
     note_label: result?.note_label || null,
     commit_kind: result?.commit_kind || null,
     save_variant: result?.save_variant || null,
-    tab_hint: choice.tab_hint || result?.tab_hint || null,
+    tab_hint: tabHint,
+    reopen_attempts: result?.reopen_attempts || 0,
+    verify_reason: result?.verify_reason || null,
+    bridge_version: '0.1.10',
     allow_whole_form_save: !!pending.allow_whole_form_save
   });
+}
+
+async function ensureWriteContent(tab) {
+  if (!tab?.id || !ascendTabUrl(tab.url)) return 'skipped';
+  try {
+    await injectIsolatedContent(tab.id);
+  } catch { /* keep probing */ }
+  if (await pingTab(tab.id)) return 'injected';
+  return 'reload_required';
+}
+
+function knownLoadTabUrl(loadId) {
+  const id = String(loadId || '');
+  if (!/^\d{1,20}$/.test(id)) return null;
+  return ASCEND_ORIGIN + '/loads/' + id;
+}
+
+async function waitTabComplete(tabId, timeoutMs) {
+  if (!tabId) return 'no_tab';
+  if (!chrome.tabs?.onUpdated) {
+    await new Promise((resolve) => setTimeout(resolve, Math.min(timeoutMs || 2000, 2000)));
+    return 'slept';
+  }
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (reason) => {
+      if (done) return;
+      done = true;
+      try { chrome.tabs.onUpdated.removeListener(listener); } catch { /* ignore */ }
+      resolve(reason);
+    };
+    const timer = setTimeout(() => finish('timeout'), timeoutMs == null ? 4000 : timeoutMs);
+    const listener = (id, info) => {
+      if (id === tabId && info.status === 'complete') {
+        clearTimeout(timer);
+        finish('complete');
+      }
+    };
+    chrome.tabs.onUpdated.addListener(listener);
+  });
+}
+
+async function reopenFromBackground(tabs, tab, pending, result, tabHint, backoffMs) {
+  const step = backoffMs == null ? 1000 : backoffMs;
+  let attempts = Number(result?.reopen_attempts) || 0;
+  let lastStrategy = result?.opener_strategy || 'none';
+  let latest = tabs || [];
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, step * (attempt + 1)));
+    attempts += 1;
+    try { latest = await chrome.tabs.query({ url: ASCEND_ORIGIN + '/*' }); } catch { latest = tabs || []; }
+    const recovered = await recoverNoteOnAnyTab(latest, pending.load_id, pending.text);
+    if (recovered.note_present) {
+      return {
+        ...(result || {}),
+        verified: true,
+        note_present: true,
+        error_code: null,
+        stage: 'verify',
+        opener_strategy: lastStrategy === 'none' ? 'already_open' : lastStrategy,
+        tab_hint: recovered.tab_hint || tabHint,
+        reopen_attempts: attempts,
+        verify_reason: 'verified_via_scratch_scan'
+      };
+    }
+    for (const candidate of latest) {
+      await ensureWriteContent(candidate);
+      try {
+        const reply = await chrome.tabs.sendMessage(candidate.id, {
+          action: 'REOPEN_AND_VERIFY',
+          load_id: pending.load_id,
+          text: pending.text,
+          tab_hint: tabHint,
+          reopen_backoff_ms: 5,
+          wait_board_attempts: 4
+        });
+        lastStrategy = reply?.opener_strategy || lastStrategy;
+        attempts += Number(reply?.reopen_attempts) || 0;
+        if (reply?.note_present || reply?.verified) {
+          return {
+            ...(result || {}),
+            ...reply,
+            verified: true,
+            note_present: true,
+            error_code: null,
+            stage: 'verify',
+            tab_hint: tabHint,
+            reopen_attempts: attempts,
+            verify_reason: reply?.verify_reason || null
+          };
+        }
+      } catch { /* try next tab or URL */ }
+    }
+    const href = knownLoadTabUrl(pending.load_id);
+    const target = latest.find((item) => item.active) || tab || latest[0];
+    if (href && target?.id && chrome.tabs?.update) {
+      try {
+        await chrome.tabs.update(target.id, { url: href });
+        lastStrategy = 'known_load_url';
+        await waitTabComplete(target.id, 4000);
+        await ensureWriteContent(target);
+        const verify = await chrome.tabs.sendMessage(target.id, {
+          action: 'VERIFY_NOTE',
+          load_id: pending.load_id,
+          text: pending.text,
+          tab_hint: tabHint
+        });
+        if (verify?.note_present || verify?.verified) {
+          return {
+            ...(result || {}),
+            verified: true,
+            note_present: true,
+            error_code: null,
+            stage: 'verify',
+            opener_strategy: 'known_load_url',
+            tab_hint: tabHint,
+            reopen_attempts: attempts,
+            verify_reason: verify?.verify_reason || 'verified_via_scratch_scan'
+          };
+        }
+      } catch { /* next backoff */ }
+    }
+  }
+  const finalScan = await recoverNoteOnAnyTab(latest, pending.load_id, pending.text);
+  if (finalScan.note_present) {
+    return {
+      ...(result || {}),
+      verified: true,
+      note_present: true,
+      error_code: null,
+      stage: 'verify',
+      opener_strategy: lastStrategy,
+      tab_hint: finalScan.tab_hint || tabHint,
+      reopen_attempts: attempts,
+      verify_reason: 'verified_via_scratch_scan'
+    };
+  }
+  return {
+    ...(result || {}),
+    verified: false,
+    note_present: false,
+    error_code: safeCode(result?.error_code) || 'LOAD_OPENER_UNVERIFIED',
+    stage: 'reopen',
+    opener_strategy: lastStrategy || 'none',
+    tab_hint: tabHint,
+    reopen_attempts: attempts,
+    verify_reason: null
+  };
 }
 
 async function recoverNoteOnAnyTab(tabs, loadId, text) {
@@ -462,7 +624,10 @@ async function completeWrite(token, writeId, body) {
     note_label: body?.note_label || null,
     commit_kind: body?.commit_kind || null,
     save_variant: body?.save_variant || null,
-    tab_hint: body?.tab_hint || null
+    tab_hint: body?.tab_hint || 'missing',
+    reopen_attempts: body?.reopen_attempts || 0,
+    verify_reason: body?.verify_reason || null,
+    bridge_version: body?.bridge_version || '0.1.10'
   };
   const local = {
     write_id: writeId,
@@ -474,6 +639,9 @@ async function completeWrite(token, writeId, body) {
     commit_kind: payload.commit_kind,
     save_variant: payload.save_variant,
     tab_hint: payload.tab_hint,
+    reopen_attempts: payload.reopen_attempts,
+    verify_reason: payload.verify_reason,
+    bridge_version: payload.bridge_version,
     allow_whole_form_save: !!body?.allow_whole_form_save,
     completed_at: new Date().toISOString()
   };

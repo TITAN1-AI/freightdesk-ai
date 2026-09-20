@@ -230,7 +230,8 @@ def test_bridge_complete_keeps_opener_and_commit_diagnostics(client):
                                   "live_validated": False, "production_writes": False,
                                   "stage": "inspect", "opener_strategy": "already_open",
                                   "note_label": "Private Load Note", "commit_kind": "WHOLE_FORM_SAVE",
-                                  "tab_hint": "scratch:9;skip=board:8"},
+                                  "tab_hint": "scratch:9;skip=board:8", "reopen_attempts": 3,
+                                  "verify_reason": None, "bridge_version": "0.1.10"},
                             headers=agent_headers(token))
     assert completed.status_code == 200
     receipt = completed.json()
@@ -241,14 +242,40 @@ def test_bridge_complete_keeps_opener_and_commit_diagnostics(client):
     assert receipt["note_label"] == "Private Load Note"
     assert receipt["commit_kind"] == "WHOLE_FORM_SAVE"
     assert receipt["tab_hint"] == "scratch:9;skip=board:8"
+    assert receipt["reopen_attempts"] == 3
+    assert receipt["bridge_version"] == "0.1.10"
     assert receipt["verified"] is False
     assert "field fail receipt" not in str(receipt)
     fetched = client.get(f"/v1/ascend/writes/{posted['write_id']}", headers=agent_headers(token))
     assert fetched.json()["error_code"] == "NOTE_COMMIT_REQUIRES_OWNER_PATH"
     assert fetched.json()["opener_strategy"] == "already_open"
     assert fetched.json()["tab_hint"] == "scratch:9;skip=board:8"
+    assert fetched.json()["reopen_attempts"] == 3
+    assert fetched.json()["bridge_version"] == "0.1.10"
     assert fetched.json()["allow_whole_form_save"] is False
     assert "tab_hint" in posted
+
+
+def test_bridge_complete_never_leaves_tab_hint_null(client):
+    token = mint_agent(client)
+    minted = mint_approval(client, token, "1763")
+    posted = client.post("/v1/ascend/loads/1763/notes",
+                         json={"text": "hint required", "approval_token": minted["approval_token"]},
+                         headers=agent_headers(token)).json()
+    client.get("/v1/portable/writes/pending", headers=agent_headers(token))
+    completed = client.post(f"/v1/portable/writes/{posted['write_id']}/complete",
+                            json={"verified": False, "note_present": False,
+                                  "error_code": "LOAD_OPENER_UNVERIFIED",
+                                  "live_validated": False, "production_writes": False,
+                                  "stage": "reopen", "opener_strategy": "none",
+                                  "save_variant": "SAVE_AND_EXIT"},
+                            headers=agent_headers(token))
+    assert completed.status_code == 200
+    receipt = completed.json()
+    assert receipt["tab_hint"] == "missing"
+    fetched = client.get(f"/v1/ascend/writes/{posted['write_id']}", headers=agent_headers(token))
+    assert fetched.json()["tab_hint"] == "missing"
+    assert fetched.json()["tab_hint"] is not None
 
 
 def test_whole_form_save_requires_approval_flag(client):

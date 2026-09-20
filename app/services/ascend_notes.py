@@ -56,6 +56,9 @@ class WriteCompleteBody(Model):
     commit_kind: str | None = Field(default=None, max_length=64)
     save_variant: str | None = Field(default=None, max_length=32)
     tab_hint: str | None = Field(default=None, max_length=80)
+    reopen_attempts: int | None = Field(default=None, ge=0, le=99)
+    verify_reason: str | None = Field(default=None, max_length=64)
+    bridge_version: str | None = Field(default=None, max_length=16)
     allow_whole_form_save: bool = False
 
     @field_validator("error_code", mode="before")
@@ -267,7 +270,9 @@ class AscendNoteService:
                  error_code: str | None, live_validated: bool, production_writes: bool,
                  stage: str | None = None, opener_strategy: str | None = None,
                  note_label: str | None = None, commit_kind: str | None = None,
-                 save_variant: str | None = None, tab_hint: str | None = None) -> dict:
+                 save_variant: str | None = None, tab_hint: str | None = None,
+                 reopen_attempts: int | None = None, verify_reason: str | None = None,
+                 bridge_version: str | None = None) -> dict:
         self._require_demo()
         principal = self.portable._require_principal(token)
         if live_validated or production_writes:
@@ -284,7 +289,11 @@ class AscendNoteService:
                           error_code=code, completed_at=now.isoformat(), completed_by=principal["id"],
                           stage=_diag(stage), opener_strategy=_diag(opener_strategy),
                           note_label=_diag(note_label, 80), commit_kind=_diag(commit_kind),
-                          save_variant=_diag(save_variant, 32), tab_hint=_diag(tab_hint, 80))
+                          save_variant=_diag(save_variant, 32),
+                          tab_hint=_diag(tab_hint, 80) or "missing",
+                          reopen_attempts=reopen_attempts if reopen_attempts is not None else 0,
+                          verify_reason=_diag(verify_reason, 64),
+                          bridge_version=_diag(bridge_version, 16))
             self.store.put(self.tenant, "ascend_note_write", record["id"], record)
             self._audit("ASCEND_NOTE_" + status, "Private-note write completed with verify-after-write.",
                         {"write_id": record["id"], "load_id": record["load_id"], "note_present": note_present,
@@ -293,6 +302,9 @@ class AscendNoteService:
                          "commit_kind": record.get("commit_kind"),
                          "save_variant": record.get("save_variant"),
                          "tab_hint": record.get("tab_hint"),
+                         "reopen_attempts": record.get("reopen_attempts"),
+                         "verify_reason": record.get("verify_reason"),
+                         "bridge_version": record.get("bridge_version"),
                          "allow_whole_form_save": bool(record.get("allow_whole_form_save"))},
                         principal["id"])
         return self._public(record)
@@ -385,6 +397,9 @@ class AscendNoteService:
             "commit_kind": "WHOLE_FORM_SAVE" if allow_whole_form_save else None,
             "save_variant": None,
             "tab_hint": None,
+            "reopen_attempts": None,
+            "verify_reason": None,
+            "bridge_version": None,
             "allow_whole_form_save": bool(allow_whole_form_save),
         }
 
@@ -409,7 +424,8 @@ class AscendNoteService:
             "note_present", "text_digest", "error_code", "approval_id", "created_at",
             "dispatched_at", "completed_at", "claimed_at", "claim_deadline_at", "stage",
             "opener_strategy", "note_label", "commit_kind", "save_variant",
-            "tab_hint", "allow_whole_form_save")}
+            "tab_hint", "reopen_attempts", "verify_reason", "bridge_version",
+            "allow_whole_form_save")}
         public["whole_form_save_risk"] = (
             WHOLE_FORM_SAVE_RISK if record.get("allow_whole_form_save")
             or record.get("commit_kind") == "WHOLE_FORM_SAVE" else None)

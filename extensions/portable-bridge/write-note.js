@@ -43,7 +43,8 @@
 
   function controlLabel(el) {
     const labeled = el.labels && el.labels.length === 1 ? el.labels[0].textContent : '';
-    return norm(el.getAttribute('aria-label') || labeled || el.placeholder || el.value || el.textContent);
+    return norm(el.getAttribute('aria-label') || labeled || el.getAttribute('title') ||
+      el.placeholder || el.value || el.textContent);
   }
 
   function isPrivateNoteLabel(label) {
@@ -67,10 +68,11 @@
   }
 
   function classifyWholeFormSave(label) {
-    const key = norm(label);
+    const key = norm(label).replace(/[.\u2026]+$/, '');
     if (isNoteCommitLabel(key)) return null;
     if (/^save\s*(&|and)\s*exit\b/.test(key)) return 'SAVE_AND_EXIT';
     if (key === 'save' || key === 'save load') return 'SAVE_STAY';
+    if (/^save\b/.test(key) && !/\bexit\b/.test(key) && !/\bnote\b/.test(key)) return 'SAVE_STAY';
     return null;
   }
 
@@ -81,8 +83,8 @@
   function isOwnerPathCommit(label) {
     const key = norm(label);
     if (isNoteCommitLabel(key)) return false;
-    if (key === 'save load' || key === 'save') return true;
-    return /^save\s*(&|and)\s*exit\b/.test(key);
+    if (classifyWholeFormSave(key) === 'SAVE_STAY' || classifyWholeFormSave(key) === 'SAVE_AND_EXIT') return true;
+    return false;
   }
 
   function isForbiddenCommitLabel(label) {
@@ -111,6 +113,9 @@
       save_variant: null,
       allow_whole_form_save: false,
       tab_hint: null,
+      reopen_attempts: 0,
+      verify_reason: null,
+      bridge_version: '0.1.10',
       ...partial
     };
   }
@@ -493,16 +498,16 @@
   function looksLikeBoard(scanResult) {
     const heading = (scanResult.headings || []).some((item) =>
       /\b(active loads|all loads|load board)\b/.test(norm(item.text)));
-    const rows = (scanResult.rows || []).length > 0;
     const search = (scanResult.searchboxes || []).some((item) => item.visible);
-    return heading || rows || search;
+    return heading || search;
   }
 
-  async function waitForBoard(doc, attempts) {
-    for (let attempt = 0; attempt < (attempts == null ? 12 : attempts); attempt += 1) {
+  async function waitForBoard(doc, loadId, attempts) {
+    const limit = attempts == null ? 8 : attempts;
+    for (let attempt = 0; attempt < limit; attempt += 1) {
       if (findScratch(doc)) return scan(doc);
       const scanned = scan(doc);
-      if (looksLikeBoard(scanned) || planOpener(scanned, '').strategy) return scanned;
+      if (looksLikeBoard(scanned) || planOpener(scanned, loadId).strategy) return scanned;
       await sleep(200);
     }
     return scan(doc);
@@ -692,58 +697,99 @@
     return { ok: false, error_code: 'LOAD_OPENER_UNVERIFIED', opener_strategy: planned.strategy || 'none', stage: 'opener' };
   }
 
-  async function reopenAfterSave(doc, loadId, text, prior) {
-    if (verifyPresence(doc, text)) {
-      return { ok: true, opener_strategy: prior?.opener_strategy || 'already_open', stage: 'verify' };
-    }
-    if (findScratch(doc)) {
-      for (let attempt = 0; attempt < 16; attempt += 1) {
-        if (verifyPresence(doc, text)) {
-          return { ok: true, opener_strategy: prior?.opener_strategy || 'already_open', stage: 'verify' };
-        }
-        await sleep(250);
-      }
-      return { ok: true, opener_strategy: prior?.opener_strategy || 'already_open', stage: 'verify' };
-    }
+  async function reopenAfterSave(doc, loadId, text, prior, options) {
+    const backoff = options && options.backoff_ms != null ? options.backoff_ms : 1000;
+    const boardTries = options && options.board_attempts != null ? options.board_attempts : 8;
+    let attempts = 0;
     let last = { ok: false, error_code: 'LOAD_OPENER_UNVERIFIED', opener_strategy: 'none', stage: 'reopen' };
+    if (verifyPresence(doc, text)) {
+      return {
+        ok: true, opener_strategy: prior?.opener_strategy || 'already_open', stage: 'verify',
+        reopen_attempts: 0, verify_reason: 'verified_via_scratch_scan'
+      };
+    }
     for (let attempt = 0; attempt < 3; attempt += 1) {
+      attempts += 1;
       if (verifyPresence(doc, text)) {
-        return { ok: true, opener_strategy: last.opener_strategy || 'already_open', stage: 'verify' };
+        return {
+          ok: true, opener_strategy: last.opener_strategy || 'already_open', stage: 'verify',
+          reopen_attempts: attempts, verify_reason: 'verified_via_scratch_scan'
+        };
       }
-      await waitForBoard(doc, 12);
-      if (verifyPresence(doc, text) || findScratch(doc)) {
-        return { ok: true, opener_strategy: last.opener_strategy || 'already_open', stage: 'verify' };
+      await waitForBoard(doc, loadId, boardTries);
+      if (verifyPresence(doc, text)) {
+        return {
+          ok: true, opener_strategy: last.opener_strategy || 'already_open', stage: 'verify',
+          reopen_attempts: attempts, verify_reason: 'verified_via_scratch_scan'
+        };
       }
       last = await openWorkspace(doc, loadId, {
         waitAttempts: 8,
         allow_search_submit: true,
         allow_load_url: true
       });
+      last.reopen_attempts = attempts;
       if (last.ok) {
         for (let wait = 0; wait < 16; wait += 1) {
           if (verifyPresence(doc, text)) {
-            return { ok: true, opener_strategy: last.opener_strategy, stage: 'verify' };
+            return {
+              ok: true, opener_strategy: last.opener_strategy, stage: 'verify',
+              reopen_attempts: attempts, verify_reason: null
+            };
           }
           if (!findScratch(doc) && wait > 2) break;
           await sleep(250);
         }
-        if (findScratch(doc)) {
-          return { ok: true, opener_strategy: last.opener_strategy, stage: 'verify' };
+        if (verifyPresence(doc, text)) {
+          return {
+            ok: true, opener_strategy: last.opener_strategy, stage: 'verify',
+            reopen_attempts: attempts, verify_reason: null
+          };
         }
       }
-      await sleep(400 * (attempt + 1));
+      await sleep(backoff * (attempt + 1));
     }
-    if (verifyPresence(doc, text) || findScratch(doc)) {
-      return { ok: true, opener_strategy: last.opener_strategy || 'already_open', stage: 'verify' };
+    if (verifyPresence(doc, text)) {
+      return {
+        ok: true, opener_strategy: last.opener_strategy || 'already_open', stage: 'verify',
+        reopen_attempts: attempts, verify_reason: 'verified_via_scratch_scan'
+      };
     }
-    return { ...last, stage: 'reopen' };
+    return { ...last, ok: false, stage: 'reopen', reopen_attempts: attempts };
   }
 
   async function execute(doc, command) {
     if (doc.defaultView?.location?.origin !== ORIGIN && command?.origin !== ORIGIN) {
-      return report({ error_code: 'ORIGIN_NOT_ALLOWLISTED', stage: 'origin' });
+      return report({ error_code: 'ORIGIN_NOT_ALLOWLISTED', stage: 'origin', tab_hint: command?.tab_hint || null });
     }
     try {
+      if (command.mode === 'verify') {
+        const present = verifyPresence(doc, command.text);
+        return report({
+          ok: present, verified: present, note_present: present,
+          error_code: present ? null : 'note_not_present',
+          stage: 'verify',
+          opener_strategy: 'already_open',
+          tab_hint: command.tab_hint || null,
+          verify_reason: present ? 'verified_via_scratch_scan' : null
+        });
+      }
+      if (command.mode === 'reopen') {
+        const reopened = await reopenAfterSave(doc, command.load_id, command.text, null, {
+          backoff_ms: command.reopen_backoff_ms,
+          board_attempts: command.wait_board_attempts
+        });
+        const present = verifyPresence(doc, command.text);
+        return report({
+          ok: present, verified: present, note_present: present,
+          error_code: present ? null : (reopened.error_code || 'LOAD_OPENER_UNVERIFIED'),
+          stage: present ? 'verify' : 'reopen',
+          opener_strategy: reopened.opener_strategy || 'none',
+          tab_hint: command.tab_hint || null,
+          reopen_attempts: reopened.reopen_attempts || 0,
+          verify_reason: present ? (reopened.verify_reason || 'verified_via_scratch_scan') : null
+        });
+      }
       let opened = await openWorkspace(doc, command.load_id, {
         forbid_searchbox: !!command.forbid_searchbox
       });
@@ -793,18 +839,27 @@
       typeNote(planned.target.el, command.text);
       activate(planned.commit.el);
       let verifyOpener = opened.opener_strategy;
+      let reopenAttempts = 0;
+      let verifyReason = null;
       if (planned.commit_kind === 'WHOLE_FORM_SAVE') {
         if (planned.save_variant === 'SAVE_AND_EXIT' || !findScratch(doc)) {
-          const reopened = await reopenAfterSave(doc, command.load_id, command.text, opened);
-          if (!reopened.ok && !verifyPresence(doc, command.text) && !findScratch(doc)) {
+          const reopened = await reopenAfterSave(doc, command.load_id, command.text, opened, {
+            backoff_ms: command.reopen_backoff_ms,
+            board_attempts: command.wait_board_attempts
+          });
+          reopenAttempts = reopened.reopen_attempts || 0;
+          verifyReason = reopened.verify_reason || null;
+          if (!reopened.ok && !verifyPresence(doc, command.text)) {
             return report({
               error_code: reopened.error_code || 'LOAD_OPENER_UNVERIFIED',
-              stage: reopened.stage || 'reopen',
-              opener_strategy: reopened.opener_strategy || opened.opener_strategy,
+              stage: 'reopen',
+              opener_strategy: reopened.opener_strategy || 'none',
               note_label: planned.note_label,
               commit_kind: planned.commit_kind,
               save_variant: planned.save_variant,
               tab_hint: command.tab_hint || null,
+              reopen_attempts: reopenAttempts,
+              verify_reason: verifyReason,
               allow_whole_form_save: true
             });
           }
@@ -825,6 +880,8 @@
         note_label: planned.note_label,
         commit_kind: planned.commit_kind,
         save_variant: planned.save_variant || null,
+        reopen_attempts: reopenAttempts,
+        verify_reason: notePresent ? (verifyReason || (planned.save_variant === 'SAVE_AND_EXIT' ? 'verified_via_scratch_scan' : null)) : null,
         allow_whole_form_save: !!command.allow_whole_form_save
       });
     } catch (error) {

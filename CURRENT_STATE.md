@@ -1,5 +1,20 @@
 # Current state — 2026-09-20
 
+## Ascend write note v0.1.10 — background-owned reopen, tab_hint never null
+
+Avery 0.1.9 `a1187b7` on 1763: A `b4b0cc97` PASS OWNER_PATH/`already_open`. B
+`6e63295e` FAIL `SAVE_AND_EXIT` `stage=reopen` `LOAD_OPENER_UNVERIFIED` `none`
+~1s after claim (`tab_hint` still null). Content-only reopen did not run
+second-scale retries — PING skipped reinject of write-note.js. Portable Bridge
+**0.1.10** force-reinjects write content before every write, then the worker
+owns reopen (1s/2s/3s backoff): scratch scan → `REOPEN_AND_VERIFY` →
+`https://ascendtms.com/loads/{id}`. Save (any casing / Save Changes) wins over
+Save & Exit. Reopen fail + `#scratch` text → `VERIFIED` /
+`verified_via_scratch_scan`. Complete always stores `tab_hint` (or `missing`)
+plus `reopen_attempts` / `bridge_version` on `GET /v1/ascend/writes/{id}`.
+Harvest and agent Bearer unchanged. X1 untouched. **Not LIVE_VALIDATED.**
+Handoff: [ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
 ## Ascend write note v0.1.9 — reopen after Save & Exit, tab_hint on receipts
 
 Avery 0.1.8: no-whole-form `3d9b84c3` passed `already_open`. Whole-form
