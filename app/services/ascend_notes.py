@@ -5,9 +5,9 @@ from __future__ import annotations
 import hmac
 import re
 import secrets
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
-from pydantic import Field
+from pydantic import ConfigDict, Field, field_validator
 
 from app.core.config import Settings
 from app.models.domain import ActionPolicy, AuditEvent, Model, utcnow
@@ -20,6 +20,8 @@ NOTE_KIND = "PRIVATE_INTERNAL"
 MAX_NOTE_CHARS = 4000
 LOAD_ID = re.compile(r"^\d{1,20}$")
 APPROVAL_TTL = timedelta(minutes=15)
+CLAIM_TTL = timedelta(seconds=90)
+EXECUTE_TTL = timedelta(seconds=180)
 EVIDENCE_CLASS = "CANDIDATE"
 WHOLE_FORM_SAVE_RISK = (
     "Atlas (Booking Logistics): Private Load Note is textarea#scratch on Load Basics "
@@ -41,6 +43,8 @@ class NoteWriteBody(Model):
 
 
 class WriteCompleteBody(Model):
+    # Bridge 0.1.4 posted allow_whole_form_save; extra=forbid 422'd and left DISPATCHED.
+    model_config = ConfigDict(extra="ignore", validate_assignment=True)
     verified: bool
     note_present: bool
     error_code: str | None = Field(default=None, max_length=64)
@@ -51,6 +55,16 @@ class WriteCompleteBody(Model):
     note_label: str | None = Field(default=None, max_length=80)
     commit_kind: str | None = Field(default=None, max_length=64)
     save_variant: str | None = Field(default=None, max_length=32)
+    allow_whole_form_save: bool = False
+
+    @field_validator("error_code", mode="before")
+    @classmethod
+    def coerce_error_code(cls, value):
+        if value is None or value == "":
+            return None
+        if isinstance(value, str):
+            return value
+        return json_error_code(value)
 
 
 def normalize_note_text(value: str) -> str:
@@ -71,8 +85,37 @@ def require_load_id(load_id: str) -> str:
 def _diag(value: str | None, max_len: int = 64) -> str | None:
     if not value:
         return None
+    if isinstance(value, (list, dict, tuple)):
+        value = json_error_code(value)
     text = " ".join(str(value).split())[:max_len]
     return text or None
+
+
+def json_error_code(value) -> str:
+    if value is None:
+        return "ERROR"
+    if isinstance(value, str):
+        text = value if value != "[object Object]" else "ERROR"
+        return text[:64] or "ERROR"
+    if isinstance(value, (int, float, bool)):
+        return str(value)[:64]
+    if isinstance(value, (list, tuple)) and value:
+        return json_error_code(value[0])
+    if isinstance(value, dict):
+        for key in ("code", "error_code", "msg", "message", "detail", "type"):
+            if value.get(key) not in (None, ""):
+                return json_error_code(value[key])
+        return "ERROR"
+    return "ERROR"
+
+
+def _aware(value: str | None):
+    if not value:
+        return None
+    parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
 
 
 class AscendNoteService:
@@ -175,20 +218,30 @@ class AscendNoteService:
 
     def get_write(self, write_id: str) -> dict:
         self._require_demo()
+        self._expire_stale_writes(utcnow())
         return self._public(self.store.get(self.tenant, "ascend_note_write", write_id))
 
     def claim_pending(self, token: str) -> dict:
         self._require_demo()
         principal = self.portable._require_principal(token)
         now = utcnow()
+        expired = self._expire_stale_writes(now)
         with self.store.transaction():
             pending = [item for item in self.store.all(self.tenant, "ascend_note_write")
-                       if item["status"] == "DISPATCHED" and not item.get("claimed_at")]
+                       if item["status"] == "DISPATCHED" and (
+                           not item.get("claimed_at") or item.get("claimed_by") == principal["id"])]
             if not pending:
-                return {"pending": False, "action": NOTE_ACTION, "live_validated": False}
+                timed_out = expired[0] if expired else None
+                empty = {"pending": False, "action": NOTE_ACTION, "live_validated": False,
+                         "stage": "claim_wait"}
+                if timed_out:
+                    empty.update(write_id=timed_out["id"], error_code="BRIDGE_CLAIM_TIMEOUT",
+                                 stage="claim", status="FAILED")
+                return empty
             record = sorted(pending, key=lambda item: item["created_at"])[0]
-            record["claimed_at"] = now.isoformat()
+            record["claimed_at"] = record.get("claimed_at") or now.isoformat()
             record["claimed_by"] = principal["id"]
+            record["stage"] = "claimed"
             self.store.put(self.tenant, "ascend_note_write", record["id"], record)
             secret = self.store.get(self.tenant, "ascend_note_secret", record["id"])
             self._audit("ASCEND_NOTE_CLAIMED", "Portable bridge claimed a private-note write.",
@@ -225,7 +278,7 @@ class AscendNoteService:
                 raise ValueError("write_not_completable")
             if record.get("claimed_by") and record["claimed_by"] != principal["id"]:
                 raise PermissionError("write_not_owned")
-            status, code = self._verify_outcome(verified, note_present, error_code)
+            status, code = self._verify_outcome(verified, note_present, _diag(error_code))
             record.update(status=status, verified=status == "VERIFIED", note_present=note_present,
                           error_code=code, completed_at=now.isoformat(), completed_by=principal["id"],
                           stage=_diag(stage), opener_strategy=_diag(opener_strategy),
@@ -323,7 +376,8 @@ class AscendNoteService:
             "completed_at": None,
             "claimed_at": None,
             "claimed_by": None,
-            "stage": None,
+            "claim_deadline_at": (now + CLAIM_TTL).isoformat() if status == "DISPATCHED" else None,
+            "stage": "awaiting_bridge" if status == "DISPATCHED" else None,
             "opener_strategy": None,
             "note_label": None,
             "commit_kind": "WHOLE_FORM_SAVE" if allow_whole_form_save else None,
@@ -350,12 +404,37 @@ class AscendNoteService:
             "receipt_id", "write_id", "action", "note_kind", "load_id", "status",
             "evidence_class", "live_validated", "production_writes", "policy", "verified",
             "note_present", "text_digest", "error_code", "approval_id", "created_at",
-            "dispatched_at", "completed_at", "stage", "opener_strategy", "note_label",
-            "commit_kind", "save_variant", "allow_whole_form_save")}
+            "dispatched_at", "completed_at", "claimed_at", "claim_deadline_at", "stage",
+            "opener_strategy", "note_label", "commit_kind", "save_variant",
+            "allow_whole_form_save")}
         public["whole_form_save_risk"] = (
             WHOLE_FORM_SAVE_RISK if record.get("allow_whole_form_save")
             or record.get("commit_kind") == "WHOLE_FORM_SAVE" else None)
         return public
+
+    def _expire_stale_writes(self, now) -> list[dict]:
+        expired = []
+        for record in list(self.store.all(self.tenant, "ascend_note_write")):
+            if record.get("status") != "DISPATCHED":
+                continue
+            claimed = _aware(record.get("claimed_at"))
+            started = _aware(record.get("dispatched_at") or record.get("created_at"))
+            if started is None:
+                continue
+            limit = EXECUTE_TTL if claimed else CLAIM_TTL
+            age_from = claimed or started
+            if now - age_from < limit:
+                continue
+            record.update(status="FAILED", verified=False, note_present=False,
+                          error_code="BRIDGE_CLAIM_TIMEOUT", stage="claim",
+                          completed_at=now.isoformat())
+            self.store.put(self.tenant, "ascend_note_write", record["id"], record)
+            self._audit("ASCEND_NOTE_FAILED", "Unclaimed or unfinished note write timed out.",
+                        {"write_id": record["id"], "load_id": record["load_id"],
+                         "error_code": "BRIDGE_CLAIM_TIMEOUT"},
+                        record.get("claimed_by") or record.get("actor_id") or "bridge")
+            expired.append(record)
+        return expired
 
     def _verify_outcome(self, verified: bool, note_present: bool, error_code: str | None) -> tuple[str, str | None]:
         if verified and note_present:

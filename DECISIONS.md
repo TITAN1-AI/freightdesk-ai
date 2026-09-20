@@ -1,5 +1,16 @@
 # Decisions - 2026-09-20
 
+## Bridge must claim pending writes and never stringify errors as [object Object]
+
+0.1.4 left Avery writes `DISPATCHED`: public receipts hid `claimed_at`, the
+service worker only had a 1-minute alarm, and complete 422’d because
+`allow_whole_form_save` is extra on `WriteCompleteBody` (`extra=forbid`). 0.1.5
+wakes via `WRITE_SOON` / popup `POLL_WRITES` / tab events, reclaims the same
+principal, publishes `claimed_at`, fails unclaimed dispatches
+`BRIDGE_CLAIM_TIMEOUT`, ignores extra complete fields, and stringifies
+code/message objects in the popup and complete path. See
+docs/ASCEND_WRITE_NOTE_V0.md.
+
 ## Whole-form Save for Private Load Note is explicit and approval-gated
 
 Atlas (Booking Logistics): `#scratch` has no note-specific save. 0.1.4 may click

@@ -16,7 +16,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     manifest = json.loads((EXT / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["manifest_version"] == 3
     assert manifest["name"] == "FreightDesk Bridge"
-    assert manifest["version"] == "0.1.4"
+    assert manifest["version"] == "0.1.5"
     assert "nativeMessaging" not in manifest["permissions"]
     assert manifest["permissions"] == ["storage", "alarms", "scripting"]
     assert manifest["host_permissions"][0] == "https://ascendtms.com/*"
@@ -28,7 +28,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     assert "externally_connectable" not in manifest
     assert "web_accessible_resources" not in manifest
     identity = (EXT / "build.js").read_text(encoding="utf-8")
-    assert "extension_version: '0.1.4'" in identity
+    assert "extension_version: '0.1.5'" in identity
     assert "native_messaging: false" in identity
     assert "live_validated: false" in identity
     assert "production_writes: false" in identity
@@ -85,6 +85,16 @@ def test_portable_reinjects_content_and_keeps_manual_reload_copy():
     assert "last-write" in popup_html
     assert "writeBanner" in popup_js
     assert "NOTE_COMMIT_REQUIRES_OWNER_PATH" in popup_js
+    assert "BRIDGE_CLAIM_TIMEOUT" in popup_js
+    assert "formatLastWrite" in popup_js
+    assert "safeCode" in popup_js
+    assert "POLL_WRITES" in popup_js
+    assert "POLL_WRITES" in background
+    assert "WRITE_SOON" in background
+    assert "claimPendingWithRetry" in background
+    assert "armWritePolls" in background
+    assert "body: payload" in background
+    assert "live_validated: false" in _extract_function(background, "completeWrite")
     assert "Reload the Ascend **Active Loads** tab now" in readme
     assert "chrome.scripting.executeScript" in readme
 
@@ -263,6 +273,18 @@ def test_portable_write_note_opener_and_owner_path():
         "  searchboxes: [{label:'search', visible:true, value:''}]",
         "}, '1763');",
         "if (search.strategy !== 'unique_searchbox') throw new Error('searchbox opener missed: ' + JSON.stringify(search));",
+        "const linkSave = W.inspect({",
+        "  textareas: [{id:'scratch', label:'Private Load Note', visible:true, value:''}],",
+        "  buttons: [],",
+        "  links: [{label:'Save & Exit to Load Board', visible:true}]",
+        "}, {action:'ADD_INTERNAL_NOTE'});",
+        "if (linkSave.ok || linkSave.code !== 'NOTE_COMMIT_REQUIRES_OWNER_PATH') throw new Error('link save missed: ' + JSON.stringify(linkSave));",
+        "const linkStay = W.inspect({",
+        "  textareas: [{id:'scratch', label:'Private Load Note', visible:true, value:''}],",
+        "  buttons: [],",
+        "  links: [{label:'Save', visible:true, value:'Save'}]",
+        "}, {action:'ADD_INTERNAL_NOTE', allow_whole_form_save:true});",
+        "if (!linkStay.ok || linkStay.commit_kind !== 'WHOLE_FORM_SAVE' || linkStay.save_variant !== 'SAVE_STAY') throw new Error('link Save stay missed: ' + JSON.stringify(linkStay));",
         "const owner = W.inspect({",
         "  textareas: [{label:'Private Load Note', visible:true, value:''}],",
         "  buttons: [{label:'Save & Exit to Load Board', visible:true}]",
@@ -459,6 +481,29 @@ def test_portable_write_note_execute_whole_form_save_on_scratch():
         "  if (!save.events.includes('click')) throw new Error('did not activate stay-on-load Save');",
         "  if (saveExit.events.includes('click')) throw new Error('activated Save & Exit when Save was available');",
         "})().catch((error) => { console.error(error); process.exit(1); });",
+    ])
+    completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+def test_popup_and_request_stringify_error_objects():
+    background = (EXT / "background.js").read_text(encoding="utf-8")
+    popup = (EXT / "popup.js").read_text(encoding="utf-8")
+    script = "\n".join([
+        _extract_function(background, "safeCode"),
+        _extract_function(background, "detailCode"),
+        _extract_function(popup, "formatLastWrite"),
+        "if (safeCode({msg:'NOTE_COMMIT_REQUIRES_OWNER_PATH'}) !== 'NOTE_COMMIT_REQUIRES_OWNER_PATH') throw new Error('safeCode object');",
+        "if (safeCode([{loc:['body'], msg:'x'}]) !== 'x') throw new Error('safeCode list');",
+        "if (safeCode('[object Object]') !== 'ERROR') throw new Error('safeCode literal');",
+        "if (detailCode({detail:[{type:'value_error', msg:'write_not_completable'}]}, 422) !== 'write_not_completable') throw new Error('detailCode');",
+        "if (detailCode({detail:{code:'NOTE_CLAIM_FAILED'}}, 403) !== 'NOTE_CLAIM_FAILED') throw new Error('detail object');",
+        "const painted = formatLastWrite({status:'FAILED', error_code:{msg:'NOTE_SAVE_CONTROL_UNVERIFIED'}, stage:'inspect', opener_strategy:'already_open', commit_kind:'MISSING'});",
+        "if (painted.includes('[object Object]')) throw new Error('popup leaked object: ' + painted);",
+        "if (!painted.includes('NOTE_SAVE_CONTROL_UNVERIFIED')) throw new Error('popup missed code: ' + painted);",
+        "const claiming = formatLastWrite({status:'DISPATCHED', stage:'claim_wait'});",
+        "if (!claiming.includes('claiming')) throw new Error('claim progress missing: ' + claiming);",
+        "if (formatLastWrite({status:'FAILED', error_code:[{msg:'BRIDGE_CLAIM_TIMEOUT'}]}).includes('[object Object]')) throw new Error('timeout object leaked');",
     ])
     completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
     assert completed.returncode == 0, completed.stderr or completed.stdout

@@ -6,14 +6,26 @@ const lastEl = document.getElementById('last');
 const lastWriteEl = document.getElementById('last-write');
 const apiEl = document.getElementById('api');
 
+function safeCode(value) {
+  if (value == null || value === '') return null;
+  if (typeof value === 'string') return value === '[object Object]' ? 'ERROR' : value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value) && value.length) return safeCode(value[0]);
+  if (typeof value === 'object') {
+    return safeCode(value.code || value.error_code || value.msg || value.message || value.detail || value.type) || 'ERROR';
+  }
+  return 'ERROR';
+}
+
 function paint(view) {
   const code = view.code || (view.signed_in ? 'LEASE_READY' : 'NOT_SIGNED_IN');
   const attachFailed = view.last_error?.code === 'CONTENT_UNAVAILABLE';
   const write = view.last_write;
   const writeFailed = write && write.status === 'FAILED' && write.error_code;
+  const writeClaiming = write && (write.status === 'DISPATCHED' || write.stage === 'claim_wait' || write.stage === 'claimed');
   const message = writeFailed
     ? writeBanner(write)
-    : (view.message || view.last_error?.message || defaultMessage(code, view));
+    : (writeClaiming ? claimBanner(write) : (view.message || view.last_error?.message || defaultMessage(code, view)));
   banner.textContent = message;
   banner.className = 'status ' + ((code === 'HARVESTING' || code === 'LEASE_READY') && !attachFailed && !writeFailed ? 'ok' : 'warn');
   const lease = view.lease;
@@ -27,21 +39,36 @@ function paint(view) {
   lastEl.textContent = last
     ? (last.row_count + ' rows · ' + last.revision.slice(0, 12) + '… · not LIVE_VALIDATED')
     : 'none';
-  lastWriteEl.textContent = write
-    ? ([write.status, write.error_code || 'ok', write.stage, write.opener_strategy, write.commit_kind]
-      .filter(Boolean).join(' · ') + ' · not LIVE_VALIDATED')
-    : 'none';
+  lastWriteEl.textContent = formatLastWrite(write);
   if (view.api_base) apiEl.value = view.api_base;
 }
 
+function formatLastWrite(write) {
+  if (!write) return 'none';
+  const parts = [
+    write.status,
+    safeCode(write.error_code) || (write.stage === 'claim_wait' || write.stage === 'claimed' ? 'claiming' : 'ok'),
+    write.stage,
+    write.opener_strategy,
+    write.commit_kind
+  ].filter(Boolean);
+  return parts.join(' · ') + ' · not LIVE_VALIDATED';
+}
+
+function claimBanner(write) {
+  if (write.stage === 'claimed') return 'Bridge claimed the note write and is running on the Ascend tab.';
+  return 'Waiting to claim a dispatched note write. Keep this popup or the Ascend tab focused.';
+}
+
 function writeBanner(write) {
-  const code = write.error_code || 'NOTE_WRITE_FAILED';
+  const code = safeCode(write.error_code) || 'NOTE_WRITE_FAILED';
   return ({
     LOAD_OPENER_UNVERIFIED: 'Could not open the load workspace (no unique row, searchbox, or already-open Private Load Note). Harvest Active Loads is not required.',
     LOAD_IDENTITY_UNVERIFIED: 'A private note control is visible, but this tab is not proven as the requested load.',
     LOAD_DETAIL_UNVERIFIED: 'Opened a load control, but the load workspace did not settle.',
     NOTE_COMMIT_REQUIRES_OWNER_PATH: 'Private Load Note (#scratch) needs a whole-form Save approval (allow_whole_form_save). Without it, Bridge will not click Save / Save & Exit.',
     NOTE_SAVE_CONTROL_UNVERIFIED: 'No note-specific Add/Save Note control was found. Bridge will not click Save Load.',
+    BRIDGE_CLAIM_TIMEOUT: 'Bridge did not claim the write in time. Reload unpacked 0.1.5, keep the popup open, and retry.',
     ASCEND_TAB_MISSING: 'Open an authenticated Ascend tab, then retry the note write.',
     PRIVATE_NOTE_NOT_FOUND: 'Private Load Note / Private Notes was not found on the load workspace.',
     CONTENT_UNAVAILABLE: 'Reload the Ascend tab (F5) so the Bridge can attach, then retry the note write.'
@@ -65,9 +92,16 @@ async function send(action, extra) {
     paint({ ...status, message: result.message, code: result.code });
     return result;
   }
-  const status = action === 'STATUS' ? result : await chrome.runtime.sendMessage({ action: 'STATUS' });
+  const status = action === 'STATUS' || action === 'POLL_WRITES'
+    ? (action === 'STATUS' ? result : await chrome.runtime.sendMessage({ action: 'STATUS' }))
+    : await chrome.runtime.sendMessage({ action: 'STATUS' });
   paint(status);
   return status;
+}
+
+async function refreshWrites() {
+  await chrome.runtime.sendMessage({ action: 'POLL_WRITES' });
+  return send('STATUS');
 }
 
 document.getElementById('save-api').onclick = () => send('SET_API', { api_base: apiEl.value.trim() });
@@ -77,4 +111,5 @@ document.getElementById('create').onclick = () => send('CREATE_LEASE');
 document.getElementById('start').onclick = () => send('START');
 document.getElementById('stop').onclick = () => send('STOP');
 document.getElementById('revoke').onclick = () => send('REVOKE');
-send('STATUS');
+send('STATUS').then(refreshWrites);
+setInterval(refreshWrites, 4000);

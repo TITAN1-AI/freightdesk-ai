@@ -1,5 +1,20 @@
 # Current state — 2026-09-20
 
+## Ascend write note v0.1.5 — claim path, timeout, stringify
+
+Avery 0.1.4 on load 1763: writes `8a7dcacb` / `a433ed36` stayed `DISPATCHED`.
+Public receipts omitted `claimed_at`; complete 422’d on extra
+`allow_whole_form_save` (`[object Object]`); Save-as-`<a>` was `MISSING`.
+Portable Bridge **0.1.5** claims with 1s/4s `WRITE_SOON` + popup poll + tab
+wake; reclaims the same principal; publishes `claimed_at` / `claim_deadline_at`;
+fails unclaimed writes `BRIDGE_CLAIM_TIMEOUT` (90s / 180s after claim);
+stringifies popup/API `error_code`; ignores extra complete fields; treats Save
+links and `input value` as commit controls. Without `allow_whole_form_save`,
+after claim the terminal is `NOTE_COMMIT_REQUIRES_OWNER_PATH` (no type/save).
+With the flag: type `#scratch` → Save / Save & Exit → verify. Harvest and
+agent Bearer unchanged. X1 untouched. **Not LIVE_VALIDATED.** Handoff:
+[ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
 ## Ascend write note v0.1.4 — atlas #scratch + explicit whole-form Save
 
 Booking Logistics atlas: Private Load Note is `textarea#scratch` (Load Basics,
@@ -39,13 +54,14 @@ status, money, New Load and public notes stay blocked. Harvest and
 agent Bearer reads are unchanged. X1 untouched. **Not LIVE_VALIDATED.** Handoff:
 [ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
 
-Verification: 77 focused tests passed (`tests/test_ascend_notes.py`,
+Verification: 82 focused tests passed (`tests/test_ascend_notes.py`,
 `tests/test_portable_bridge_extension.py`, `tests/test_portable_leases.py`,
 `tests/test_ascend_facade.py`, `tests/test_agent_sessions.py`, `tests/test_api.py`,
-`tests/test_control_plane.py`). New coverage: missing `allow_whole_form_save` stays
-`NOTE_COMMIT_REQUIRES_OWNER_PATH`; flagged approval + fixture Save path VERIFIED;
-`#scratch` typed and stay-on-load Save clicked; `#notes` never written. Ruff passed
-on the changed modules. Node syntax passed on portable-bridge JS and
+`tests/test_control_plane.py`). New coverage: reclaim sets `claimed_at`; unclaimed
+dispatch becomes `BRIDGE_CLAIM_TIMEOUT`; complete accepts extra
+`allow_whole_form_save` without 422; object `error_code` stringifies; popup never
+paints `[object Object]`; Save-as-`<a>` is `OWNER_PATH` / flagged `SAVE_STAY`.
+Ruff passed on the changed modules. Node syntax passed on portable-bridge JS and
 `portable-notes.js`. Two existing Starlette/AnyIO deprecation warnings remain.
 No vendor write and no LIVE_VALIDATED claim.
 

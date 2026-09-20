@@ -12,7 +12,7 @@ X1 / native host is unchanged. Harvest and agent Bearer reads stay as they were.
 | Action | `ASCEND_ADD_INTERNAL_NOTE` (policy). Mint alias `ASCEND_ADD_INTERNAL_NOTE_VIA_SAVE` sets the whole-form flag |
 | Policy | **APPROVAL_REQUIRED** (default). Other writes stay unavailable / FORBIDDEN at this facade |
 | Auth | Same as the read facade: demo agent Bearer, owner session, or portable device token |
-| Actuator | Portable Bridge 0.1.4 on an already-authenticated Ascend tab |
+| Actuator | Portable Bridge 0.1.5 on an already-authenticated Ascend tab |
 | Evidence | CANDIDATE receipts. `live_validated=false`. `production_writes=false` |
 | Note kind | Private / internal only — atlas `textarea#scratch` / Private Load Note. `#notes` (Public Load Note) is blocked |
 | Whole-form Save | Allowed only when the approval sets `allow_whole_form_save: true`. Otherwise `NOTE_COMMIT_REQUIRES_OWNER_PATH` |
@@ -20,7 +20,7 @@ X1 / native host is unchanged. Harvest and agent Bearer reads stay as they were.
 
 ## Atlas (Booking Logistics sitemap)
 
-Authoritative for this brokerage’s Ascend. Bridge 0.1.4 binds these selectors:
+Authoritative for this brokerage’s Ascend. Bridge 0.1.5 binds these selectors:
 
 | Control | Atlas | Bridge |
 | --- | --- | --- |
@@ -63,8 +63,9 @@ curl -sS -X POST http://127.0.0.1:8787/v1/ascend/loads/1763/notes \
 Receipt fields: `write_id`, `status` (`PENDING_APPROVAL` | `DISPATCHED` | `VERIFIED` |
 `FAILED`), `evidence_class`, `verified`, `note_present`, `text_digest`, `error_code`,
 `stage`, `opener_strategy`, `note_label`, `commit_kind`, `save_variant`,
-`allow_whole_form_save`, `whole_form_save_risk`.
-Note text is never returned on the agent receipt or audit.
+`allow_whole_form_save`, `whole_form_save_risk`, `claimed_at`, `claim_deadline_at`.
+Unclaimed `DISPATCHED` writes fail `BRIDGE_CLAIM_TIMEOUT` after 90s; claimed but
+unfinished writes use 180s. Note text is never returned on the agent receipt or audit.
 
 ## How demo approval is granted
 
@@ -99,8 +100,13 @@ Without the flag: do not type or click; `NOTE_COMMIT_REQUIRES_OWNER_PATH`.
 
 ## Bridge path
 
-Portable Bridge **0.1.4** polls `GET /v1/portable/writes/pending` (claim includes
-`allow_whole_form_save`). It does **not** require harvest `ACTIVE_VIEW_UNVERIFIED`
+Portable Bridge **0.1.5** claims `GET /v1/portable/writes/pending` (sets `claimed_at`;
+includes `allow_whole_form_save`). Wake sources: 1-minute write alarm, one-shot
+`WRITE_SOON` (+1s / +4s), popup `POLL_WRITES` every 4s, tab complete / activate.
+The same principal may reclaim an incomplete dispatch. Complete ignores extra body
+fields (0.1.4’s `allow_whole_form_save` extra caused HTTP 422 / `[object Object]`
+and left the API `DISPATCHED`). Popup `error_code` is stringified — never
+`[object Object]`. It does **not** require harvest `ACTIVE_VIEW_UNVERIFIED`
 to be cleared. Opening a load is independent of the Active Loads view contract:
 
 1. **Already-open workspace** — unique `#scratch` / Private Load Note
@@ -126,25 +132,38 @@ Note found; only Save & Exit; Avery did not click Save Load.
 0.1.3: opener no longer needs Active Loads; Save & Exit failed closed as
 `NOTE_COMMIT_REQUIRES_OWNER_PATH`.
 
-0.1.4: atlas `#scratch` + explicit whole-form approval. Same safe fail without the flag.
+0.1.4: atlas `#scratch` + explicit whole-form approval. Field fail: writes
+`8a7dcacb` / `a433ed36` stayed `DISPATCHED` with public `claimed_at` omitted;
+complete 422’d on extra `allow_whole_form_save` (`[object Object]`); Save-as-link
+was `MISSING` instead of `NOTE_COMMIT_REQUIRES_OWNER_PATH`.
+
+0.1.5: public `claimed_at` / `claim_deadline_at`, reclaim, `BRIDGE_CLAIM_TIMEOUT`,
+faster wake, complete extra-ignore, popup stringify, Save `<a>` / `input value`.
 
 ## Avery re-test checklist (load 1763)
 
-Reload unpacked Bridge **0.1.4**. Sit on authenticated Ascend — Active Loads does
-**not** need to be the verified view. Preferred: already on 1763 Load Basics with
-`#scratch` / Private Load Note visible.
+Reload unpacked Bridge **0.1.5**. Demo-sign-in in the popup and **keep the popup
+open**. Sit on authenticated Ascend — Active Loads does **not** need to be the
+verified view. Preferred: already on 1763 Load Basics with `#scratch` / Private
+Load Note visible.
 
 1. POST without approval → `403` / `PENDING_APPROVAL`
-2. Mint **without** `allow_whole_form_save` + POST → `DISPATCHED` then `FAILED` /
-   `NOTE_COMMIT_REQUIRES_OWNER_PATH`. Textarea untyped. **Do not click Save**
-3. Mint **with** `allow_whole_form_save: true` (dashboard checkbox or curl above) + POST
-4. Expect Bridge to type `#scratch` only (never `#notes`), click **Save** if present,
-   else **Save & Exit**, then re-read `#scratch`
-5. Poll `GET /v1/ascend/writes/{id}` → `VERIFIED` + `note_present=true` +
+2. Mint **without** `allow_whole_form_save` + POST → `DISPATCHED` with
+   `claimed_at` set within a few seconds, then terminal `FAILED` /
+   `NOTE_COMMIT_REQUIRES_OWNER_PATH`. Textarea untyped. **Do not click Save**.
+   Popup must not show `[object Object]`
+3. If still `DISPATCHED` and `claimed_at=null` after ~90s → `BRIDGE_CLAIM_TIMEOUT`
+   (not a hang). Reload 0.1.5 and keep the popup open, then retry
+4. Mint **with** `allow_whole_form_save: true` (dashboard checkbox or curl above) + POST
+5. Expect `claimed_at` set, then Bridge types `#scratch` only (never `#notes`),
+   clicks **Save** if present (button, link, or submit value), else **Save & Exit**,
+   then re-reads `#scratch`
+6. Poll `GET /v1/ascend/writes/{id}` → `VERIFIED` + `note_present=true` +
    `commit_kind=WHOLE_FORM_SAVE` + `whole_form_save_risk` set. Or `FAILED` with a
-   clear `error_code` / `stage` — not silent success
-6. Popup **Last write** shows the write code, not harvest `ACTIVE_VIEW_UNVERIFIED`
-7. Still no status / assign / money / New Load / public note / communications
+   clear string `error_code` / `stage` — not silent success, not `[object Object]`
+7. Popup **Last write** shows the write code and claim progress (`claiming` /
+   `claimed`), not harvest `ACTIVE_VIEW_UNVERIFIED`
+8. Still no status / assign / money / New Load / public note / communications
 
 ## API
 
@@ -161,7 +180,7 @@ Existing `GET /v1/ascend/status`, `GET /v1/ascend/loads`, `/v1/agent/session`, a
 
 ## LIVE field gaps (Avery)
 
-These stay UNKNOWN until a 0.1.4 field pass. Do not promote LIVE_VALIDATED from fixtures.
+These stay UNKNOWN until a 0.1.5 field pass. Do not promote LIVE_VALIDATED from fixtures.
 
 - Whether stay-on-load **Save** is distinguishable from **Save & Exit** on 1763
 - Whether `#scratch` retains the text after Save / after Save & Exit + re-open

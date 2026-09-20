@@ -5,7 +5,9 @@ const ALARM = 'portable-harvest';
 const PORTABLE_HEADER = { 'X-FreightDesk-Portable': '1' };
 const CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'write-note.js', 'content.js']);
 const WRITE_ALARM = 'portable-writes';
+const WRITE_SOON = 'portable-writes-soon';
 const CONTENT_RELOAD_MESSAGE = 'Reload the Ascend Active Loads tab now (F5), then press Start harvest.';
+let writePollInFlight = null;
 
 async function stored() {
   return chrome.storage.local.get({
@@ -48,11 +50,28 @@ async function request(path, { method = 'GET', token = null, body = null, extraH
   let payload = null;
   try { payload = await response.json(); } catch { payload = null; }
   if (!response.ok) {
-    const detail = payload?.detail || ('HTTP_' + response.status);
-    const code = response.status === 401 ? 'NOT_SIGNED_IN' : String(detail);
+    const code = response.status === 401 ? 'NOT_SIGNED_IN' : detailCode(payload, response.status);
     throw Object.assign(new Error(code), { code, status: response.status });
   }
   return payload;
+}
+
+function detailCode(payload, status) {
+  const detail = payload && payload.detail;
+  const code = safeCode(detail);
+  if (code && code !== 'ERROR' && code !== '[object Object]') return code;
+  return 'HTTP_' + status;
+}
+
+function safeCode(value) {
+  if (value == null || value === '') return null;
+  if (typeof value === 'string') return value === '[object Object]' ? 'ERROR' : value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value) && value.length) return safeCode(value[0]);
+  if (typeof value === 'object') {
+    return safeCode(value.code || value.error_code || value.msg || value.message || value.detail || value.type) || 'ERROR';
+  }
+  return 'ERROR';
 }
 
 async function publicStatus() {
@@ -88,7 +107,7 @@ async function signInPlaceholder() {
     extraHeaders: PORTABLE_HEADER,
     body: { placeholder: true }
   });
-  await chrome.alarms.create(WRITE_ALARM, { periodInMinutes: 1 });
+  await armWritePolls();
   const next = await save({
     device_token: payload.device_token,
     device_id: payload.device_id,
@@ -102,6 +121,7 @@ async function signInPlaceholder() {
 async function signOut() {
   await chrome.alarms.clear(ALARM);
   await chrome.alarms.clear(WRITE_ALARM);
+  await chrome.alarms.clear(WRITE_SOON);
   return save({
     device_token: null,
     device_id: null,
@@ -122,7 +142,7 @@ async function createLease() {
     token: state.device_token,
     body: { origin: ASCEND_ORIGIN, scope: 'VISIBLE_BOARD_ONLY', ttl_seconds: 900 }
   });
-  await chrome.alarms.create(WRITE_ALARM, { periodInMinutes: 1 });
+  await armWritePolls();
   const next = await save({ lease, last_error: null });
   await pollWrites();
   return next;
@@ -140,19 +160,84 @@ async function revokeLease() {
   return save({ lease, harvest_enabled: false, last_error: null });
 }
 
+async function armWritePolls() {
+  await chrome.alarms.create(WRITE_ALARM, { periodInMinutes: 1 });
+  await chrome.alarms.create(WRITE_SOON, { when: Date.now() + 1000 });
+}
+
+function scheduleWriteSoon() {
+  chrome.alarms.create(WRITE_SOON, { when: Date.now() + 4000 });
+}
+
+async function markWrite(patch) {
+  const state = await stored();
+  const prev = state.last_write || {};
+  return save({ last_write: { ...prev, ...patch, updated_at: new Date().toISOString() } });
+}
+
+async function claimPendingWithRetry(token) {
+  let last = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await request('/v1/portable/writes/pending', { token });
+    } catch (error) {
+      last = error;
+      const code = safeCode(error?.code) || 'NOTE_CLAIM_FAILED';
+      if (code === 'NOT_SIGNED_IN' || code === 'device_session_required') throw error;
+      await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)));
+    }
+  }
+  throw last || Object.assign(new Error('NOTE_CLAIM_FAILED'), { code: 'NOTE_CLAIM_FAILED' });
+}
+
 async function pollWrites() {
+  if (writePollInFlight) return writePollInFlight;
+  writePollInFlight = pollWritesOnce().finally(() => { writePollInFlight = null; });
+  return writePollInFlight;
+}
+
+async function pollWritesOnce() {
   const state = await stored();
   if (!state.device_token) return;
+  scheduleWriteSoon();
+  if (state.last_write && (state.last_write.status === 'DISPATCHED' || state.last_write.status === 'IDLE')) {
+    await markWrite({
+      status: 'DISPATCHED',
+      stage: state.last_write.stage === 'claimed' ? 'claimed' : 'claim_wait',
+      error_code: null,
+      write_id: state.last_write.write_id || null
+    });
+  }
   let pending;
   try {
-    pending = await request('/v1/portable/writes/pending', { token: state.device_token });
+    pending = await claimPendingWithRetry(state.device_token);
   } catch (error) {
-    const code = error.code || 'NOTE_CLAIM_FAILED';
+    const code = safeCode(error.code) || 'NOTE_CLAIM_FAILED';
     if (code === 'NOT_SIGNED_IN' || code === 'device_session_required') return;
-    await save({ last_write: { write_id: null, status: 'FAILED', error_code: code, stage: 'claim' } });
+    await markWrite({ write_id: state.last_write?.write_id || null, status: 'FAILED', error_code: code, stage: 'claim' });
     return;
   }
-  if (!pending?.pending || !pending.write_id) return;
+  if (!pending?.pending || !pending.write_id) {
+    const timeout = safeCode(pending?.error_code);
+    if (timeout === 'BRIDGE_CLAIM_TIMEOUT') {
+      await markWrite({
+        write_id: pending.write_id || state.last_write?.write_id || null,
+        status: 'FAILED',
+        error_code: 'BRIDGE_CLAIM_TIMEOUT',
+        stage: 'claim'
+      });
+    }
+    return;
+  }
+  await markWrite({
+    write_id: pending.write_id,
+    load_id: pending.load_id,
+    status: 'DISPATCHED',
+    stage: 'claimed',
+    error_code: null,
+    allow_whole_form_save: !!pending.allow_whole_form_save,
+    commit_kind: pending.commit_kind || null
+  });
   const tabs = await chrome.tabs.query({ url: ASCEND_ORIGIN + '/*' });
   if (!tabs.length) {
     await completeWrite(state.device_token, pending.write_id, {
@@ -184,10 +269,10 @@ async function pollWrites() {
   await completeWrite(state.device_token, pending.write_id, {
     verified: !!result?.verified,
     note_present: !!result?.note_present,
-    error_code: result?.error_code || null,
+    error_code: safeCode(result?.error_code),
     live_validated: false,
     production_writes: false,
-    stage: result?.stage || null,
+    stage: result?.stage || 'execute',
     opener_strategy: result?.opener_strategy || null,
     note_label: result?.note_label || null,
     commit_kind: result?.commit_kind || null,
@@ -204,15 +289,27 @@ function pickWriteTab(tabs, loadId) {
 }
 
 async function completeWrite(token, writeId, body) {
-  const local = {
-    write_id: writeId,
-    status: body?.verified && body?.note_present ? 'VERIFIED' : 'FAILED',
-    error_code: body?.error_code || null,
+  const payload = {
+    verified: !!body?.verified,
+    note_present: !!body?.note_present,
+    error_code: safeCode(body?.error_code),
+    live_validated: false,
+    production_writes: false,
     stage: body?.stage || null,
     opener_strategy: body?.opener_strategy || null,
     note_label: body?.note_label || null,
     commit_kind: body?.commit_kind || null,
-    save_variant: body?.save_variant || null,
+    save_variant: body?.save_variant || null
+  };
+  const local = {
+    write_id: writeId,
+    status: payload.verified && payload.note_present ? 'VERIFIED' : 'FAILED',
+    error_code: payload.error_code,
+    stage: payload.stage,
+    opener_strategy: payload.opener_strategy,
+    note_label: payload.note_label,
+    commit_kind: payload.commit_kind,
+    save_variant: payload.save_variant,
     allow_whole_form_save: !!body?.allow_whole_form_save,
     completed_at: new Date().toISOString()
   };
@@ -220,13 +317,14 @@ async function completeWrite(token, writeId, body) {
     const receipt = await request('/v1/portable/writes/' + writeId + '/complete', {
       method: 'POST',
       token,
-      body
+      body: payload
     });
     await save({ last_write: { ...local, status: receipt?.status || local.status,
-      error_code: receipt?.error_code || local.error_code } });
+      error_code: safeCode(receipt?.error_code) || local.error_code } });
   } catch (error) {
     await save({ last_write: { ...local, status: 'FAILED',
-      error_code: error.code || 'NOTE_COMPLETE_FAILED', stage: local.stage || 'complete' } });
+      error_code: safeCode(error.code) || 'NOTE_COMPLETE_FAILED',
+      stage: local.stage || 'complete' } });
   }
 }
 
@@ -238,7 +336,7 @@ async function setHarvest(enabled) {
       throw Object.assign(new Error('LEASE_MISSING'), { code: 'LEASE_MISSING' });
     }
     await chrome.alarms.create(ALARM, { periodInMinutes: 1 });
-    await chrome.alarms.create(WRITE_ALARM, { periodInMinutes: 1 });
+    await armWritePolls();
     await save({ harvest_enabled: true, last_error: null });
     await ensureOpenAscendTabs({ allowReload: false });
     await harvestOnce();
@@ -385,17 +483,27 @@ chrome.runtime.onInstalled.addListener((details) => {
   chrome.storage.local.set({ api_base: DEFAULT_API, harvest_enabled: false, live_validated: false });
   const allowReload = details.reason === 'install' || details.reason === 'update';
   ensureOpenAscendTabs({ allowReload });
+  armWritePolls();
 });
 
 chrome.runtime.onStartup.addListener(() => {
   ensureOpenAscendTabs({ allowReload: false });
-  chrome.alarms.create(WRITE_ALARM, { periodInMinutes: 1 });
+  armWritePolls();
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === ALARM) harvestOnce();
-  if (alarm.name === WRITE_ALARM) pollWrites();
+  if (alarm.name === WRITE_ALARM || alarm.name === WRITE_SOON) pollWrites();
 });
+
+if (chrome.tabs?.onUpdated) {
+  chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && ascendTabUrl(tab?.url)) pollWrites();
+  });
+}
+if (chrome.tabs?.onActivated) {
+  chrome.tabs.onActivated.addListener(() => { pollWrites(); });
+}
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   const actions = {
@@ -406,6 +514,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     REVOKE: revokeLease,
     START: () => setHarvest(true),
     STOP: () => setHarvest(false),
+    POLL_WRITES: pollWrites,
     SET_API: async () => {
       const apiBase = String(message.api_base || DEFAULT_API).replace(/\/$/, '');
       if (!/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(apiBase)) {

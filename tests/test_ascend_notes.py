@@ -1,6 +1,9 @@
 """Ascend private-internal-note write facade. Not LIVE_VALIDATED."""
 
-from app.models.domain import ActionPolicy
+from datetime import timedelta
+
+from app.models.domain import ActionPolicy, utcnow
+from app.services.ascend_notes import json_error_code
 from tests.test_agent_sessions import mint_agent
 from tests.test_portable_leases import sign_in
 
@@ -309,3 +312,94 @@ def test_via_save_action_is_alias_for_whole_form_flag(client):
     claimed = client.get("/v1/portable/writes/pending", headers=agent_headers(token)).json()
     assert claimed["allow_whole_form_save"] is True
     assert claimed["text"] == "via save alias"
+
+
+def test_bridge_can_reclaim_incomplete_dispatch(client):
+    token = mint_agent(client)
+    minted = mint_approval(client, token, "1763")
+    posted = client.post("/v1/ascend/loads/1763/notes",
+                         json={"text": "retry claim", "approval_token": minted["approval_token"]},
+                         headers=agent_headers(token)).json()
+    assert posted["status"] == "DISPATCHED"
+    assert posted["claimed_at"] is None
+    assert posted["stage"] == "awaiting_bridge"
+    first = client.get("/v1/portable/writes/pending", headers=agent_headers(token)).json()
+    assert first["pending"] is True
+    assert first["write_id"] == posted["write_id"]
+    after = client.get(f"/v1/ascend/writes/{posted['write_id']}", headers=agent_headers(token)).json()
+    assert after["status"] == "DISPATCHED"
+    assert after["claimed_at"]
+    assert after["stage"] == "claimed"
+    second = client.get("/v1/portable/writes/pending", headers=agent_headers(token)).json()
+    assert second["pending"] is True
+    assert second["write_id"] == posted["write_id"]
+    assert second["text"] == "retry claim"
+
+
+def test_unclaimed_dispatch_times_out_as_bridge_claim_timeout(client):
+    token = mint_agent(client)
+    minted = mint_approval(client, token, "1763")
+    posted = client.post("/v1/ascend/loads/1763/notes",
+                         json={"text": "never claimed", "approval_token": minted["approval_token"]},
+                         headers=agent_headers(token)).json()
+    store = client.app.state.control.store
+    record = store.get("booking-logistics", "ascend_note_write", posted["write_id"])
+    stale = (utcnow() - timedelta(seconds=120)).isoformat()
+    record["created_at"] = stale
+    record["dispatched_at"] = stale
+    record["claim_deadline_at"] = stale
+    store.put("booking-logistics", "ascend_note_write", posted["write_id"], record)
+    fetched = client.get(f"/v1/ascend/writes/{posted['write_id']}", headers=agent_headers(token))
+    assert fetched.status_code == 200
+    assert fetched.json()["status"] == "FAILED"
+    assert fetched.json()["error_code"] == "BRIDGE_CLAIM_TIMEOUT"
+    assert fetched.json()["verified"] is False
+    empty = client.get("/v1/portable/writes/pending", headers=agent_headers(token)).json()
+    assert empty["pending"] is False
+
+
+def test_complete_coerces_object_error_code(client):
+    token = mint_agent(client)
+    minted = mint_approval(client, token, "1763")
+    posted = client.post("/v1/ascend/loads/1763/notes",
+                         json={"text": "object code", "approval_token": minted["approval_token"]},
+                         headers=agent_headers(token)).json()
+    client.get("/v1/portable/writes/pending", headers=agent_headers(token))
+    completed = client.post(
+        f"/v1/portable/writes/{posted['write_id']}/complete",
+        json={"verified": False, "note_present": False,
+              "error_code": {"msg": "NOTE_COMMIT_REQUIRES_OWNER_PATH", "loc": ["body"]},
+              "live_validated": False, "production_writes": False,
+              "stage": "inspect", "commit_kind": "WHOLE_FORM_SAVE"},
+        headers=agent_headers(token))
+    assert completed.status_code == 200
+    assert completed.json()["error_code"] == "NOTE_COMMIT_REQUIRES_OWNER_PATH"
+    assert json_error_code([{"msg": "NOTE_COMMIT_REQUIRES_OWNER_PATH"}]) == "NOTE_COMMIT_REQUIRES_OWNER_PATH"
+
+
+def test_complete_accepts_bridge_extra_fields_without_422(client):
+    token = mint_agent(client)
+    minted = mint_approval(client, token, "1763")
+    posted = client.post("/v1/ascend/loads/1763/notes",
+                         json={"text": "extra field", "approval_token": minted["approval_token"]},
+                         headers=agent_headers(token)).json()
+    client.get("/v1/portable/writes/pending", headers=agent_headers(token))
+    completed = client.post(
+        f"/v1/portable/writes/{posted['write_id']}/complete",
+        json={"verified": False, "note_present": False,
+              "error_code": "NOTE_COMMIT_REQUIRES_OWNER_PATH",
+              "live_validated": False, "production_writes": False,
+              "stage": "inspect", "opener_strategy": "already_open",
+              "commit_kind": "WHOLE_FORM_SAVE",
+              "allow_whole_form_save": False,
+              "unknown_future_field": "ignore-me"},
+        headers=agent_headers(token))
+    assert completed.status_code == 200
+    receipt = completed.json()
+    assert receipt["status"] == "FAILED"
+    assert receipt["error_code"] == "NOTE_COMMIT_REQUIRES_OWNER_PATH"
+    assert receipt["claimed_at"]
+    fetched = client.get(f"/v1/ascend/writes/{posted['write_id']}", headers=agent_headers(token)).json()
+    assert fetched["status"] == "FAILED"
+    assert fetched["claimed_at"]
+    assert fetched["error_code"] == "NOTE_COMMIT_REQUIRES_OWNER_PATH"

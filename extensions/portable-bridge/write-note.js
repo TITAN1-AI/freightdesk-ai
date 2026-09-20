@@ -43,7 +43,7 @@
 
   function controlLabel(el) {
     const labeled = el.labels && el.labels.length === 1 ? el.labels[0].textContent : '';
-    return norm(el.getAttribute('aria-label') || labeled || el.placeholder || el.textContent);
+    return norm(el.getAttribute('aria-label') || labeled || el.placeholder || el.value || el.textContent);
   }
 
   function isPrivateNoteLabel(label) {
@@ -116,10 +116,11 @@
 
   function planCommit(scan, options) {
     const allow = !!(options && options.allow_whole_form_save);
-    const commits = (scan.buttons || []).filter((item) => item.visible && isNoteCommitLabel(item.label));
-    const stay = (scan.buttons || []).filter((item) => item.visible && classifyWholeFormSave(item.label) === 'SAVE_STAY');
-    const exit = (scan.buttons || []).filter((item) => item.visible && classifyWholeFormSave(item.label) === 'SAVE_AND_EXIT');
-    const forbidden = (scan.buttons || []).filter((item) => item.visible && isForbiddenCommitLabel(item.label));
+    const controls = commitControls(scan);
+    const commits = controls.filter((item) => item.visible && isNoteCommitLabel(item.label));
+    const stay = controls.filter((item) => item.visible && classifyWholeFormSave(item.label) === 'SAVE_STAY');
+    const exit = controls.filter((item) => item.visible && classifyWholeFormSave(item.label) === 'SAVE_AND_EXIT');
+    const forbidden = controls.filter((item) => item.visible && isForbiddenCommitLabel(item.label));
     if (commits.length === 1) {
       return { ok: true, commit: commits[0], commit_kind: 'NOTE_SPECIFIC', save_variant: 'NOTE_SPECIFIC',
         forbidden_visible: forbidden.length };
@@ -155,6 +156,18 @@
     }
     return { ok: false, code: 'NOTE_SAVE_CONTROL_UNVERIFIED', commit_kind: 'MISSING',
       forbidden_visible: forbidden.length };
+  }
+
+  function commitControls(scan) {
+    const seen = new Set();
+    const out = [];
+    for (const item of [...(scan.buttons || []), ...(scan.links || [])]) {
+      const key = item.el || item.label || item;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(item);
+    }
+    return out;
   }
 
   function inspect(scan, command) {
