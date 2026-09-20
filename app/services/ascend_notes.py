@@ -247,6 +247,7 @@ class AscendNoteService:
                      error_code: str | None = None, approval_id: str | None = None) -> dict:
         write_id = secrets.token_hex(16)
         return {
+            "id": write_id,
             "receipt_id": write_id,
             "write_id": write_id,
             "action": NOTE_ACTION,

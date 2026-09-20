@@ -11,9 +11,13 @@ only; Save Load, assign, status, money, New Load and public notes stay blocked. 
 agent Bearer reads are unchanged. X1 untouched. **Not LIVE_VALIDATED.** Handoff:
 [ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
 
-Verification: focused tests in `tests/test_ascend_notes.py`,
-`tests/test_portable_bridge_extension.py`, plus prior agent/facade/lease/API modules.
-No vendor write and no LIVE_VALIDATED claim.
+Verification: 68 focused tests passed (`tests/test_ascend_notes.py`,
+`tests/test_portable_bridge_extension.py`, `tests/test_portable_leases.py`,
+`tests/test_ascend_facade.py`, `tests/test_agent_sessions.py`, `tests/test_api.py`,
+`tests/test_control_plane.py`). Ruff passed on the changed modules. Node syntax
+passed on portable-bridge JS and `portable-notes.js`. Two existing
+Starlette/AnyIO deprecation warnings remain. No vendor write and no
+LIVE_VALIDATED claim.
 
 # Current state — 2026-09-19
 

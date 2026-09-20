@@ -2,7 +2,7 @@
 
 from app.models.domain import ActionPolicy
 from tests.test_agent_sessions import mint_agent
-from tests.test_portable_leases import portable_headers, sign_in
+from tests.test_portable_leases import sign_in
 
 
 def agent_headers(token):
@@ -191,7 +191,7 @@ def test_harvest_and_agent_bearer_paths_still_work(client):
     assert status.status_code == 200
     assert status.json()["production_writes"] is False
     device = sign_in(client)
-    empty = client.get("/v1/ascend/loads", headers=portable_headers(token=device))
+    empty = client.get("/v1/ascend/loads", headers={"Authorization": f"Bearer {device}"})
     assert empty.status_code == 200
     assert empty.json()["loads"] == []
 

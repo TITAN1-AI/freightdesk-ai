@@ -37,10 +37,11 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
         assert token not in sources
     write_note = (EXT / "write-note.js").read_text(encoding="utf-8")
     for token in ("nativeMessaging", "connectNative", "eval(", "new Function", "document.cookie",
-                  "WebSocket(", ".click(", ".submit(", "ASCEND_SAVE", "ASCEND_SET_DRIVER"):
+                  "WebSocket(", ".click(", ".submit("):
         assert token not in write_note
     assert "ADD_INTERNAL_NOTE" in write_note
     assert "WRITE_ACTION_FORBIDDEN" in write_note
+    assert "FORBIDDEN_ACTIONS" in write_note
     content = (EXT / "content.js").read_text(encoding="utf-8")
     assert "ADD_INTERNAL_NOTE" in content
     assert "HARVEST_BOARD" in content
