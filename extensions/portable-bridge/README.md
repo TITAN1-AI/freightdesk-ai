@@ -66,7 +66,7 @@ blocks programmatic injection (policy, discarded tab, or a path the extension wi
 The popup shows distinct states for not signed in, missing lease, allowlist/origin failures,
 and an unreachable API. **Last write** is separate from harvest: a harvest
 `ACTIVE_VIEW_UNVERIFIED` banner does not describe a note-write failure. Keep the
-popup open during a write so 0.1.11 can claim within seconds (`claimed_at`);
+popup open during a write so 0.1.12 can claim within seconds (`claimed_at`);
 leave the board tab open and sit on 1763 Load Basics with `#scratch` visible.
 Bridge must pick the scratch tab (`already_open`, `tab_hint`), not the board
 `unique_searchbox`. Prefer stay-on-load Save. After Save & Exit the Bridge waits

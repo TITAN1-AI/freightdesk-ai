@@ -1,24 +1,21 @@
 # Current state — 2026-09-20
 
-## Ascend write status v0.1.11 — IMPLEMENTED / TESTED, not LIVE_VALIDATED
+## Ascend write status v0.1.12 — IMPLEMENTED / TESTED, not LIVE_VALIDATED
 
-Offline load-status write on the portable/agent facade. `POST /v1/ascend/loads/{id}/status`
-after a one-use demo approval (`ASCEND_CHANGE_LOAD_STATUS`, default
-**APPROVAL_REQUIRED**). Catalog statuses except `UNKNOWN`. No from→to graph.
-Portable Bridge **0.1.11** force-reinjects write scripts, prefers stay-on-load Save,
-and requires status read-back for `VERIFIED`. Receipts include `tab_hint`,
-`bridge_version`, `verify_reason`, `requested_status`, `observed_status`.
-Note write, harvest, and agent Bearer are unchanged. X1 untouched. **Not
-LIVE_VALIDATED** until Avery field-tests 1763. Do not merge on fixtures.
+Field feedback on PR #10: 1763 UI status is **To Be Billed**, which the short
+catalog omitted. Avery correctly refused Dispatched. Atlas `status_catalog` is
+now the source of truth (original board labels + historical harvest
+`To Be Billed` / `Driver Assigned` + field 1763). Harvest no longer collapses
+those to `UNKNOWN`. Policy stays **APPROVAL_REQUIRED**. Whole-form Save still
+needs `allow_whole_form_save`. No from→to graph. `VERIFIED` still requires
+read-back. Portable Bridge **0.1.12** force-reinjects write scripts.
+Note write, harvest lease semantics, and agent Bearer are unchanged. X1
+untouched. **Not LIVE_VALIDATED.** Avery smokes B on a different
+Active/Available load first; 1763 To Be Billed is later. Do not merge.
 Handoff: [ASCEND_WRITE_STATUS_V0.md](docs/ASCEND_WRITE_STATUS_V0.md).
 
-Verification: 114 focused tests passed (`tests/test_ascend_status.py`,
-`tests/test_ascend_notes.py`, `tests/test_ascend_capabilities.py`,
-`tests/test_portable_bridge_extension.py`, `tests/test_ascend_facade.py`,
-`tests/test_agent_sessions.py`, `tests/test_portable_leases.py`,
-`tests/test_api.py`, `tests/test_control_plane.py`). Ruff + Node `--check`
-passed on the touched modules. Two existing Starlette/AnyIO deprecation
-warnings remain. **Do not merge** until Avery 1763 VERIFIED.
+Verification: focused tests listed after this update. Ruff + Node `--check`
+on the touched modules. **Do not merge** until Avery VERIFIED.
 
 ## Ascend write note v0.1.10 — FIELD LIVE_VALIDATED (Avery 1763 SAVE_STAY)
 

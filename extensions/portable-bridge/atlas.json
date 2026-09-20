@@ -13,6 +13,11 @@
     "require_explicit_flag": true,
     "note": "Ascend commits #scratch through whole-form Save / Save & Exit. Never silent Save Load."
   },
+  "status_catalog": [
+    "Active", "Available", "Assigned", "Booked", "Dispatched",
+    "In Transit", "Delivered", "Completed", "To Be Billed", "Driver Assigned"
+  ],
+  "status_catalog_provenance": "Derived from the original board harvest STATUSES, historical M4A export distribution (Completed / To Be Billed / Delivered / Driver Assigned), and field load 1763 UI status To Be Billed. Not an official complete Ascend dictionary. UNKNOWN stays harvest-only for any unlisted UI value.",
   "fields": {
     "load_id": {
       "canonical": "load_id",
@@ -37,9 +42,9 @@
       "write_route": "POST /v1/ascend/loads/{id}/status",
       "allowed_values": [
         "Active", "Available", "Assigned", "Booked", "Dispatched",
-        "In Transit", "Delivered", "Completed"
+        "In Transit", "Delivered", "Completed", "To Be Billed", "Driver Assigned"
       ],
-      "note": "Labeled select/input on Load Basics. No per-field save. UNKNOWN is harvest-only."
+      "note": "Labeled select/input on Load Basics. Catalog comes from atlas status_catalog (harvest + field evidence). No per-field save. UNKNOWN is harvest-only."
     },
     "pick_date": {
       "canonical": "pick_date",

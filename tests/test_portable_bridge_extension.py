@@ -16,7 +16,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     manifest = json.loads((EXT / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["manifest_version"] == 3
     assert manifest["name"] == "FreightDesk Bridge"
-    assert manifest["version"] == "0.1.11"
+    assert manifest["version"] == "0.1.12"
     assert "nativeMessaging" not in manifest["permissions"]
     assert manifest["permissions"] == ["storage", "alarms", "scripting"]
     assert manifest["host_permissions"][0] == "https://ascendtms.com/*"
@@ -28,7 +28,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     assert "externally_connectable" not in manifest
     assert "web_accessible_resources" not in manifest
     identity = (EXT / "build.js").read_text(encoding="utf-8")
-    assert "extension_version: '0.1.11'" in identity
+    assert "extension_version: '0.1.12'" in identity
     assert "native_messaging: false" in identity
     assert "live_validated: false" in identity
     assert "production_writes: false" in identity
@@ -1141,6 +1141,30 @@ def test_popup_and_request_stringify_error_objects():
     assert completed.returncode == 0, completed.stderr or completed.stdout
 
 
+def test_harvest_and_write_status_catalogs_match_atlas():
+    atlas = json.loads((EXT / "atlas.json").read_text(encoding="utf-8"))
+    catalog = atlas["status_catalog"]
+    assert "To Be Billed" in catalog
+    assert "UNKNOWN" not in catalog
+    script = "\n".join([
+        "const fs = require('fs');",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "harvest.js")) + ", 'utf8'));",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-note.js")) + ", 'utf8'));",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-status.js")) + ", 'utf8'));",
+        "const H = globalThis.FreightDeskPortableHarvest;",
+        "const S = globalThis.FreightDeskPortableWriteStatus;",
+        "const expected = " + json.dumps(catalog) + ";",
+        "if (JSON.stringify(H.STATUSES) !== JSON.stringify(expected)) throw new Error('harvest ' + H.STATUSES);",
+        "if (JSON.stringify(S.WRITE_STATUSES) !== JSON.stringify(expected)) throw new Error('write ' + S.WRITE_STATUSES);",
+        "if (H.statusOf('To Be Billed') !== 'To Be Billed') throw new Error('harvest billed');",
+        "if (H.statusOf('to be billed') !== 'To Be Billed') throw new Error('harvest billed case');",
+        "if (H.statusOf('Yeeted') !== 'UNKNOWN') throw new Error('harvest unknown');",
+        "if (S.catalogStatus('Driver Assigned') !== 'Driver Assigned') throw new Error('driver assigned');",
+    ])
+    completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
 def test_portable_write_status_inspect_and_save_preference():
     script = "\n".join([
         "const fs = require('fs');",
@@ -1148,9 +1172,10 @@ def test_portable_write_status_inspect_and_save_preference():
         "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-status.js")) + ", 'utf8'));",
         "const S = globalThis.FreightDeskPortableWriteStatus;",
         "if (!S || S.action !== 'CHANGE_LOAD_STATUS') throw new Error('status module missing');",
-        "if (S.version !== '0.1.11') throw new Error('status version ' + S.version);",
+        "if (S.version !== '0.1.12') throw new Error('status version ' + S.version);",
         "if (!S.isStatusLabel('Load Status') || S.isStatusLabel('Truck Status')) throw new Error('label helper');",
         "if (S.catalogStatus('in transit') !== 'In Transit') throw new Error('catalog');",
+        "if (S.catalogStatus('to be billed') !== 'To Be Billed') throw new Error('to be billed');",
         "if (S.catalogStatus('UNKNOWN') || S.catalogStatus('Yeeted')) throw new Error('unknown leaked');",
         "const scan = {",
         "  inputs: [{label:'Load Status', tag:'select', visible:true, value:'Dispatched', el:{tagName:'SELECT', value:'Dispatched', options:[{text:'Dispatched', value:'Dispatched'},{text:'Delivered', value:'Delivered'}], selectedIndex:0}}],",
@@ -1236,7 +1261,7 @@ def test_portable_write_status_execute_sets_select_and_prefers_save():
         "  if (!allowed.ok || !allowed.status_matched) throw new Error('allowed: ' + JSON.stringify(allowed));",
         "  if (allowed.save_variant !== 'SAVE_STAY') throw new Error('save variant: ' + JSON.stringify(allowed));",
         "  if (allowed.observed_status !== 'Delivered') throw new Error('observed: ' + JSON.stringify(allowed));",
-        "  if (allowed.bridge_version !== '0.1.11') throw new Error('version');",
+        "  if (allowed.bridge_version !== '0.1.12') throw new Error('version');",
         "  if (select.value !== 'Delivered') throw new Error('select not set');",
         "  if (!save.events.includes('click')) throw new Error('Save not clicked');",
         "  if (exit.events.includes('click')) throw new Error('Save & Exit clicked');",

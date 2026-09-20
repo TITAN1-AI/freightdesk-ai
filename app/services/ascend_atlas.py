@@ -12,6 +12,17 @@ CAPABILITY_PATH = ROOT / "config" / "ascend-bridge-capabilities.json"
 PRIVATE_NOTE_SELECTOR = "textarea#scratch"
 PUBLIC_NOTE_SELECTOR = "#notes"
 WHOLE_FORM_SAVE = "WHOLE_FORM_SAVE"
+REQUIRED_WRITE_STATUSES = (
+    "Active",
+    "Available",
+    "Assigned",
+    "Booked",
+    "Dispatched",
+    "In Transit",
+    "Delivered",
+    "Completed",
+    "To Be Billed",
+)
 
 
 @lru_cache(maxsize=1)
@@ -47,8 +58,36 @@ def atlas_summary() -> dict:
         "public_note_selector": PUBLIC_NOTE_SELECTOR,
         "commit_kind": WHOLE_FORM_SAVE,
         "field_names": list(fields),
+        "status_catalog": list(status_catalog()),
         "path": str(ATLAS_PATH.relative_to(ROOT)).replace("\\", "/"),
     }
+
+
+def status_catalog() -> tuple[str, ...]:
+    raw = load_atlas().get("status_catalog")
+    if not isinstance(raw, list) or not raw:
+        raise ValueError("atlas_status_catalog_missing")
+    values: list[str] = []
+    seen: set[str] = set()
+    for item in raw:
+        if not isinstance(item, str):
+            raise ValueError("atlas_status_catalog_invalid")
+        text = " ".join(item.split())
+        if not text or text == "UNKNOWN" or text in seen:
+            raise ValueError("atlas_status_catalog_invalid")
+        seen.add(text)
+        values.append(text)
+    if any(required not in seen for required in REQUIRED_WRITE_STATUSES):
+        raise ValueError("atlas_status_catalog_incomplete")
+    return tuple(values)
+
+
+def write_statuses() -> frozenset[str]:
+    return frozenset(status_catalog())
+
+
+def harvest_load_statuses() -> frozenset[str]:
+    return frozenset({*status_catalog(), "UNKNOWN"})
 
 
 def require_atlas_bindings() -> None:
@@ -65,3 +104,17 @@ def require_atlas_bindings() -> None:
         raise ValueError("atlas_section_not_load_basics")
     if atlas.get("live_validated") or atlas.get("production_writes"):
         raise ValueError("atlas_live_claim_forbidden")
+    catalog = status_catalog()
+    status = atlas_field("load_status")
+    if list(status.get("allowed_values") or []) != list(catalog):
+        raise ValueError("atlas_status_allowed_values_mismatch")
+    if status.get("write_method") != WHOLE_FORM_SAVE:
+        raise ValueError("atlas_status_whole_form_unbound")
+    if status.get("policy") != "APPROVAL_REQUIRED":
+        raise ValueError("atlas_status_policy_unbound")
+    capabilities = load_capabilities()
+    write_status = (capabilities.get("capabilities") or {}).get("write_status") or {}
+    if list(write_status.get("allowed_statuses") or []) != list(catalog):
+        raise ValueError("capability_status_catalog_mismatch")
+    if write_status.get("policy") != "APPROVAL_REQUIRED":
+        raise ValueError("capability_status_policy_unbound")

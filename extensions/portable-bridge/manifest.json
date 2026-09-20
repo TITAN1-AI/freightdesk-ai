@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FreightDesk Bridge",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "Portable Ascend board harvest plus approved private-note and load-status writes. No native host. Assign and money stay blocked.",
   "permissions": ["storage", "alarms", "scripting"],
   "host_permissions": [

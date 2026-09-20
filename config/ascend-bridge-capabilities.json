@@ -63,9 +63,9 @@
       "commit_kind": "WHOLE_FORM_SAVE",
       "allowed_statuses": [
         "Active", "Available", "Assigned", "Booked", "Dispatched",
-        "In Transit", "Delivered", "Completed"
+        "In Transit", "Delivered", "Completed", "To Be Billed", "Driver Assigned"
       ],
-      "note": "Catalog statuses except UNKNOWN. No from→to graph. Not LIVE_VALIDATED until Avery VERIFIED."
+      "note": "Atlas status_catalog (harvest + field evidence) except UNKNOWN. Includes To Be Billed. No from→to graph. Not LIVE_VALIDATED until Avery VERIFIED."
     },
     "assign_carrier": {
       "kind": "WRITE",

@@ -5,10 +5,15 @@ from app.services.ascend_atlas import (
     PUBLIC_NOTE_SELECTOR,
     WHOLE_FORM_SAVE,
     atlas_field,
+    harvest_load_statuses,
     load_atlas,
     load_capabilities,
     require_atlas_bindings,
+    status_catalog,
+    write_statuses,
 )
+from app.services.ascend_status import WRITE_STATUSES
+from app.services.portable_leases import LOAD_STATUSES
 from tests.test_portable_leases import portable_headers, sign_in, snapshot
 
 
@@ -45,6 +50,24 @@ def test_atlas_wires_scratch_and_load_basics():
     assert catalog["capabilities"]["assign_carrier"]["policy"] == "FORBIDDEN"
     assert catalog["capabilities"]["write_expenses"]["policy"] == "FORBIDDEN"
     assert catalog["capabilities"]["write_public_note"]["implementation"] == "FORBIDDEN"
+    expected = list(status_catalog())
+    assert "To Be Billed" in expected
+    assert "UNKNOWN" not in expected
+    assert atlas_field("load_status")["allowed_values"] == expected
+    assert catalog["capabilities"]["write_status"]["allowed_statuses"] == expected
+    assert write_statuses() == WRITE_STATUSES == frozenset(expected)
+    assert LOAD_STATUSES == harvest_load_statuses() == frozenset({*expected, "UNKNOWN"})
+
+
+def test_status_catalog_is_atlas_derived_and_served(client):
+    expected = list(status_catalog())
+    body = client.get("/v1/ascend/capabilities").json()
+    assert body["atlas"]["status_catalog"] == expected
+    assert body["capabilities"]["write_status"]["allowed_statuses"] == expected
+    assert "To Be Billed" in body["capabilities"]["write_status"]["allowed_statuses"]
+    html = client.get("/").text
+    assert 'option value="To Be Billed"' in html
+    assert 'option value="Driver Assigned"' in html
 
 
 def test_capability_catalog_is_demo_gated_and_not_live(client):

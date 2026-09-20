@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const ORIGIN = 'https://ascendtms.com';
-  const CONTENT_REV = '0.1.11';
+  const CONTENT_REV = '0.1.12';
   if (globalThis.FreightDeskPortableContentListener) {
     try { chrome.runtime.onMessage.removeListener(globalThis.FreightDeskPortableContentListener); } catch { /* keep going */ }
   }

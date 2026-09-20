@@ -42,7 +42,7 @@ without inventing values. Load Basics selectors stay CANDIDATE until a later det
 | --- | --- | --- | --- | --- |
 | Private / internal note | `POST /v1/ascend/loads/{id}/notes` | **APPROVAL_REQUIRED** | **IMPLEMENTED** | Atlas `textarea#scratch`. FIELD LIVE_VALIDATED for 1763 SAVE_STAY already_open only. |
 | Public note | none | **FORBIDDEN** | **FORBIDDEN** | Atlas `#notes`. Never typed. |
-| Status change | `POST /v1/ascend/loads/{id}/status` | **APPROVAL_REQUIRED** | **IMPLEMENTED** | Catalog statuses except UNKNOWN. WHOLE_FORM_SAVE with explicit flag. Not LIVE_VALIDATED until Avery VERIFIED. |
+| Status change | `POST /v1/ascend/loads/{id}/status` | **APPROVAL_REQUIRED** | **IMPLEMENTED** | Atlas `status_catalog` (includes **To Be Billed**, `Driver Assigned`). UNKNOWN harvest-only. WHOLE_FORM_SAVE with explicit flag. No from→to graph. Not LIVE_VALIDATED until Avery VERIFIED. |
 | Assign carrier | `POST /v1/ascend/loads/{id}/assign` | **FORBIDDEN** | **FORBIDDEN** | HTTP **403** stub. Money/assign stay forbidden. |
 | Expenses / rates | `POST /v1/ascend/loads/{id}/expenses` | **FORBIDDEN** | **FORBIDDEN** | HTTP **403** stub. |
 | Documents upload | none | **FORBIDDEN** | **NOT_STARTED** | No LIVE route. |

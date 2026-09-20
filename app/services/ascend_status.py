@@ -20,12 +20,12 @@ from app.services.ascend_notes import (
 )
 from app.services.auth_tokens import token_digest
 from app.services.mail_sync import digest
-from app.services.portable_leases import LOAD_STATUSES
+from app.services.ascend_atlas import write_statuses
 
 STATUS_ACTION = "ASCEND_CHANGE_LOAD_STATUS"
 STATUS_ACTION_VIA_SAVE = "ASCEND_CHANGE_LOAD_STATUS_VIA_SAVE"
 WRITE_KIND = "LOAD_STATUS"
-WRITE_STATUSES = frozenset(status for status in LOAD_STATUSES if status != "UNKNOWN")
+WRITE_STATUSES = write_statuses()
 WHOLE_FORM_SAVE_RISK = (
     "Atlas (Booking Logistics): Load Status is a labeled select/input on Load Basics. "
     "No per-field save was observed; Save / Save & Exit submits the whole load form. "

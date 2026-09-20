@@ -75,6 +75,22 @@ def test_status_write_rejects_unknown_and_invalid(client):
     assert invented.status_code == 409
 
 
+def test_status_write_accepts_to_be_billed(client):
+    token = mint_agent(client)
+    minted = mint_status_approval(client, token, "1763", status="To Be Billed")
+    assert "To Be Billed" in minted["allowed_statuses"]
+    assert "Driver Assigned" in minted["allowed_statuses"]
+    assert "UNKNOWN" not in minted["allowed_statuses"]
+    posted = client.post("/v1/ascend/loads/1763/status",
+                         json={"status": "To Be Billed", "approval_token": minted["approval_token"]},
+                         headers=agent_headers(token))
+    assert posted.status_code == 200
+    receipt = posted.json()
+    assert receipt["status"] == "DISPATCHED"
+    assert receipt["requested_status"] == "To Be Billed"
+    assert "To Be Billed" in receipt["allowed_statuses"]
+
+
 def test_status_write_happy_path_mocked_verify_after_write(client):
     token = mint_agent(client)
     execute, ledger = fixture_executor()
@@ -147,7 +163,7 @@ def test_status_write_stays_dispatched_until_bridge_completes(client):
                                   "observed_status": "In Transit",
                                   "live_validated": False, "production_writes": False,
                                   "tab_hint": "scratch:9", "verify_reason": "verified_via_status_readback",
-                                  "bridge_version": "0.1.11"},
+                                  "bridge_version": "0.1.12"},
                             headers=agent_headers(token))
     assert completed.status_code == 200
     body = completed.json()
@@ -155,7 +171,7 @@ def test_status_write_stays_dispatched_until_bridge_completes(client):
     assert body["status_matched"] is True
     assert body["observed_status"] == "In Transit"
     assert body["tab_hint"] == "scratch:9"
-    assert body["bridge_version"] == "0.1.11"
+    assert body["bridge_version"] == "0.1.12"
     assert body["verify_reason"] == "verified_via_status_readback"
 
 
@@ -274,4 +290,5 @@ def test_dashboard_exposes_status_approval_controls(client):
     assert "mint-status-approval" in html
     assert "status-approval-form" in html
     assert "status-allow-whole-form-save" in html
+    assert 'option value="To Be Billed"' in html
     assert client.get("/assets/portable-status.js").status_code == 200

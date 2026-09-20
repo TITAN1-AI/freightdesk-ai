@@ -9,6 +9,7 @@ from app.services.ascend_atlas import (
     atlas_summary,
     load_capabilities,
     require_atlas_bindings,
+    status_catalog,
 )
 from app.services.portable_leases import LOAD_STATUSES, PortableLeaseService
 
@@ -27,6 +28,9 @@ class AscendCapabilityService:
         body["production_writes"] = False
         body["not_a_retail_api"] = True
         body["atlas"] = atlas_summary()
+        write_status = (body.get("capabilities") or {}).get("write_status")
+        if isinstance(write_status, dict):
+            write_status["allowed_statuses"] = list(status_catalog())
         return body
 
     def facade_load(self, load_id: str) -> dict:
