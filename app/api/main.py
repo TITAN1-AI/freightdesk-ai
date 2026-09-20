@@ -13,6 +13,7 @@ from pydantic import Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.agent_sessions import install_agent_routes
+from app.api.ascend_capabilities import install_ascend_capability_routes
 from app.api.ascend_facade import install_ascend_facade_routes
 from app.api.portable_leases import (
     PORTABLE_PATH_PREFIX,
@@ -22,6 +23,7 @@ from app.api.portable_leases import (
     portable_preflight,
 )
 from app.services.agent_sessions import AgentSessionService
+from app.services.ascend_capabilities import AscendCapabilityService
 from app.core.config import ROOT, Settings
 from app.core.runtime import RuntimePaths
 from app.models.domain import ActionPolicy, AuthorizedIdentity, ExternalEvent, Model, Role
@@ -94,6 +96,8 @@ def create_app(db_path: Path | None = None, token: str | None = None, run_schedu
         agents = AgentSessionService(store, settings.tenant, bootstrap_path=bootstrap)
         application.state.control = ControlPlane(store, settings)
         application.state.portable = PortableLeaseService(store, settings.tenant, agents=agents)
+        application.state.capabilities = AscendCapabilityService(
+            store, settings.tenant, application.state.portable)
         worker = asyncio.create_task(scheduler_loop(application.state.control)) if run_scheduler else None
         from app.api.ascend_mapping import mapping_loop
         mapping_worker = asyncio.create_task(mapping_loop()) if run_scheduler else None
@@ -277,6 +281,7 @@ def create_app(db_path: Path | None = None, token: str | None = None, run_schedu
     install_portable_routes(api)
     install_agent_routes(api)
     install_ascend_facade_routes(api, identity)
+    install_ascend_capability_routes(api, identity)
 
     @api.get("/api/mail/summary")
     @api.get("/api/mail/shipments/{shipment_id}")

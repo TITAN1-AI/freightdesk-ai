@@ -10,8 +10,12 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
 - Demo lease API under `/v1/portable/*` (session, leases, revoke, harvest, status).
 - Demo **agent** Bearer under `/v1/agent/session` for Avery/API callers (no popup).
   See [AGENT_ASCEND_API_V0.md](AGENT_ASCEND_API_V0.md).
-- Ascend **facade** `GET /v1/ascend/loads` and `GET /v1/ascend/status` over stored harvest.
+- Ascend **facade** `GET /v1/ascend/loads`, `GET /v1/ascend/loads/{id}`, and
+  `GET /v1/ascend/status` over stored harvest. Capability map:
+  [ASCEND_CAPABILITY_MAP_V0.md](ASCEND_CAPABILITY_MAP_V0.md).
   See [ASCEND_FACADE_V0.md](ASCEND_FACADE_V0.md).
+- Atlas bindings in [extensions/portable-bridge/atlas.json](../extensions/portable-bridge/atlas.json)
+  (`textarea#scratch`, `#notes`, Load Basics labels) for read/write paths.
 - VISIBLE_BOARD_ONLY Active Loads harvest, stored as **CANDIDATE** evidence.
 - CORS for `chrome-extension://` origins on the portable prefix only. Other demo routes stay same-origin.
 - After Load unpacked, the service worker tries isolated-world reinject on open Ascend tabs
@@ -22,7 +26,8 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
 
 - Not LIVE_VALIDATED Ascend.
 - Not cloud OAuth / tenant billing / store listing.
-- Not a write path. Save, assign, notes, uploads and New Load remain out of the capture.
+- Not a live write path. Status is a 501 stub (APPROVAL_REQUIRED when implemented). Assign,
+  expenses, public notes, uploads and New Load remain FORBIDDEN or out of the capture.
 - Not a cutover of BL operations onto portable leases.
 
 ## Threat model (v0)
