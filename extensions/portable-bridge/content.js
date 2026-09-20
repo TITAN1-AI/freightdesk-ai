@@ -10,7 +10,7 @@
       return;
     }
     if (message.action === 'PROBE_NOTE_WORKSPACE') {
-      const probe = FreightDeskPortableWriteNote.probeWorkspace(document, message.load_id);
+      const probe = FreightDeskPortableWriteNote.probeWorkspace(document, message.load_id, message.text);
       sendResponse({ ok: true, ...probe });
       return;
     }

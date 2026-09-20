@@ -292,6 +292,7 @@ class AscendNoteService:
                          "opener_strategy": record.get("opener_strategy"),
                          "commit_kind": record.get("commit_kind"),
                          "save_variant": record.get("save_variant"),
+                         "tab_hint": record.get("tab_hint"),
                          "allow_whole_form_save": bool(record.get("allow_whole_form_save"))},
                         principal["id"])
         return self._public(record)

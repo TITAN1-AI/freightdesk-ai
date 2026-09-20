@@ -1,5 +1,15 @@
 # Decisions - 2026-09-20
 
+## After Save & Exit, wait for the board then reopen 1763 before failing
+
+0.1.8 tab prefer worked, but whole-form `07a344d3` failed `stage=reopen`
+`LOAD_OPENER_UNVERIFIED` `none` after Save & Exit. 0.1.9 waits for the board,
+retries reopen three times with backoff (unique row, search+Enter, or
+`https://ascendtms.com/loads/{id}`), prefers stay-on-load Save whenever a Save
+control exists, and VERIFIED if `#scratch` anywhere still shows the note.
+Public `GET /v1/ascend/writes/{id}` includes `tab_hint`. See
+docs/ASCEND_WRITE_NOTE_V0.md.
+
 ## Prefer the Ascend tab that already has #scratch; never searchbox past it
 
 0.1.7 whole-form writes failed `unique_searchbox` on the Active Loads tab while

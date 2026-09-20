@@ -246,7 +246,9 @@ def test_bridge_complete_keeps_opener_and_commit_diagnostics(client):
     fetched = client.get(f"/v1/ascend/writes/{posted['write_id']}", headers=agent_headers(token))
     assert fetched.json()["error_code"] == "NOTE_COMMIT_REQUIRES_OWNER_PATH"
     assert fetched.json()["opener_strategy"] == "already_open"
+    assert fetched.json()["tab_hint"] == "scratch:9;skip=board:8"
     assert fetched.json()["allow_whole_form_save"] is False
+    assert "tab_hint" in posted
 
 
 def test_whole_form_save_requires_approval_flag(client):

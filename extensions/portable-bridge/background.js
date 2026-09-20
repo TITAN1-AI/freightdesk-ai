@@ -275,6 +275,20 @@ async function pollWritesOnce() {
   } catch {
     result = { verified: false, note_present: false, error_code: 'CONTENT_UNAVAILABLE', stage: 'content' };
   }
+  if (!result?.verified || !result?.note_present) {
+    const recovered = await recoverNoteOnAnyTab(tabs, pending.load_id, pending.text);
+    if (recovered.note_present) {
+      result = {
+        ...(result || {}),
+        verified: true,
+        note_present: true,
+        error_code: null,
+        stage: 'verify',
+        opener_strategy: result?.opener_strategy || 'already_open',
+        tab_hint: recovered.tab_hint || result?.tab_hint || choice.tab_hint || null
+      };
+    }
+  }
   await completeWrite(state.device_token, pending.write_id, {
     verified: !!result?.verified,
     note_present: !!result?.note_present,
@@ -286,20 +300,36 @@ async function pollWritesOnce() {
     note_label: result?.note_label || null,
     commit_kind: result?.commit_kind || null,
     save_variant: result?.save_variant || null,
-    tab_hint: result?.tab_hint || choice.tab_hint || null,
+    tab_hint: choice.tab_hint || result?.tab_hint || null,
     allow_whole_form_save: !!pending.allow_whole_form_save
   });
 }
 
-async function probeTabScratchDom(tab) {
+async function recoverNoteOnAnyTab(tabs, loadId, text) {
+  const probed = [];
+  for (const tab of tabs || []) {
+    const probe = await probeTabScratch(tab, loadId, text);
+    probed.push({ tab, scratch: !!probe.scratch, note_present: !!probe.note_present });
+    if (probe.note_present) {
+      return {
+        note_present: true,
+        tab_hint: tabHintFor({ tab, scratch: true }, probed)
+      };
+    }
+  }
+  return { note_present: false };
+}
+
+async function probeTabScratchDom(tab, expectedText) {
   if (!tab?.id || typeof chrome === 'undefined' || !chrome.scripting?.executeScript) {
-    return { scratch: false };
+    return { scratch: false, note_present: false };
   }
   try {
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id, allFrames: true },
       world: 'ISOLATED',
-      func: () => {
+      args: [String(expectedText || '')],
+      func: (expected) => {
         const seen = [];
         const walk = (root, acc) => {
           if (!root || seen.indexOf(root) >= 0) return;
@@ -314,35 +344,42 @@ async function probeTabScratchDom(tab) {
         const docs = [];
         walk(document, docs);
         for (const root of docs) {
-          try {
-            if (root.getElementById && root.getElementById('scratch')) return { scratch: true };
-          } catch { /* ignore */ }
+          let el = null;
+          try { el = root.getElementById ? root.getElementById('scratch') : null; } catch { el = null; }
+          if (el) {
+            const value = String(el.value || '');
+            return { scratch: true, note_present: !!(expected && value.indexOf(expected) >= 0) };
+          }
           let labeled = [];
           try { labeled = [...root.querySelectorAll('textarea,[role="textbox"],label')]; } catch { labeled = []; }
-          for (const el of labeled) {
+          for (const node of labeled) {
             const text = String(
-              (el.getAttribute && el.getAttribute('aria-label')) || el.placeholder || el.textContent || ''
+              (node.getAttribute && node.getAttribute('aria-label')) || node.placeholder || node.textContent || ''
             ).replace(/\s+/g, ' ').trim().toLowerCase();
             if (text.indexOf('private load note') >= 0 || text.indexOf('private notes') >= 0 ||
                 text.indexOf('internal notes') >= 0 || text.indexOf('internal load note') >= 0) {
-              return { scratch: true };
+              const value = String(node.value || '');
+              return { scratch: true, note_present: !!(expected && value.indexOf(expected) >= 0) };
             }
           }
         }
-        return { scratch: false };
+        return { scratch: false, note_present: false };
       }
     });
-    return { scratch: (results || []).some((item) => !!(item && item.result && item.result.scratch)) };
+    return {
+      scratch: (results || []).some((item) => !!(item && item.result && item.result.scratch)),
+      note_present: (results || []).some((item) => !!(item && item.result && item.result.note_present))
+    };
   } catch {
-    return { scratch: false };
+    return { scratch: false, note_present: false };
   }
 }
 
-async function probeTabScratch(tab, loadId) {
+async function probeTabScratch(tab, loadId, expectedText) {
   if (!tab?.id || typeof chrome === 'undefined' || !chrome.tabs?.sendMessage) {
-    return { scratch: false };
+    return { scratch: false, note_present: false };
   }
-  let messageProbe = { scratch: false };
+  let messageProbe = { scratch: false, note_present: false };
   for (let attempt = 0; attempt < 3; attempt += 1) {
     if (typeof ensureAscendContent === 'function') {
       try { await ensureAscendContent(tab, { allowReload: false }); } catch { /* keep probing */ }
@@ -350,18 +387,27 @@ async function probeTabScratch(tab, loadId) {
     try {
       const reply = await chrome.tabs.sendMessage(tab.id, {
         action: 'PROBE_NOTE_WORKSPACE',
-        load_id: loadId
+        load_id: loadId,
+        text: expectedText || null
       });
-      messageProbe = { scratch: !!(reply?.scratch || reply?.already_open), note_label: reply?.note_label || null };
-      if (messageProbe.scratch) return messageProbe;
+      messageProbe = {
+        scratch: !!(reply?.scratch || reply?.already_open),
+        note_label: reply?.note_label || null,
+        note_present: !!reply?.note_present
+      };
+      if (messageProbe.note_present || (messageProbe.scratch && !expectedText)) return messageProbe;
       break;
     } catch {
       await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
     }
   }
-  const domProbe = await probeTabScratchDom(tab);
-  if (domProbe.scratch) {
-    return { scratch: true, note_label: messageProbe.note_label || 'scratch' };
+  const domProbe = await probeTabScratchDom(tab, expectedText);
+  if (domProbe.note_present || (domProbe.scratch && !expectedText)) {
+    return {
+      scratch: true,
+      note_present: !!domProbe.note_present,
+      note_label: messageProbe.note_label || 'scratch'
+    };
   }
   return messageProbe;
 }

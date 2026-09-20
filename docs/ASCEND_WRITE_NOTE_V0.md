@@ -12,7 +12,7 @@ X1 / native host is unchanged. Harvest and agent Bearer reads stay as they were.
 | Action | `ASCEND_ADD_INTERNAL_NOTE` (policy). Mint alias `ASCEND_ADD_INTERNAL_NOTE_VIA_SAVE` sets the whole-form flag |
 | Policy | **APPROVAL_REQUIRED** (default). Other writes stay unavailable / FORBIDDEN at this facade |
 | Auth | Same as the read facade: demo agent Bearer, owner session, or portable device token |
-| Actuator | Portable Bridge 0.1.8 on an already-authenticated Ascend tab |
+| Actuator | Portable Bridge 0.1.9 on an already-authenticated Ascend tab |
 | Evidence | CANDIDATE receipts. `live_validated=false`. `production_writes=false` |
 | Note kind | Private / internal only — atlas `textarea#scratch` / Private Load Note. `#notes` (Public Load Note) is blocked |
 | Whole-form Save | Allowed only when the approval sets `allow_whole_form_save: true`. Otherwise `NOTE_COMMIT_REQUIRES_OWNER_PATH` |
@@ -20,7 +20,7 @@ X1 / native host is unchanged. Harvest and agent Bearer reads stay as they were.
 
 ## Atlas (Booking Logistics sitemap)
 
-Authoritative for this brokerage’s Ascend. Bridge 0.1.8 binds these selectors:
+Authoritative for this brokerage’s Ascend. Bridge 0.1.9 binds these selectors:
 
 | Control | Atlas | Bridge |
 | --- | --- | --- |
@@ -93,15 +93,17 @@ A Bridge completion with `verified=true` and `note_present=false` is stored as `
 Live Bridge with a whole-form approval:
 
 1. Type only `#scratch` / Private Load Note
-2. Click unique stay-on-load **Save** if present; otherwise **Save & Exit to Load Board**
-3. If Save & Exit left the workspace, re-open the load and read `#scratch` again
-4. Receipt `VERIFIED` only when the text is present
+2. Click unique stay-on-load **Save** if a Save control exists (even if less
+   prominent). Only then **Save & Exit to Load Board**
+3. If Save & Exit left the workspace, wait for the board and re-open 1763
+   (unique row, search+Enter, or `/loads/{id}`), then read `#scratch` again
+4. Receipt `VERIFIED` when the text is present on `#scratch` (this tab or another)
 
 Without the flag: do not type or click; `NOTE_COMMIT_REQUIRES_OWNER_PATH`.
 
 ## Bridge path
 
-Portable Bridge **0.1.8** claims `GET /v1/portable/writes/pending` (sets `claimed_at`;
+Portable Bridge **0.1.9** claims `GET /v1/portable/writes/pending` (sets `claimed_at`;
 includes `allow_whole_form_save`). Wake sources: 1-minute write alarm, one-shot
 `WRITE_SOON` (+1s / +4s), popup `POLL_WRITES` every 4s, tab complete / activate.
 The same principal may reclaim an incomplete dispatch. Complete ignores extra body
@@ -164,11 +166,19 @@ opener-failed. Note is on the load; Bridge did not verify.
 0.1.8: probe **all** Ascend tabs (content `PROBE_NOTE_WORKSPACE` plus a DOM
 `#scratch` / Private Load Note fallback), prefer/focus the `#scratch` tab, never
 run `unique_searchbox` when any tab already has `#scratch`. Receipt `tab_hint`
-shows `scratch:<id>;skip=board:<id>`.
+shows `scratch:<id>;skip=board:<id>`. Field pass: tab prefer. Field fail:
+`07a344d3` `SAVE_AND_EXIT` then `stage=reopen` `LOAD_OPENER_UNVERIFIED` `none`.
+Curl receipts showed `tab_hint` null.
+
+0.1.9: after Save & Exit, wait for the board, then reopen 1763 via unique row,
+search+Enter, or `https://ascendtms.com/loads/{id}` (3 retries, backoff). If a
+Save control exists (even less prominent / not strictly visible), never choose
+Save & Exit. If reopen fails but `#scratch` anywhere still has the note,
+`VERIFIED`. `GET /v1/ascend/writes/{id}` always includes `tab_hint`.
 
 ## Avery re-test checklist (load 1763)
 
-Reload unpacked Bridge **0.1.8**. Demo-sign-in and **keep the popup open**.
+Reload unpacked Bridge **0.1.9**. Demo-sign-in and **keep the popup open**.
 **Leave the Active Loads board tab open on purpose**, and sit on **1763 Load
 Basics** with `#scratch` / Private Load Note visible (prior note text may remain).
 
@@ -177,13 +187,15 @@ Basics** with `#scratch` / Private Load Note visible (prior note text may remain
    `FAILED` / `NOTE_COMMIT_REQUIRES_OWNER_PATH` / `already_open`. Textarea untyped.
    **Do not click Save**
 3. Stay on 1763 Load Basics. Mint **with** `allow_whole_form_save: true` + POST
-4. Expect `already_open` / `tab_hint` like `scratch:…;skip=board:…` — **not**
-   `unique_searchbox`. Type `#scratch` only, prefer **Save** if present else
-   **Save & Exit**. After Save & Exit, Bridge must reopen 1763 and read `#scratch`
-5. Poll `GET /v1/ascend/writes/{id}` → **`VERIFIED`** + `note_present=true` +
-   `commit_kind=WHOLE_FORM_SAVE` when the Private Load Note text matches. Not
-   `LOAD_OPENER_UNVERIFIED` / `unique_searchbox` while `#scratch` is on another tab
-6. Popup **Last write** shows the write code, not harvest `ACTIVE_VIEW_UNVERIFIED`
+4. Expect `already_open` / `tab_hint` like `scratch:…;skip=board:…` on
+   `GET /v1/ascend/writes/{id}` (not null). Type `#scratch` only. If **Save**
+   exists, Bridge must click it — **not** Save & Exit
+5. If only Save & Exit exists: Bridge waits for the board, reopens 1763 (row /
+   search+Enter / `/loads/1763`), reads `#scratch`. Poll → **`VERIFIED`** +
+   `note_present=true` + `commit_kind=WHOLE_FORM_SAVE`. Not `stage=reopen`
+   `LOAD_OPENER_UNVERIFIED` `none` while the note is on the load
+6. Popup **Last write** shows the write code and `tab_hint`, not harvest
+   `ACTIVE_VIEW_UNVERIFIED`
 7. Still no status / assign / money / New Load / public note / communications
 
 ## API
@@ -201,7 +213,7 @@ Existing `GET /v1/ascend/status`, `GET /v1/ascend/loads`, `/v1/agent/session`, a
 
 ## LIVE field gaps (Avery)
 
-These stay UNKNOWN until a 0.1.8 **VERIFIED receipt**. The 0.1.6 UI note is not
+These stay UNKNOWN until a 0.1.9 **VERIFIED receipt**. The 0.1.6 UI note is not
 a receipt. Do not promote LIVE_VALIDATED from fixtures.
 
 - Whether stay-on-load **Save** is distinguishable from **Save & Exit** on 1763

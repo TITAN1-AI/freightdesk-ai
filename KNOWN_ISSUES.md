@@ -1,12 +1,12 @@
 # Known issues - Ascend write note v0 2026-09-20
 
 Private-internal-note write is implemented offline and **not LIVE_VALIDATED**.
-0.1.6 UI proof: B2 text is on 1763. 0.1.7 receipt fail: whole-form ran
-`unique_searchbox` on the board tab while `#scratch` was open on Load Basics.
-0.1.8 must pick the scratch tab (`tab_hint`) and skip board search. Whether
-stay-on-load Save exists on 1763, and SPA timing after Save & Exit, remain
-UNKNOWN until Avery re-tests 0.1.8. Whole-form Save can submit unrelated dirty
-fields — documented on the receipt, not eliminated. Harvest
+0.1.6 UI proof: B2 text is on 1763. 0.1.8 tab prefer worked. 0.1.8 whole-form
+`07a344d3` failed reopen after Save & Exit (`opener_strategy=none`). 0.1.9
+reopens via row / search+Enter / `/loads/{id}` and prefers stay-on-load Save.
+Whether 1763 actually has a stay-on-load Save, and SPA timing after Save & Exit,
+remain UNKNOWN until Avery re-tests 0.1.9. Whole-form Save can submit unrelated
+dirty fields — documented on the receipt, not eliminated. Harvest
 `ACTIVE_VIEW_UNVERIFIED` is independent of the write. Demo approval mint is not
 production authority. Other writes stay blocked.
 See docs/ASCEND_WRITE_NOTE_V0.md.

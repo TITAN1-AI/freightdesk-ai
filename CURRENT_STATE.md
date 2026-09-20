@@ -1,5 +1,19 @@
 # Current state — 2026-09-20
 
+## Ascend write note v0.1.9 — reopen after Save & Exit, tab_hint on receipts
+
+Avery 0.1.8: no-whole-form `3d9b84c3` passed `already_open`. Whole-form
+`07a344d3` failed `stage=reopen` `LOAD_OPENER_UNVERIFIED` `opener_strategy=none`
+after `SAVE_AND_EXIT` (tab prefer worked — not `unique_searchbox`). API
+`tab_hint` was null on curl receipts. Portable Bridge **0.1.9** waits for the
+board, then reopens 1763 via unique row, search+Enter, or `/loads/{id}` (3
+retries with backoff). Stay-on-load Save wins whenever a Save control exists,
+even if less prominent. If reopen fails but `#scratch` still shows the note
+anywhere, the receipt is VERIFIED. `GET /v1/ascend/writes/{id}` returns
+`tab_hint`. Harvest and agent Bearer unchanged. X1 untouched. **Not
+LIVE_VALIDATED** until the receipt is VERIFIED. Handoff:
+[ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
 ## Ascend write note v0.1.8 — write on the #scratch tab, not the board
 
 Avery 0.1.7: no-whole-form `37897c52` passed `already_open`. Whole-form

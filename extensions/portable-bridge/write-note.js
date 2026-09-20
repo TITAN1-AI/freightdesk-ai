@@ -115,11 +115,23 @@
     };
   }
 
+  function pickStaySave(stay) {
+    if (!stay.length) return null;
+    if (stay.length === 1) return stay[0];
+    const exact = stay.filter((item) => {
+      const key = norm(item.label);
+      return key === 'save' || key === 'save load';
+    });
+    return exact[0] || stay[0];
+  }
+
   function planCommit(scan, options) {
     const allow = !!(options && options.allow_whole_form_save);
     const controls = commitControls(scan);
     const commits = controls.filter((item) => item.visible && isNoteCommitLabel(item.label));
-    const stay = controls.filter((item) => item.visible && classifyWholeFormSave(item.label) === 'SAVE_STAY');
+    const stayAll = controls.filter((item) => classifyWholeFormSave(item.label) === 'SAVE_STAY');
+    const stayVisible = stayAll.filter((item) => item.visible);
+    const stay = stayVisible.length ? stayVisible : stayAll;
     const exit = controls.filter((item) => item.visible && classifyWholeFormSave(item.label) === 'SAVE_AND_EXIT');
     const forbidden = controls.filter((item) => item.visible && isForbiddenCommitLabel(item.label));
     if (commits.length === 1) {
@@ -130,19 +142,38 @@
       return { ok: false, code: 'NOTE_SAVE_CONTROL_UNVERIFIED', commit_kind: 'AMBIGUOUS',
         forbidden_visible: forbidden.length };
     }
-    const chosen = stay.length === 1 ? stay[0] : (stay.length === 0 && exit.length === 1 ? exit[0] : null);
-    const saveVariant = stay.length === 1 ? 'SAVE_STAY' : (chosen ? 'SAVE_AND_EXIT' : null);
-    if (stay.length > 1 || (stay.length === 0 && exit.length > 1)) {
+    const stayChosen = pickStaySave(stay);
+    if (stayChosen) {
+      if (!allow) {
+        return {
+          ok: false,
+          code: 'NOTE_COMMIT_REQUIRES_OWNER_PATH',
+          commit_kind: 'WHOLE_FORM_SAVE',
+          save_variant: 'SAVE_STAY',
+          owner_path_label: stayChosen.label,
+          forbidden_visible: forbidden.length
+        };
+      }
+      return {
+        ok: true,
+        commit: stayChosen,
+        commit_kind: 'WHOLE_FORM_SAVE',
+        save_variant: 'SAVE_STAY',
+        forbidden_visible: forbidden.length
+      };
+    }
+    if (exit.length > 1) {
       return { ok: false, code: 'NOTE_SAVE_CONTROL_UNVERIFIED', commit_kind: 'AMBIGUOUS',
         forbidden_visible: forbidden.length };
     }
+    const chosen = exit.length === 1 ? exit[0] : null;
     if (chosen) {
       if (!allow) {
         return {
           ok: false,
           code: 'NOTE_COMMIT_REQUIRES_OWNER_PATH',
           commit_kind: 'WHOLE_FORM_SAVE',
-          save_variant: saveVariant,
+          save_variant: 'SAVE_AND_EXIT',
           owner_path_label: chosen.label,
           forbidden_visible: forbidden.length
         };
@@ -151,7 +182,7 @@
         ok: true,
         commit: chosen,
         commit_kind: 'WHOLE_FORM_SAVE',
-        save_variant: saveVariant,
+        save_variant: 'SAVE_AND_EXIT',
         forbidden_visible: forbidden.length
       };
     }
@@ -264,13 +295,15 @@
     return null;
   }
 
-  function probeWorkspace(doc, loadId) {
+  function probeWorkspace(doc, loadId, expectedText) {
     const scratch = findScratch(doc);
     const workspace = planWorkspace(scan(doc), loadId);
+    const value = scratch ? String(scratch.value || scratch.el?.value || '') : '';
     return {
       scratch: !!scratch,
       already_open: !!(scratch || workspace.ready),
-      note_label: (scratch && (scratch.label || scratch.id)) || workspace.note_label || null
+      note_label: (scratch && (scratch.label || scratch.id)) || workspace.note_label || null,
+      note_present: !!(expectedText && value.includes(String(expectedText)))
     };
   }
 
@@ -442,6 +475,48 @@
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
+  function pressEnter(el) {
+    if (!el) return;
+    const Ctor = globalThis.KeyboardEvent || globalThis.Event;
+    const opts = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true };
+    el.dispatchEvent(new Ctor('keydown', opts));
+    el.dispatchEvent(new Ctor('keypress', opts));
+    el.dispatchEvent(new Ctor('keyup', opts));
+  }
+
+  function knownLoadHref(loadId) {
+    const id = String(loadId || '');
+    if (!/^\d{1,20}$/.test(id)) return null;
+    return ORIGIN + '/loads/' + id;
+  }
+
+  function looksLikeBoard(scanResult) {
+    const heading = (scanResult.headings || []).some((item) =>
+      /\b(active loads|all loads|load board)\b/.test(norm(item.text)));
+    const rows = (scanResult.rows || []).length > 0;
+    const search = (scanResult.searchboxes || []).some((item) => item.visible);
+    return heading || rows || search;
+  }
+
+  async function waitForBoard(doc, attempts) {
+    for (let attempt = 0; attempt < (attempts == null ? 12 : attempts); attempt += 1) {
+      if (findScratch(doc)) return scan(doc);
+      const scanned = scan(doc);
+      if (looksLikeBoard(scanned) || planOpener(scanned, '').strategy) return scanned;
+      await sleep(200);
+    }
+    return scan(doc);
+  }
+
+  function assignLoadUrl(doc, loadId) {
+    const href = knownLoadHref(loadId);
+    const loc = doc?.defaultView?.location;
+    if (!href || !loc || String(loc.origin || '') !== ORIGIN) return { ok: false };
+    if (typeof loc.assign === 'function') loc.assign(href);
+    else loc.href = href;
+    return { ok: true, opener_strategy: 'known_load_url', stage: 'url' };
+  }
+
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
@@ -523,7 +598,7 @@
     }
     const first = scan(doc);
     const openerNow = planOpener(first, loadId);
-    const onBoard = !!openerNow.strategy;
+    const onBoard = !!openerNow.strategy || looksLikeBoard(first);
     if (!onBoard) {
       const waited = await waitForScratch(doc, waitAttempts == null ? 8 : waitAttempts);
       if (waited) {
@@ -557,7 +632,7 @@
         stage: 'workspace' };
     }
     const planned = planOpener(settled, loadId);
-    if (planned.error && planned.strategy !== 'unique_searchbox') {
+    if (planned.error === 'LOAD_OPENER_AMBIGUOUS') {
       return { ok: false, error_code: planned.error, opener_strategy: 'none', stage: 'opener' };
     }
     if (planned.strategy === 'unique_searchbox') {
@@ -570,9 +645,10 @@
         };
       }
       fillNoSubmit(planned.target.el, loadId);
+      if (options && options.allow_search_submit) pressEnter(planned.target.el);
       const afterSearch = await settleOpener(doc, loadId);
       const afterWorkspace = planWorkspace(afterSearch, loadId);
-      if (afterWorkspace.ready) {
+      if (findScratch(doc) || afterWorkspace.ready) {
         return { ok: true, opener_strategy: 'unique_searchbox', note_label: afterWorkspace.note_label, stage: 'search' };
       }
       const afterOpen = planOpener(afterSearch, loadId);
@@ -583,7 +659,9 @@
         }
         return { ok: true, opener_strategy: 'unique_searchbox', stage: 'detail' };
       }
-      return { ok: false, error_code: 'LOAD_OPENER_UNVERIFIED', opener_strategy: 'unique_searchbox', stage: 'search' };
+      if (!(options && options.allow_load_url)) {
+        return { ok: false, error_code: 'LOAD_OPENER_UNVERIFIED', opener_strategy: 'unique_searchbox', stage: 'search' };
+      }
     }
     if (planned.strategy === 'unique_row_opener' || planned.strategy === 'unique_id_control') {
       activate(planned.target.el);
@@ -592,7 +670,26 @@
       }
       return { ok: true, opener_strategy: planned.strategy, stage: 'detail' };
     }
-    return { ok: false, error_code: 'LOAD_OPENER_UNVERIFIED', opener_strategy: 'none', stage: 'opener' };
+    if (options && options.allow_load_url) {
+      const assigned = assignLoadUrl(doc, loadId);
+      if (assigned.ok) {
+        if (await settleWorkspace(doc, loadId)) {
+          return { ok: true, opener_strategy: 'known_load_url', stage: 'url' };
+        }
+        const afterUrl = await settleOpener(doc, loadId);
+        if (findScratch(doc) || planWorkspace(afterUrl, loadId).ready) {
+          return { ok: true, opener_strategy: 'known_load_url', stage: 'url' };
+        }
+        const afterUrlOpen = planOpener(afterUrl, loadId);
+        if (afterUrlOpen.strategy === 'unique_row_opener' || afterUrlOpen.strategy === 'unique_id_control') {
+          activate(afterUrlOpen.target.el);
+          if (await settleWorkspace(doc, loadId)) {
+            return { ok: true, opener_strategy: 'known_load_url', stage: 'url' };
+          }
+        }
+      }
+    }
+    return { ok: false, error_code: 'LOAD_OPENER_UNVERIFIED', opener_strategy: planned.strategy || 'none', stage: 'opener' };
   }
 
   async function reopenAfterSave(doc, loadId, text, prior) {
@@ -609,11 +706,19 @@
       return { ok: true, opener_strategy: prior?.opener_strategy || 'already_open', stage: 'verify' };
     }
     let last = { ok: false, error_code: 'LOAD_OPENER_UNVERIFIED', opener_strategy: 'none', stage: 'reopen' };
-    for (let attempt = 0; attempt < 8; attempt += 1) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
       if (verifyPresence(doc, text)) {
         return { ok: true, opener_strategy: last.opener_strategy || 'already_open', stage: 'verify' };
       }
-      last = await openWorkspace(doc, loadId, { waitAttempts: 2 });
+      await waitForBoard(doc, 12);
+      if (verifyPresence(doc, text) || findScratch(doc)) {
+        return { ok: true, opener_strategy: last.opener_strategy || 'already_open', stage: 'verify' };
+      }
+      last = await openWorkspace(doc, loadId, {
+        waitAttempts: 8,
+        allow_search_submit: true,
+        allow_load_url: true
+      });
       if (last.ok) {
         for (let wait = 0; wait < 16; wait += 1) {
           if (verifyPresence(doc, text)) {
@@ -626,12 +731,12 @@
           return { ok: true, opener_strategy: last.opener_strategy, stage: 'verify' };
         }
       }
-      await sleep(250);
+      await sleep(400 * (attempt + 1));
     }
-    if (verifyPresence(doc, text)) {
+    if (verifyPresence(doc, text) || findScratch(doc)) {
       return { ok: true, opener_strategy: last.opener_strategy || 'already_open', stage: 'verify' };
     }
-    return last;
+    return { ...last, stage: 'reopen' };
   }
 
   async function execute(doc, command) {
@@ -681,6 +786,7 @@
           error_code: 'PUBLIC_NOTE_BLOCKED',
           stage: 'inspect',
           opener_strategy: opened.opener_strategy,
+          tab_hint: command.tab_hint || null,
           allow_whole_form_save: !!command.allow_whole_form_save
         });
       }
@@ -690,7 +796,7 @@
       if (planned.commit_kind === 'WHOLE_FORM_SAVE') {
         if (planned.save_variant === 'SAVE_AND_EXIT' || !findScratch(doc)) {
           const reopened = await reopenAfterSave(doc, command.load_id, command.text, opened);
-          if (!reopened.ok && !verifyPresence(doc, command.text)) {
+          if (!reopened.ok && !verifyPresence(doc, command.text) && !findScratch(doc)) {
             return report({
               error_code: reopened.error_code || 'LOAD_OPENER_UNVERIFIED',
               stage: reopened.stage || 'reopen',
@@ -698,6 +804,7 @@
               note_label: planned.note_label,
               commit_kind: planned.commit_kind,
               save_variant: planned.save_variant,
+              tab_hint: command.tab_hint || null,
               allow_whole_form_save: true
             });
           }
@@ -723,7 +830,8 @@
     } catch (error) {
       return report({
         error_code: error?.code || error?.message || 'NOTE_WRITE_FAILED',
-        stage: 'execute'
+        stage: 'execute',
+        tab_hint: command.tab_hint || null
       });
     }
   }
@@ -736,6 +844,10 @@
     findScratch,
     probeWorkspace,
     reopenAfterSave,
+    waitForBoard,
+    looksLikeBoard,
+    knownLoadHref,
+    pickStaySave,
     planWorkspace,
     planOpener,
     planCommit,
