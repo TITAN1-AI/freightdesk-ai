@@ -1,3 +1,23 @@
+# Current state — 2026-09-20
+
+## Ascend capability map v0 — foundation, not every write LIVE
+
+Additive portable-bridge slice on `main` (does not implement PR #8 private-note write). Avery/agents
+call HTTP; Bridge remains the authenticated Ascend actuator. Delivered:
+
+- [ASCEND_CAPABILITY_MAP_V0.md](docs/ASCEND_CAPABILITY_MAP_V0.md) READ / WRITE / AUTOMATION matrix
+- Atlas JSON `extensions/portable-bridge/atlas.json` (`textarea#scratch`, `#notes`, Load Basics)
+- `GET /v1/ascend/loads/{id}` last-known CANDIDATE fields, empty-safe
+- `GET /v1/ascend/capabilities`
+- `POST /v1/ascend/loads/{id}/status` → 501 NOT_IMPLEMENTED, intended **APPROVAL_REQUIRED**
+- Assign / expenses → 403 FORBIDDEN stubs
+
+Demo-gated. No X1 changes. No Playwright secret path. No silent Save Load. Next LIVE field
+**after private-note VERIFIED** is status change. Not LIVE_VALIDATED.
+
+Verification: focused capability/facade/agent/portable tests plus Ruff on the new modules.
+Harvest, agent Bearer, and existing board routes are unchanged.
+
 # Current state — 2026-09-19
 
 ## Agent session auth v0 — Bearer for Avery, no popup

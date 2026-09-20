@@ -1,0 +1,140 @@
+{
+  "version": "0",
+  "product": "portable-bridge",
+  "origin": "https://ascendtms.com",
+  "section": "Load Basics",
+  "provenance": "ATLAS_CANDIDATE",
+  "live_validated": false,
+  "production_writes": false,
+  "values_included": false,
+  "write_default": {
+    "commit_kind": "WHOLE_FORM_SAVE",
+    "silent_save": false,
+    "require_explicit_flag": true,
+    "note": "Ascend commits #scratch through whole-form Save / Save & Exit. Never silent Save Load."
+  },
+  "fields": {
+    "load_id": {
+      "canonical": "load_id",
+      "section": "Load Basics",
+      "kind": "label",
+      "labels": ["Load ID", "Load #", "Load Number"],
+      "read": "text",
+      "harvest_board": true,
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED"
+    },
+    "load_status": {
+      "canonical": "load_status",
+      "section": "Load Basics",
+      "kind": "label",
+      "labels": ["Load Status", "Status"],
+      "read": "input",
+      "harvest_board": true,
+      "policy": "APPROVAL_REQUIRED",
+      "implementation": "NOT_STARTED",
+      "write_route": "POST /v1/ascend/loads/{id}/status"
+    },
+    "pick_date": {
+      "canonical": "pick_date",
+      "section": "Load Basics",
+      "kind": "label",
+      "labels": ["Pick Date", "Pickup"],
+      "read": "text",
+      "harvest_board": true,
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED"
+    },
+    "drop_date": {
+      "canonical": "drop_date",
+      "section": "Load Basics",
+      "kind": "label",
+      "labels": ["Drop Date", "Delivery"],
+      "read": "text",
+      "harvest_board": true,
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED"
+    },
+    "reference": {
+      "canonical": "reference",
+      "section": "Load Basics",
+      "kind": "label",
+      "labels": ["Reference", "Reference Number", "Customer Reference"],
+      "read": "input",
+      "policy": "ALLOW",
+      "implementation": "NOT_STARTED"
+    },
+    "customer": {
+      "canonical": "customer",
+      "section": "Load Basics",
+      "kind": "label",
+      "labels": ["Customer", "Customer Name"],
+      "read": "input",
+      "policy": "ALLOW",
+      "implementation": "NOT_STARTED"
+    },
+    "equipment": {
+      "canonical": "equipment",
+      "section": "Load Basics",
+      "kind": "label",
+      "labels": ["Equipment"],
+      "read": "input",
+      "policy": "ALLOW",
+      "implementation": "NOT_STARTED"
+    },
+    "commodity": {
+      "canonical": "commodity",
+      "section": "Load Basics",
+      "kind": "label",
+      "labels": ["Commodity"],
+      "read": "input",
+      "policy": "ALLOW",
+      "implementation": "NOT_STARTED"
+    },
+    "weight": {
+      "canonical": "weight",
+      "section": "Load Basics",
+      "kind": "label",
+      "labels": ["Weight"],
+      "read": "input",
+      "policy": "ALLOW",
+      "implementation": "NOT_STARTED"
+    },
+    "carrier": {
+      "canonical": "carrier",
+      "section": "Load Basics",
+      "kind": "label",
+      "labels": ["Carrier"],
+      "read": "input",
+      "policy": "FORBIDDEN",
+      "implementation": "FORBIDDEN",
+      "write_route": "POST /v1/ascend/loads/{id}/assign"
+    },
+    "private_notes": {
+      "canonical": "private_notes",
+      "section": "Load Basics",
+      "kind": "css",
+      "selector": "textarea#scratch",
+      "id": "scratch",
+      "labels": ["Private Notes", "Internal Notes", "Scratch"],
+      "access": "OBSERVE_OR_FILL",
+      "write_method": "WHOLE_FORM_SAVE",
+      "policy": "APPROVAL_REQUIRED",
+      "implementation": "IN_FLIGHT",
+      "in_flight_pr": 8,
+      "note": "Booking Logistics atlas: private Load Note is textarea#scratch. No per-field save."
+    },
+    "public_notes": {
+      "canonical": "public_notes",
+      "section": "Load Basics",
+      "kind": "css",
+      "selector": "#notes",
+      "id": "notes",
+      "labels": ["Public Load Notes", "Public Notes"],
+      "access": "FORBIDDEN",
+      "policy": "FORBIDDEN",
+      "implementation": "FORBIDDEN",
+      "note": "Public Load Note is never typed by Bridge."
+    }
+  }
+}

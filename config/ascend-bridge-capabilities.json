@@ -1,0 +1,123 @@
+{
+  "version": "0",
+  "facade": "ascend",
+  "actuator": "portable-bridge",
+  "live_validated": false,
+  "production_writes": false,
+  "not_a_retail_api": true,
+  "next_live_field_after_note_verified": "write_status",
+  "capabilities": {
+    "read_active_loads_board": {
+      "kind": "READ",
+      "route": "GET /v1/ascend/loads",
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED",
+      "tested": true,
+      "evidence_class": "CANDIDATE",
+      "coverage": "VISIBLE_BOARD_ONLY"
+    },
+    "read_load_basics": {
+      "kind": "READ",
+      "route": "GET /v1/ascend/loads/{id}",
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED",
+      "tested": true,
+      "evidence_class": "CANDIDATE",
+      "note": "Last harvested/cached board fields only. Empty-safe when missing."
+    },
+    "read_status_facade": {
+      "kind": "READ",
+      "route": "GET /v1/ascend/status",
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED",
+      "tested": true,
+      "evidence_class": "CANDIDATE"
+    },
+    "write_private_note": {
+      "kind": "WRITE",
+      "route": "POST /v1/ascend/loads/{id}/notes",
+      "policy": "APPROVAL_REQUIRED",
+      "implementation": "IN_FLIGHT",
+      "tested": false,
+      "atlas": "textarea#scratch",
+      "commit_kind": "WHOLE_FORM_SAVE",
+      "in_flight_pr": 8
+    },
+    "write_public_note": {
+      "kind": "WRITE",
+      "route": null,
+      "policy": "FORBIDDEN",
+      "implementation": "FORBIDDEN",
+      "tested": true,
+      "atlas": "#notes"
+    },
+    "write_status": {
+      "kind": "WRITE",
+      "route": "POST /v1/ascend/loads/{id}/status",
+      "policy": "APPROVAL_REQUIRED",
+      "implementation": "NOT_STARTED",
+      "tested": true,
+      "http_stub": 501
+    },
+    "assign_carrier": {
+      "kind": "WRITE",
+      "route": "POST /v1/ascend/loads/{id}/assign",
+      "policy": "FORBIDDEN",
+      "implementation": "FORBIDDEN",
+      "tested": true,
+      "http_stub": 403
+    },
+    "write_expenses": {
+      "kind": "WRITE",
+      "route": "POST /v1/ascend/loads/{id}/expenses",
+      "policy": "FORBIDDEN",
+      "implementation": "FORBIDDEN",
+      "tested": true,
+      "http_stub": 403
+    },
+    "upload_document": {
+      "kind": "WRITE",
+      "route": null,
+      "policy": "FORBIDDEN",
+      "implementation": "NOT_STARTED",
+      "tested": false
+    },
+    "communications": {
+      "kind": "WRITE",
+      "route": null,
+      "policy": "FORBIDDEN",
+      "implementation": "NOT_STARTED",
+      "tested": false
+    },
+    "harvest_poll": {
+      "kind": "AUTOMATION",
+      "route": "POST /v1/portable/harvest",
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED",
+      "tested": true
+    },
+    "lease_revoke": {
+      "kind": "AUTOMATION",
+      "route": "POST /v1/portable/leases/{id}/revoke",
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED",
+      "tested": true
+    },
+    "scheduled_board_sync": {
+      "kind": "AUTOMATION",
+      "route": null,
+      "policy": "ALLOW",
+      "implementation": "NOT_STARTED",
+      "tested": false,
+      "note": "Harvest alarm exists; no server-owned scheduled board sync."
+    },
+    "verify_after_write": {
+      "kind": "AUTOMATION",
+      "route": null,
+      "policy": "APPROVAL_REQUIRED",
+      "implementation": "NOT_STARTED",
+      "tested": false,
+      "note": "Required before any write is VERIFIED. Next after private-note VERIFIED is status."
+    }
+  }
+}

@@ -11,10 +11,10 @@ skips UI for **API auth**. Harvest still requires Bridge on Active Loads.
 | --- | --- |
 | Auth | Demo agent token, `Authorization: Bearer` |
 | Label | `auth_kind=DEMO_AGENT` — not tenant OAuth |
-| Reads | `GET /v1/ascend/status`, `GET /v1/ascend/loads` |
+| Reads | `GET /v1/ascend/status`, `GET /v1/ascend/loads`, `GET /v1/ascend/loads/{id}`, `GET /v1/ascend/capabilities` |
 | Optional | `POST /v1/portable/leases` and revoke, with the same Bearer |
 | Harvest | Still `POST /v1/portable/harvest` with a **lease token**, from the Bridge |
-| Writes | **false** — no Save, assign, notes, uploads, New Load |
+| Writes | Stubs only — status 501 / APPROVAL_REQUIRED intended; assign and expenses FORBIDDEN. No silent Save. Private note is in flight on PR #8. |
 | LIVE_VALIDATED | **false** |
 
 ## Get a token
@@ -52,9 +52,13 @@ already harvested, the agent can read immediately:
 ```bash
 curl -sS http://127.0.0.1:8787/v1/ascend/status -H "Authorization: Bearer $AGENT"
 curl -sS http://127.0.0.1:8787/v1/ascend/loads -H "Authorization: Bearer $AGENT"
+curl -sS http://127.0.0.1:8787/v1/ascend/loads/1763 -H "Authorization: Bearer $AGENT"
+curl -sS http://127.0.0.1:8787/v1/ascend/capabilities -H "Authorization: Bearer $AGENT"
 ```
 
 Empty harvest is HTTP 200 with `loads: []` and `harvest_available: false`.
+Unknown load IDs are HTTP 200 with `found: false`. See
+[ASCEND_CAPABILITY_MAP_V0.md](ASCEND_CAPABILITY_MAP_V0.md).
 
 ## Optional: create a lease
 

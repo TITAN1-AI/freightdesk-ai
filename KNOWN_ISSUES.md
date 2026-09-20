@@ -1,3 +1,13 @@
+# Known issues - capability map v0 2026-09-20
+
+The capability matrix is a foundation, not a complete LIVE Ascend API. `GET /v1/ascend/loads/{id}`
+returns only last harvested board fields (ID / pick / drop / load_status). Load Basics atlas
+labels other than those board columns have no cached values. Status write is a 501 stub
+(APPROVAL_REQUIRED when implemented). Assign, expenses, public notes, documents, and
+communications stay FORBIDDEN or NOT_STARTED. Private-note `#scratch` / WHOLE_FORM_SAVE is in
+flight on PR #8 and is not LIVE_VALIDATED here. No scheduled server board sync and no
+verify-after-write on this slice. Next LIVE field after note VERIFIED: status change.
+
 # Known issues - portable bridge v0 2026-09-19
 
 Track B is a demo/unpacked foundation, not a store product. The Ascend facade reads stored harvest

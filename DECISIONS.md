@@ -1,3 +1,14 @@
+# Decisions - 2026-09-20
+
+## Capability map first; one write at a time
+
+Ship a documented READ / WRITE / AUTOMATION map before enabling more LIVE writes. Avery calls
+HTTP; Bridge stays on the authenticated Ascend tab. Status change is the next LIVE field after
+private-note VERIFIED, and it remains APPROVAL_REQUIRED with a 501 stub until implemented.
+Money and assign stay FORBIDDEN stubs. Atlas `#scratch` / Load Basics selectors live in Bridge
+config JSON so read and future write paths share one binding. No silent Save Load. Keep this
+work additive on `main` while PR #8 owns the note write. See docs/ASCEND_CAPABILITY_MAP_V0.md.
+
 # Decisions - 2026-09-19
 
 ## Agents authenticate with a demo Bearer, not the extension popup
