@@ -110,6 +110,7 @@
       commit_kind: null,
       save_variant: null,
       allow_whole_form_save: false,
+      tab_hint: null,
       ...partial
     };
   }
@@ -560,6 +561,14 @@
       return { ok: false, error_code: planned.error, opener_strategy: 'none', stage: 'opener' };
     }
     if (planned.strategy === 'unique_searchbox') {
+      if (options && options.forbid_searchbox) {
+        return {
+          ok: false,
+          error_code: 'LOAD_OPENER_UNVERIFIED',
+          opener_strategy: 'scratch_tab_required',
+          stage: 'tab'
+        };
+      }
       fillNoSubmit(planned.target.el, loadId);
       const afterSearch = await settleOpener(doc, loadId);
       const afterWorkspace = planWorkspace(afterSearch, loadId);
@@ -630,7 +639,9 @@
       return report({ error_code: 'ORIGIN_NOT_ALLOWLISTED', stage: 'origin' });
     }
     try {
-      let opened = await openWorkspace(doc, command.load_id);
+      let opened = await openWorkspace(doc, command.load_id, {
+        forbid_searchbox: !!command.forbid_searchbox
+      });
       const scratch = findScratch(doc);
       const alreadyTyped = !!(scratch && command.text &&
         String(scratch.value || scratch.el?.value || '').includes(command.text));
@@ -647,7 +658,8 @@
             error_code: opened.error_code,
             stage: opened.stage,
             opener_strategy: opened.opener_strategy,
-            note_label: opened.note_label || null
+            note_label: opened.note_label || null,
+            tab_hint: command.tab_hint || null
           });
         }
       }
@@ -660,6 +672,7 @@
           note_label: planned.note_label || opened.note_label || null,
           commit_kind: planned.commit_kind || null,
           save_variant: planned.save_variant || null,
+          tab_hint: command.tab_hint || null,
           allow_whole_form_save: !!command.allow_whole_form_save
         });
       }
@@ -701,6 +714,7 @@
         error_code: notePresent ? null : 'note_not_present',
         stage: 'verify',
         opener_strategy: verifyOpener,
+        tab_hint: command.tab_hint || null,
         note_label: planned.note_label,
         commit_kind: planned.commit_kind,
         save_variant: planned.save_variant || null,

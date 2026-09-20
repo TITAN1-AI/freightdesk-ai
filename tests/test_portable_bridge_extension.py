@@ -16,7 +16,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     manifest = json.loads((EXT / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["manifest_version"] == 3
     assert manifest["name"] == "FreightDesk Bridge"
-    assert manifest["version"] == "0.1.7"
+    assert manifest["version"] == "0.1.8"
     assert "nativeMessaging" not in manifest["permissions"]
     assert manifest["permissions"] == ["storage", "alarms", "scripting"]
     assert manifest["host_permissions"][0] == "https://ascendtms.com/*"
@@ -28,7 +28,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     assert "externally_connectable" not in manifest
     assert "web_accessible_resources" not in manifest
     identity = (EXT / "build.js").read_text(encoding="utf-8")
-    assert "extension_version: '0.1.7'" in identity
+    assert "extension_version: '0.1.8'" in identity
     assert "native_messaging: false" in identity
     assert "live_validated: false" in identity
     assert "production_writes: false" in identity
@@ -89,6 +89,11 @@ def test_portable_reinjects_content_and_keeps_manual_reload_copy():
     assert "BRIDGE_CLAIM_TIMEOUT" in popup_js
     assert "typed_but_not_saved" in popup_js
     assert "reopenAfterSave" in (EXT / "write-note.js").read_text(encoding="utf-8")
+    assert "forbid_searchbox" in background
+    assert "tab_hint" in background
+    assert "probeTabScratchDom" in background
+    assert "allFrames: true" in background
+    assert "scratch_tab_required" in (EXT / "write-note.js").read_text(encoding="utf-8")
     assert "formatLastWrite" in popup_js
     assert "safeCode" in popup_js
     assert "POLL_WRITES" in popup_js
@@ -391,7 +396,10 @@ def test_portable_write_note_execute_skips_save_and_exit():
 def test_portable_write_tab_prefers_url_with_load_id():
     background = (EXT / "background.js").read_text(encoding="utf-8")
     script = "\n".join([
-        "const chrome = { tabs: { sendMessage: async (id) => ({ scratch: id === 9 }) } };",
+        "const chrome = { tabs: { sendMessage: async (id) => ({ scratch: id === 9, already_open: id === 9 }) } };",
+        _extract_function(background, "probeTabScratchDom"),
+        _extract_function(background, "probeTabScratch"),
+        _extract_function(background, "tabHintFor"),
         _extract_function(background, "pickWriteTab"),
         "const tabs = [",
         "  {id:1, url:'https://ascendtms.com/loads', active:true},",
@@ -399,14 +407,120 @@ def test_portable_write_tab_prefers_url_with_load_id():
         "];",
         "(async () => {",
         "  const picked = await pickWriteTab(tabs, '1763');",
-        "  if (picked.id !== 2) throw new Error('expected url match, got ' + JSON.stringify(picked));",
+        "  if (!picked.tab || picked.tab.id !== 2) throw new Error('expected url match, got ' + JSON.stringify(picked));",
+        "  if (picked.scratch_present) throw new Error('url-only pick should not claim scratch');",
         "  const fallback = await pickWriteTab([{id:3, url:'https://ascendtms.com/', active:true}], '1763');",
-        "  if (fallback.id !== 3) throw new Error('expected active fallback');",
+        "  if (!fallback.tab || fallback.tab.id !== 3) throw new Error('expected active fallback');",
         "  const scratchTab = await pickWriteTab([",
         "    {id:8, url:'https://ascendtms.com/loads', active:true},",
         "    {id:9, url:'https://ascendtms.com/loads', active:false}",
         "  ], '1763');",
-        "  if (scratchTab.id !== 9) throw new Error('expected scratch probe, got ' + JSON.stringify(scratchTab));",
+        "  if (!scratchTab.tab || scratchTab.tab.id !== 9) throw new Error('expected scratch probe, got ' + JSON.stringify(scratchTab));",
+        "  if (!scratchTab.scratch_present) throw new Error('scratch_present missing');",
+        "  if (!String(scratchTab.tab_hint || '').includes('scratch:9')) throw new Error('tab_hint: ' + scratchTab.tab_hint);",
+        "  if (!String(scratchTab.tab_hint || '').includes('skip=board:8')) throw new Error('tab_hint skip: ' + scratchTab.tab_hint);",
+        "  chrome.tabs.sendMessage = async () => { throw new Error('unbound'); };",
+        "  chrome.scripting = { executeScript: async ({ target }) => [{ result: { scratch: target.tabId === 9 } }] };",
+        "  const viaDom = await pickWriteTab([",
+        "    {id:8, url:'https://ascendtms.com/loads', active:true},",
+        "    {id:9, url:'https://ascendtms.com/loads', active:false}",
+        "  ], '1763');",
+        "  if (!viaDom.tab || viaDom.tab.id !== 9 || !viaDom.scratch_present) throw new Error('dom probe must pick scratch: ' + JSON.stringify(viaDom));",
+        "})().catch((error) => { console.error(error); process.exit(1); });",
+    ])
+    completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+def test_portable_write_uses_scratch_tab_not_board_searchbox():
+    background = (EXT / "background.js").read_text(encoding="utf-8")
+    script = "\n".join([
+        "const fs = require('fs');",
+        "globalThis.getComputedStyle = () => ({ visibility: 'visible' });",
+        "globalThis.MouseEvent = class { constructor(type, init) { this.type = type; Object.assign(this, init || {}); } };",
+        "globalThis.Event = class { constructor(type, init) { this.type = type; Object.assign(this, init || {}); } };",
+        "function el(tag, attrs) {",
+        "  attrs = attrs || {};",
+        "  const node = {",
+        "    id: attrs.id || '',",
+        "    tagName: String(tag).toUpperCase(),",
+        "    textContent: attrs.text || attrs.label || '',",
+        "    value: attrs.value || '',",
+        "    placeholder: attrs.placeholder || '',",
+        "    labels: attrs.label ? [{ textContent: attrs.label }] : [],",
+        "    events: [],",
+        "    getClientRects: () => (attrs.hidden ? [] : [{}]),",
+        "    getAttribute: (name) => name === 'id' ? (attrs.id || '') : ((attrs.attrs || {})[name] || null),",
+        "    closest: () => null,",
+        "    matches: () => false,",
+        "    focus() { node.focused = true; },",
+        "    dispatchEvent(ev) { node.events.push(ev.type); return true; },",
+        "    querySelectorAll() { return []; },",
+        "    querySelector() { return null; }",
+        "  };",
+        "  return node;",
+        "}",
+        "const chrome = { tabs: { sendMessage: async (id) => ({ scratch: id === 9, already_open: id === 9 }) } };",
+        _extract_function(background, "probeTabScratchDom"),
+        _extract_function(background, "probeTabScratch"),
+        _extract_function(background, "tabHintFor"),
+        _extract_function(background, "pickWriteTab"),
+        "const scratch = el('textarea', { id: 'scratch', label: 'Private Load Note', value: 'prior note' });",
+        "const save = el('button', { label: 'Save', text: 'Save' });",
+        "const search = el('input', { label: 'search', value: '' });",
+        "search.tagName = 'INPUT';",
+        "const basics = {",
+        "  title: 'AscendTMS',",
+        "  defaultView: { location: { origin: 'https://ascendtms.com', href: 'https://ascendtms.com/loads/1763' } },",
+        "  getElementById: (id) => id === 'scratch' ? scratch : null,",
+        "  querySelectorAll(sel) {",
+        "    if (sel.includes('iframe')) return [];",
+        "    if (sel.includes('textarea')) return [scratch];",
+        "    if (sel.includes('button,input[type=\"submit\"]')) return [save];",
+        "    if (sel.includes('h1,h2')) return [];",
+        "    if (sel.includes('input[type=\"search\"]')) return [];",
+        "    if (sel.includes('tbody')) return [];",
+        "    if (sel.includes('input,select')) return [];",
+        "    if (sel === 'label') return [];",
+        "    if (sel.includes('[data-note-kind')) return [];",
+        "    if (sel.includes('a,[role=\"link\"]')) return [];",
+        "    return [];",
+        "  }",
+        "};",
+        "const board = {",
+        "  title: 'AscendTMS',",
+        "  defaultView: { location: { origin: 'https://ascendtms.com', href: 'https://ascendtms.com/loads' } },",
+        "  getElementById: () => null,",
+        "  querySelectorAll(sel) {",
+        "    if (sel.includes('iframe')) return [];",
+        "    if (sel.includes('textarea')) return [];",
+        "    if (sel.includes('button,input[type=\"submit\"]')) return [];",
+        "    if (sel.includes('h1,h2')) return [];",
+        "    if (sel.includes('input[type=\"search\"]')) return [search];",
+        "    if (sel.includes('tbody')) return [];",
+        "    if (sel.includes('input,select')) return [search];",
+        "    if (sel === 'label') return [];",
+        "    if (sel.includes('[data-note-kind')) return [];",
+        "    if (sel.includes('a,[role=\"link\"]')) return [];",
+        "    return [];",
+        "  }",
+        "};",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-note.js")) + ", 'utf8'));",
+        "const W = globalThis.FreightDeskPortableWriteNote;",
+        "(async () => {",
+        "  const choice = await pickWriteTab([",
+        "    {id:8, url:'https://ascendtms.com/loads', active:true},",
+        "    {id:9, url:'https://ascendtms.com/loads/1763', active:false}",
+        "  ], '1763');",
+        "  if (!choice.tab || choice.tab.id !== 9 || !choice.scratch_present) throw new Error('must pick scratch tab: ' + JSON.stringify(choice));",
+        "  if (!String(choice.tab_hint).includes('scratch:9') || !String(choice.tab_hint).includes('board:8')) throw new Error('hint: ' + choice.tab_hint);",
+        "  const blocked = await W.execute(board, { action: 'ADD_INTERNAL_NOTE', load_id: '1763', text: 'B-new', note_kind: 'PRIVATE_INTERNAL', origin: 'https://ascendtms.com', allow_whole_form_save: true, forbid_searchbox: true, tab_hint: choice.tab_hint });",
+        "  if (blocked.opener_strategy !== 'scratch_tab_required') throw new Error('must not unique_searchbox when scratch tab exists: ' + JSON.stringify(blocked));",
+        "  if (search.events.includes('input') || search.value === '1763') throw new Error('filled board searchbox');",
+        "  const allowed = await W.execute(basics, { action: 'ADD_INTERNAL_NOTE', load_id: '1763', text: 'B-new', note_kind: 'PRIVATE_INTERNAL', origin: 'https://ascendtms.com', allow_whole_form_save: true, forbid_searchbox: true, tab_hint: choice.tab_hint });",
+        "  if (!allowed.ok || !allowed.note_present || allowed.opener_strategy !== 'already_open') throw new Error('scratch tab write: ' + JSON.stringify(allowed));",
+        "  if (allowed.tab_hint !== choice.tab_hint) throw new Error('tab_hint not on result');",
+        "  if (scratch.value !== 'B-new' || !save.events.includes('click')) throw new Error('did not type/save on scratch tab');",
         "})().catch((error) => { console.error(error); process.exit(1); });",
     ])
     completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)

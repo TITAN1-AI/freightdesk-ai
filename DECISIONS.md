@@ -1,5 +1,13 @@
 # Decisions - 2026-09-20
 
+## Prefer the Ascend tab that already has #scratch; never searchbox past it
+
+0.1.7 whole-form writes failed `unique_searchbox` on the Active Loads tab while
+1763 Load Basics already showed `#scratch`. 0.1.8 probes every Ascend tab,
+focuses the scratch tab, records `tab_hint`, and forbids `unique_searchbox`
+when any tab already has Private Load Note / `#scratch`. See
+docs/ASCEND_WRITE_NOTE_V0.md.
+
 ## After Save & Exit, reopen the load and verify #scratch before failing
 
 0.1.6 wrote the B2 note on 1763 then failed the receipt because Save & Exit

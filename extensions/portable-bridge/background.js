@@ -254,7 +254,11 @@ async function pollWritesOnce() {
   for (const candidate of tabs) {
     await ensureAscendContent(candidate, { allowReload: false });
   }
-  const tab = await pickWriteTab(tabs, pending.load_id);
+  const choice = await pickWriteTab(tabs, pending.load_id);
+  const tab = choice?.tab;
+  if (tab?.id && chrome.tabs?.update) {
+    try { await chrome.tabs.update(tab.id, { active: true }); } catch { /* keep going */ }
+  }
   await ensureAscendContent(tab, { allowReload: false });
   let result;
   try {
@@ -264,7 +268,9 @@ async function pollWritesOnce() {
       load_id: pending.load_id,
       text: pending.text,
       note_kind: pending.note_kind || 'PRIVATE_INTERNAL',
-      allow_whole_form_save: !!pending.allow_whole_form_save
+      allow_whole_form_save: !!pending.allow_whole_form_save,
+      forbid_searchbox: !!choice.scratch_present,
+      tab_hint: choice.tab_hint || null
     });
   } catch {
     result = { verified: false, note_present: false, error_code: 'CONTENT_UNAVAILABLE', stage: 'content' };
@@ -280,40 +286,122 @@ async function pollWritesOnce() {
     note_label: result?.note_label || null,
     commit_kind: result?.commit_kind || null,
     save_variant: result?.save_variant || null,
+    tab_hint: result?.tab_hint || choice.tab_hint || null,
     allow_whole_form_save: !!pending.allow_whole_form_save
   });
+}
+
+async function probeTabScratchDom(tab) {
+  if (!tab?.id || typeof chrome === 'undefined' || !chrome.scripting?.executeScript) {
+    return { scratch: false };
+  }
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id, allFrames: true },
+      world: 'ISOLATED',
+      func: () => {
+        const seen = [];
+        const walk = (root, acc) => {
+          if (!root || seen.indexOf(root) >= 0) return;
+          seen.push(root);
+          acc.push(root);
+          let frames = [];
+          try { frames = [...root.querySelectorAll('iframe,frame')]; } catch { frames = []; }
+          for (const frame of frames) {
+            try { walk(frame.contentDocument, acc); } catch { /* cross-origin */ }
+          }
+        };
+        const docs = [];
+        walk(document, docs);
+        for (const root of docs) {
+          try {
+            if (root.getElementById && root.getElementById('scratch')) return { scratch: true };
+          } catch { /* ignore */ }
+          let labeled = [];
+          try { labeled = [...root.querySelectorAll('textarea,[role="textbox"],label')]; } catch { labeled = []; }
+          for (const el of labeled) {
+            const text = String(
+              (el.getAttribute && el.getAttribute('aria-label')) || el.placeholder || el.textContent || ''
+            ).replace(/\s+/g, ' ').trim().toLowerCase();
+            if (text.indexOf('private load note') >= 0 || text.indexOf('private notes') >= 0 ||
+                text.indexOf('internal notes') >= 0 || text.indexOf('internal load note') >= 0) {
+              return { scratch: true };
+            }
+          }
+        }
+        return { scratch: false };
+      }
+    });
+    return { scratch: (results || []).some((item) => !!(item && item.result && item.result.scratch)) };
+  } catch {
+    return { scratch: false };
+  }
+}
+
+async function probeTabScratch(tab, loadId) {
+  if (!tab?.id || typeof chrome === 'undefined' || !chrome.tabs?.sendMessage) {
+    return { scratch: false };
+  }
+  let messageProbe = { scratch: false };
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (typeof ensureAscendContent === 'function') {
+      try { await ensureAscendContent(tab, { allowReload: false }); } catch { /* keep probing */ }
+    }
+    try {
+      const reply = await chrome.tabs.sendMessage(tab.id, {
+        action: 'PROBE_NOTE_WORKSPACE',
+        load_id: loadId
+      });
+      messageProbe = { scratch: !!(reply?.scratch || reply?.already_open), note_label: reply?.note_label || null };
+      if (messageProbe.scratch) return messageProbe;
+      break;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
+    }
+  }
+  const domProbe = await probeTabScratchDom(tab);
+  if (domProbe.scratch) {
+    return { scratch: true, note_label: messageProbe.note_label || 'scratch' };
+  }
+  return messageProbe;
+}
+
+function tabHintFor(chosen, probed) {
+  if (!chosen?.tab) return 'no_tab';
+  const reason = chosen.scratch ? 'scratch' : (chosen.urlHit ? 'url' : (chosen.active ? 'active' : 'first'));
+  const skipped = (probed || []).filter((item) => item.tab && item.tab.id !== chosen.tab.id)
+    .map((item) => (item.scratch ? 'scratch:' : 'board:') + item.tab.id);
+  return (reason + ':' + chosen.tab.id + (skipped.length ? ';skip=' + skipped.join(',') : '')).slice(0, 80);
 }
 
 async function pickWriteTab(tabs, loadId) {
   const id = String(loadId || '');
   const probed = [];
   for (const tab of tabs || []) {
-    let scratch = false;
-    try {
-      const reply = (typeof chrome !== 'undefined' && chrome.tabs?.sendMessage)
-        ? await chrome.tabs.sendMessage(tab.id, { action: 'PROBE_NOTE_WORKSPACE', load_id: id })
-        : null;
-      scratch = !!reply?.scratch;
-    } catch {
-      scratch = false;
-    }
+    const probe = await probeTabScratch(tab, id);
     probed.push({
       tab,
-      scratch,
+      scratch: !!probe.scratch,
       urlHit: !!(id && String(tab.url || '').includes(id)),
       active: !!tab.active
     });
   }
   const withScratch = probed.filter((item) => item.scratch);
-  if (withScratch.length === 1) return withScratch[0].tab;
-  if (withScratch.length > 1) {
+  let chosen = null;
+  if (withScratch.length === 1) chosen = withScratch[0];
+  else if (withScratch.length > 1) {
     const url = withScratch.filter((item) => item.urlHit);
-    if (url.length === 1) return url[0].tab;
-    return (withScratch.find((item) => item.active) || withScratch[0]).tab;
+    chosen = url.length === 1 ? url[0] : (withScratch.find((item) => item.active) || withScratch[0]);
+  } else {
+    const urlHits = probed.filter((item) => item.urlHit);
+    chosen = urlHits.length === 1 ? urlHits[0]
+      : (probed.find((item) => item.active) || probed[0] || null);
   }
-  const urlHits = probed.filter((item) => item.urlHit);
-  if (urlHits.length === 1) return urlHits[0].tab;
-  return (probed.find((item) => item.active) || probed[0] || {}).tab || null;
+  return {
+    tab: chosen?.tab || null,
+    tab_hint: tabHintFor(chosen, probed),
+    scratch_present: withScratch.length > 0
+  };
 }
 
 async function completeWrite(token, writeId, body) {
@@ -327,7 +415,8 @@ async function completeWrite(token, writeId, body) {
     opener_strategy: body?.opener_strategy || null,
     note_label: body?.note_label || null,
     commit_kind: body?.commit_kind || null,
-    save_variant: body?.save_variant || null
+    save_variant: body?.save_variant || null,
+    tab_hint: body?.tab_hint || null
   };
   const local = {
     write_id: writeId,
@@ -338,6 +427,7 @@ async function completeWrite(token, writeId, body) {
     note_label: payload.note_label,
     commit_kind: payload.commit_kind,
     save_variant: payload.save_variant,
+    tab_hint: payload.tab_hint,
     allow_whole_form_save: !!body?.allow_whole_form_save,
     completed_at: new Date().toISOString()
   };

@@ -229,7 +229,8 @@ def test_bridge_complete_keeps_opener_and_commit_diagnostics(client):
                                   "error_code": "NOTE_COMMIT_REQUIRES_OWNER_PATH",
                                   "live_validated": False, "production_writes": False,
                                   "stage": "inspect", "opener_strategy": "already_open",
-                                  "note_label": "Private Load Note", "commit_kind": "WHOLE_FORM_SAVE"},
+                                  "note_label": "Private Load Note", "commit_kind": "WHOLE_FORM_SAVE",
+                                  "tab_hint": "scratch:9;skip=board:8"},
                             headers=agent_headers(token))
     assert completed.status_code == 200
     receipt = completed.json()
@@ -239,6 +240,7 @@ def test_bridge_complete_keeps_opener_and_commit_diagnostics(client):
     assert receipt["opener_strategy"] == "already_open"
     assert receipt["note_label"] == "Private Load Note"
     assert receipt["commit_kind"] == "WHOLE_FORM_SAVE"
+    assert receipt["tab_hint"] == "scratch:9;skip=board:8"
     assert receipt["verified"] is False
     assert "field fail receipt" not in str(receipt)
     fetched = client.get(f"/v1/ascend/writes/{posted['write_id']}", headers=agent_headers(token))

@@ -1,5 +1,18 @@
 # Current state — 2026-09-20
 
+## Ascend write note v0.1.8 — write on the #scratch tab, not the board
+
+Avery 0.1.7: no-whole-form `37897c52` passed `already_open`. Whole-form
+`c640c880` / `53c4e9fd` / `34514137` failed `LOAD_OPENER_UNVERIFIED`
+`unique_searchbox` while Load Basics `#scratch` was visibly open (prior note
+still in the field). Hypothesis: the worker attached to the Active Loads board
+tab. Portable Bridge **0.1.8** probes every Ascend tab, prefers/focuses the tab
+that already has `#scratch` / Private Load Note, and will not run
+`unique_searchbox` when any tab already has `#scratch`. Receipt `tab_hint`
+records the chosen tab and skipped board tabs. Harvest and agent Bearer
+unchanged. X1 untouched. **Not LIVE_VALIDATED** until the receipt is VERIFIED.
+Handoff: [ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
 ## Ascend write note v0.1.7 — reopen after Save & Exit, then verify
 
 Avery 0.1.6: no-whole-form OWNER_PATH passed. Whole-form B2 **persisted** on

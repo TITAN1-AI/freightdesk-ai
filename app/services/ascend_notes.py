@@ -55,6 +55,7 @@ class WriteCompleteBody(Model):
     note_label: str | None = Field(default=None, max_length=80)
     commit_kind: str | None = Field(default=None, max_length=64)
     save_variant: str | None = Field(default=None, max_length=32)
+    tab_hint: str | None = Field(default=None, max_length=80)
     allow_whole_form_save: bool = False
 
     @field_validator("error_code", mode="before")
@@ -266,7 +267,7 @@ class AscendNoteService:
                  error_code: str | None, live_validated: bool, production_writes: bool,
                  stage: str | None = None, opener_strategy: str | None = None,
                  note_label: str | None = None, commit_kind: str | None = None,
-                 save_variant: str | None = None) -> dict:
+                 save_variant: str | None = None, tab_hint: str | None = None) -> dict:
         self._require_demo()
         principal = self.portable._require_principal(token)
         if live_validated or production_writes:
@@ -283,7 +284,7 @@ class AscendNoteService:
                           error_code=code, completed_at=now.isoformat(), completed_by=principal["id"],
                           stage=_diag(stage), opener_strategy=_diag(opener_strategy),
                           note_label=_diag(note_label, 80), commit_kind=_diag(commit_kind),
-                          save_variant=_diag(save_variant, 32))
+                          save_variant=_diag(save_variant, 32), tab_hint=_diag(tab_hint, 80))
             self.store.put(self.tenant, "ascend_note_write", record["id"], record)
             self._audit("ASCEND_NOTE_" + status, "Private-note write completed with verify-after-write.",
                         {"write_id": record["id"], "load_id": record["load_id"], "note_present": note_present,
@@ -382,6 +383,7 @@ class AscendNoteService:
             "note_label": None,
             "commit_kind": "WHOLE_FORM_SAVE" if allow_whole_form_save else None,
             "save_variant": None,
+            "tab_hint": None,
             "allow_whole_form_save": bool(allow_whole_form_save),
         }
 
@@ -406,7 +408,7 @@ class AscendNoteService:
             "note_present", "text_digest", "error_code", "approval_id", "created_at",
             "dispatched_at", "completed_at", "claimed_at", "claim_deadline_at", "stage",
             "opener_strategy", "note_label", "commit_kind", "save_variant",
-            "allow_whole_form_save")}
+            "tab_hint", "allow_whole_form_save")}
         public["whole_form_save_risk"] = (
             WHOLE_FORM_SAVE_RISK if record.get("allow_whole_form_save")
             or record.get("commit_kind") == "WHOLE_FORM_SAVE" else None)
