@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "FreightDesk Bridge",
-  "version": "0.1.1",
-  "description": "Portable read-only Ascend board harvest for FreightDesk Cloud. No native host. Writes unavailable.",
+  "version": "0.1.10",
+  "description": "Portable Ascend board harvest plus approved private-internal-note writes. No native host. Other writes blocked.",
   "permissions": ["storage", "alarms", "scripting"],
   "host_permissions": [
     "https://ascendtms.com/*",
@@ -13,7 +13,7 @@
   "action": {"default_popup": "popup.html", "default_title": "FreightDesk Bridge"},
   "content_scripts": [{
     "matches": ["https://ascendtms.com/*"],
-    "js": ["build.js", "board-view.js", "harvest.js", "content.js"],
+    "js": ["build.js", "board-view.js", "harvest.js", "write-note.js", "content.js"],
     "run_at": "document_idle",
     "all_frames": false,
     "world": "ISOLATED"

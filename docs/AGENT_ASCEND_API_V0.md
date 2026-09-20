@@ -14,7 +14,7 @@ skips UI for **API auth**. Harvest still requires Bridge on Active Loads.
 | Reads | `GET /v1/ascend/status`, `GET /v1/ascend/loads`, `GET /v1/ascend/loads/{id}`, `GET /v1/ascend/capabilities` |
 | Optional | `POST /v1/portable/leases` and revoke, with the same Bearer |
 | Harvest | Still `POST /v1/portable/harvest` with a **lease token**, from the Bridge |
-| Writes | Stubs only — status 501 / APPROVAL_REQUIRED intended; assign and expenses FORBIDDEN. No silent Save. Private note is in flight on PR #8. |
+| Writes | Private internal note — `POST /v1/ascend/loads/{id}/notes` after approval. See [ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md). Status 501 / APPROVAL_REQUIRED intended; assign and expenses FORBIDDEN. Save, money, New Load stay blocked. |
 | LIVE_VALIDATED | **false** |
 
 ## Get a token
@@ -59,6 +59,9 @@ curl -sS http://127.0.0.1:8787/v1/ascend/capabilities -H "Authorization: Bearer 
 Empty harvest is HTTP 200 with `loads: []` and `harvest_available: false`.
 Unknown load IDs are HTTP 200 with `found: false`. See
 [ASCEND_CAPABILITY_MAP_V0.md](ASCEND_CAPABILITY_MAP_V0.md).
+
+Private-internal-note writes (APPROVAL_REQUIRED) use the same Bearer after
+`POST /v1/ascend/approvals`. See [ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md).
 
 ## Optional: create a lease
 

@@ -16,11 +16,12 @@ Engineering handoff: [docs/PORTABLE_BRIDGE.md](../../docs/PORTABLE_BRIDGE.md).
 | Auth | DPAPI enrollment / pairing | Demo placeholder device session (cloud OAuth later) |
 | Lease | Host-owned Windows read lease | Cloud/demo capability lease, revocable |
 | Harvest | Host-leased identity/map jobs | VISIBLE_BOARD_ONLY board snapshot, **CANDIDATE** |
-| Writes | Blocked | Blocked in extension and API |
+| Writes | Blocked | Harvest blocked; approved **private internal note** only ([write note v0](../../docs/ASCEND_WRITE_NOTE_V0.md)) |
 | LIVE_VALIDATED | Narrow historical X1 reads only | **No** — this track is not live-validated |
 
 v0 harvest never clicks Save, assign, notes, uploads, or wizard New Load. Maps/harvest are
-evidence-only. Booking Logistics live ops stay on the Avery stack until a separate cutover.
+evidence-only. A separately approved private/internal note can be typed by the Bridge; other
+writes stay blocked. Booking Logistics live ops stay on the Avery stack until a separate cutover.
 
 ## Load unpacked (Chrome or Edge)
 
@@ -63,8 +64,16 @@ The popup banner repeats that action. A full manual reload is still required whe
 blocks programmatic injection (policy, discarded tab, or a path the extension will not reload).
 
 The popup shows distinct states for not signed in, missing lease, allowlist/origin failures,
-and an unreachable API. Harvest posts only to `http://127.0.0.1` / `http://localhost` in this
-package.
+and an unreachable API. **Last write** is separate from harvest: a harvest
+`ACTIVE_VIEW_UNVERIFIED` banner does not describe a note-write failure. Keep the
+popup open during a note write so 0.1.10 can claim within seconds (`claimed_at`);
+leave the board tab open and sit on 1763 Load Basics with `#scratch` visible.
+Bridge must pick the scratch tab (`already_open`, `tab_hint`), not the board
+`unique_searchbox`. Prefer stay-on-load Save. After Save & Exit the Bridge waits
+for the board and reopens 1763 (row / search+Enter / `/loads/1763`) then reads
+`#scratch`. Unclaimed
+dispatches fail `BRIDGE_CLAIM_TIMEOUT`. Harvest posts only
+to `http://127.0.0.1` / `http://localhost` in this package.
 
 ## Facade curl (demo)
 
@@ -89,7 +98,17 @@ curl -sS http://127.0.0.1:8787/v1/ascend/status -H "Authorization: Bearer $AGENT
 curl -sS http://127.0.0.1:8787/v1/ascend/loads -H "Authorization: Bearer $AGENT"
 curl -sS http://127.0.0.1:8787/v1/ascend/loads/1763 -H "Authorization: Bearer $AGENT"
 curl -sS http://127.0.0.1:8787/v1/ascend/capabilities -H "Authorization: Bearer $AGENT"
+
+# Optional: approved private internal note (FIELD LIVE_VALIDATED on 1763 SAVE_STAY only)
+# APPROVAL=$(curl -sS -X POST http://127.0.0.1:8787/v1/ascend/approvals \
+#   -H "Authorization: Bearer $AGENT" -H 'Content-Type: application/json' \
+#   -d '{"action":"ASCEND_ADD_INTERNAL_NOTE","load_id":"1763"}' \
+#   | python -c 'import json,sys; print(json.load(sys.stdin)["approval_token"])')
+# curl -sS -X POST http://127.0.0.1:8787/v1/ascend/loads/1763/notes \
+#   -H "Authorization: Bearer $AGENT" -H 'Content-Type: application/json' \
+#   -d "{\"text\":\"internal ops note\",\"approval_token\":\"$APPROVAL\"}"
 ```
+See [ASCEND_WRITE_NOTE_V0.md](../../docs/ASCEND_WRITE_NOTE_V0.md) for approval, receipts, and LIVE gaps.
 
 Atlas selectors (`textarea#scratch`, `#notes`, Load Basics) are in `atlas.json`.
 Capability matrix: [docs/ASCEND_CAPABILITY_MAP_V0.md](../../docs/ASCEND_CAPABILITY_MAP_V0.md).
@@ -112,7 +131,7 @@ From a full Windows checkout (same suite as CI):
 Focused:
 
 ```powershell
-.\.tools\python\python.exe -m pytest tests/test_portable_leases.py tests/test_portable_bridge_extension.py tests/test_ascend_facade.py tests/test_ascend_capabilities.py --basetemp=C:\FreightDeskRuntime\Data\TestRuns\portable-bridge
+.\.tools\python\python.exe -m pytest tests/test_portable_leases.py tests/test_portable_bridge_extension.py tests/test_ascend_facade.py tests/test_ascend_notes.py tests/test_ascend_capabilities.py --basetemp=C:\FreightDeskRuntime\Data\TestRuns\portable-bridge
 ```
 
 An existing Python 3.12+ environment can run the same pytest modules. The extension test also
@@ -130,6 +149,7 @@ Field smoke (owner-manual, after Load unpacked on an already-open Active Loads t
 - Chrome Web Store / Edge Add-ons listing, icons, privacy disclosure, review
 - HTTPS cloud API origin in `host_permissions` (replace localhost stub)
 - Firefox
-- Operational field values, AUTO_MAP, writes, and any LIVE_VALIDATED claim
+- Operational field values, AUTO_MAP, general writes, and any LIVE_VALIDATED claim
+  (private-note write is CANDIDATE / not field-passed)
 - Dashboard shipment list / freshness UI bound to portable harvest
 - Token storage stronger than `chrome.storage.local`

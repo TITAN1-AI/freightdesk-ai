@@ -14,6 +14,8 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
   `GET /v1/ascend/status` over stored harvest. Capability map:
   [ASCEND_CAPABILITY_MAP_V0.md](ASCEND_CAPABILITY_MAP_V0.md).
   See [ASCEND_FACADE_V0.md](ASCEND_FACADE_V0.md).
+- First write: APPROVAL_REQUIRED private internal note
+  (`POST /v1/ascend/loads/{id}/notes`). See [ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md).
 - Atlas bindings in [extensions/portable-bridge/atlas.json](../extensions/portable-bridge/atlas.json)
   (`textarea#scratch`, `#notes`, Load Basics labels) for read/write paths.
 - VISIBLE_BOARD_ONLY Active Loads harvest, stored as **CANDIDATE** evidence.
@@ -26,8 +28,11 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
 
 - Not LIVE_VALIDATED Ascend.
 - Not cloud OAuth / tenant billing / store listing.
-- Not a live write path. Status is a 501 stub (APPROVAL_REQUIRED when implemented). Assign,
+- Not a general write path. Status is a 501 stub (APPROVAL_REQUIRED when implemented). Assign,
   expenses, public notes, uploads and New Load remain FORBIDDEN or out of the capture.
+  The only implemented write is an APPROVAL_REQUIRED private internal note; see
+  [ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md). FIELD LIVE_VALIDATED for Avery
+  0.1.10 / load 1763 / SAVE_STAY / already_open only.
 - Not a cutover of BL operations onto portable leases.
 
 ## Threat model (v0)

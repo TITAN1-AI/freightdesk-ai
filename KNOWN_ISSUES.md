@@ -1,12 +1,23 @@
+# Known issues - Ascend write note v0 2026-09-20
+
+Private-internal-note write is **FIELD LIVE_VALIDATED** for Avery 0.1.10 smoke on
+load 1763 only (`04e0617`: 403 PASS; A `d5c8a6cd` OWNER_PATH/`already_open`;
+B `9eff223c` VERIFIED SAVE_STAY `already_open` `note_present=true`
+`bridge_version=0.1.10`). Whole-form Save can still submit unrelated dirty fields —
+documented on the receipt, not eliminated. Harvest `ACTIVE_VIEW_UNVERIFIED` is
+independent. Demo approval mint is not production authority. Other writes stay
+blocked. See docs/ASCEND_WRITE_NOTE_V0.md.
+
 # Known issues - capability map v0 2026-09-20
 
 The capability matrix is a foundation, not a complete LIVE Ascend API. `GET /v1/ascend/loads/{id}`
 returns only last harvested board fields (ID / pick / drop / load_status). Load Basics atlas
 labels other than those board columns have no cached values. Status write is a 501 stub
 (APPROVAL_REQUIRED when implemented). Assign, expenses, public notes, documents, and
-communications stay FORBIDDEN or NOT_STARTED. Private-note `#scratch` / WHOLE_FORM_SAVE is in
-flight on PR #8 and is not LIVE_VALIDATED here. No scheduled server board sync and no
-verify-after-write on this slice. Next LIVE field after note VERIFIED: status change.
+communications stay FORBIDDEN or NOT_STARTED. Private-note `#scratch` / WHOLE_FORM_SAVE
+landed with PR #8 and is FIELD LIVE_VALIDATED for the 1763 SAVE_STAY already_open path
+only. No scheduled server board sync and no verify-after-write on this slice. Next LIVE
+field after note VERIFIED: status change.
 
 # Known issues - portable bridge v0 2026-09-19
 
@@ -17,10 +28,11 @@ isolated reinject on open Ascend tabs; a full Active Loads reload is still requi
 browser blocks that inject or the tab is not exact `/` or `/loads`. Remaining gaps: FreightDesk
 Cloud OAuth/device-code auth, multi-tenant agent identity, HTTPS cloud API origin, Chrome/Edge
 store listing and icons, Firefox, full dashboard shipment list from harvest, stronger token
-storage, operational values, writes, AUTO_MAP, and any LIVE_VALIDATED harvest. Localhost host
-permissions must be replaced before store submission. Revoke stops further accepted posts; the
-last snapshot stays readable on the facade. BL live ops and X1 native enrollment are unchanged.
-See docs/AGENT_ASCEND_API_V0.md and docs/ASCEND_FACADE_V0.md.
+storage, operational values, general writes, AUTO_MAP, and any LIVE_VALIDATED harvest or note
+write. Localhost host permissions must be replaced before store submission. Revoke stops further
+accepted posts; the last snapshot stays readable on the facade. BL live ops and X1 native
+enrollment are unchanged.
+See docs/AGENT_ASCEND_API_V0.md, docs/ASCEND_FACADE_V0.md and docs/ASCEND_WRITE_NOTE_V0.md.
 
 # Known issues - audit repair 2026-09-13
 

@@ -38,7 +38,7 @@ def install_ascend_facade_routes(api, identity):
     def ascend_facade_status(request: Request, _actor=Depends(facade_reader)):
         """Lease/harvest/actuator health for the portable UI harvest, not X1 native host.
 
-        Empty harvest returns harvest_available=false. Writes are out of scope.
+        Empty harvest returns harvest_available=false. General writes stay out of scope.
         Evidence class is always CANDIDATE. live_validated is always false.
         """
         return service(request).facade_status()

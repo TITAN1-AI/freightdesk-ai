@@ -1,13 +1,32 @@
 (() => {
   'use strict';
-  if (globalThis.FreightDeskPortableContentBound) return;
-  globalThis.FreightDeskPortableContentBound = true;
   const ORIGIN = 'https://ascendtms.com';
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (!message) return;
+  const CONTENT_REV = '0.1.10';
+  if (globalThis.FreightDeskPortableContentListener) {
+    try { chrome.runtime.onMessage.removeListener(globalThis.FreightDeskPortableContentListener); } catch { /* keep going */ }
+  }
+  function onMessage(message, _sender, sendResponse) {
+    if (!message || globalThis.FreightDeskPortableContentRev !== CONTENT_REV) return;
     if (message.action === 'PING') {
-      sendResponse({ ok: true, ready: true });
+      sendResponse({ ok: true, ready: true, rev: CONTENT_REV });
       return;
+    }
+    if (message.action === 'PROBE_NOTE_WORKSPACE') {
+      const probe = FreightDeskPortableWriteNote.probeWorkspace(document, message.load_id, message.text);
+      sendResponse({ ok: true, rev: CONTENT_REV, ...probe });
+      return;
+    }
+    if (message.action === 'ADD_INTERNAL_NOTE' || message.action === 'REOPEN_AND_VERIFY' ||
+        message.action === 'VERIFY_NOTE') {
+      Promise.resolve().then(async () => {
+        if (location.origin !== ORIGIN) {
+          return { ok: false, verified: false, note_present: false, error_code: 'ORIGIN_NOT_ALLOWLISTED' };
+        }
+        const mode = message.action === 'VERIFY_NOTE' ? 'verify'
+          : (message.action === 'REOPEN_AND_VERIFY' ? 'reopen' : message.mode);
+        return FreightDeskPortableWriteNote.execute(document, { ...message, origin: ORIGIN, mode });
+      }).then(sendResponse);
+      return true;
     }
     if (message.action !== 'HARVEST_BOARD') return;
     Promise.resolve().then(async () => {
@@ -20,5 +39,9 @@
       }
     }).then(sendResponse);
     return true;
-  });
+  }
+  globalThis.FreightDeskPortableContentRev = CONTENT_REV;
+  globalThis.FreightDeskPortableContentBound = true;
+  globalThis.FreightDeskPortableContentListener = onMessage;
+  chrome.runtime.onMessage.addListener(onMessage);
 })();

@@ -1,9 +1,145 @@
 # Current state — 2026-09-20
 
+## Ascend write note v0.1.10 — FIELD LIVE_VALIDATED (Avery 1763 SAVE_STAY)
+
+Avery 0.1.10-only smoke on load 1763 (`04e0617`):
+- 403 without approval: PASS
+- A `d5c8a6cd…` PASS `NOTE_COMMIT_REQUIRES_OWNER_PATH` `already_open` `tab_hint` set `bridge_version=0.1.10`
+- B `9eff223c…` VERIFIED `SAVE_STAY` `already_open` `note_present=true` `bridge_version=0.1.10`
+
+Portable Bridge **0.1.10** force-reinjects write content before every write, then the worker
+owns reopen (1s/2s/3s backoff): scratch scan → `REOPEN_AND_VERIFY` →
+`https://ascendtms.com/loads/{id}`. Save (any casing / Save Changes) wins over
+Save & Exit. Complete always stores `tab_hint` (or `missing`) plus
+`reopen_attempts` / `bridge_version` on `GET /v1/ascend/writes/{id}`. Harvest and
+agent Bearer unchanged. X1 untouched. **FIELD LIVE_VALIDATED** for this exact
+private-internal-note / 1763 / SAVE_STAY / already_open path only. Status, assign,
+money, New Load, public notes, and comms remain blocked. Handoff:
+[ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
+## Ascend write note v0.1.9 — reopen after Save & Exit, tab_hint on receipts
+
+Avery 0.1.8: no-whole-form `3d9b84c3` passed `already_open`. Whole-form
+`07a344d3` failed `stage=reopen` `LOAD_OPENER_UNVERIFIED` `opener_strategy=none`
+after `SAVE_AND_EXIT` (tab prefer worked — not `unique_searchbox`). API
+`tab_hint` was null on curl receipts. Portable Bridge **0.1.9** waits for the
+board, then reopens 1763 via unique row, search+Enter, or `/loads/{id}` (3
+retries with backoff). Stay-on-load Save wins whenever a Save control exists,
+even if less prominent. If reopen fails but `#scratch` still shows the note
+anywhere, the receipt is VERIFIED. `GET /v1/ascend/writes/{id}` returns
+`tab_hint`. Harvest and agent Bearer unchanged. X1 untouched. **Not
+LIVE_VALIDATED** until the receipt is VERIFIED. Handoff:
+[ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
+## Ascend write note v0.1.8 — write on the #scratch tab, not the board
+
+Avery 0.1.7: no-whole-form `37897c52` passed `already_open`. Whole-form
+`c640c880` / `53c4e9fd` / `34514137` failed `LOAD_OPENER_UNVERIFIED`
+`unique_searchbox` while Load Basics `#scratch` was visibly open (prior note
+still in the field). Hypothesis: the worker attached to the Active Loads board
+tab. Portable Bridge **0.1.8** probes every Ascend tab, prefers/focuses the tab
+that already has `#scratch` / Private Load Note, and will not run
+`unique_searchbox` when any tab already has `#scratch`. Receipt `tab_hint`
+records the chosen tab and skipped board tabs. Harvest and agent Bearer
+unchanged. X1 untouched. **Not LIVE_VALIDATED** until the receipt is VERIFIED.
+Handoff: [ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
+## Ascend write note v0.1.7 — reopen after Save & Exit, then verify
+
+Avery 0.1.6: no-whole-form OWNER_PATH passed. Whole-form B2 **persisted** on
+1763 (`FreightDesk PR8 0.1.6 WHOLE-FORM B2 …`) but the receipt failed
+`stage=reopen` `LOAD_OPENER_UNVERIFIED` after Save & Exit. First whole-form
+attempt also failed opener. Portable Bridge **0.1.7** waits for `#scratch` /
+Load Basics before the board opener, prefers stay-on-load Save, verifies
+in-place when `#scratch` is still visible, and after Save & Exit reopens 1763
+(search / unique row) then reads `#scratch`. Matching text → `VERIFIED` +
+`note_present=true`. Harvest and agent Bearer unchanged. X1 untouched.
+**Not LIVE_VALIDATED** until the receipt is VERIFIED. Handoff:
+[ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
+## Ascend write note v0.1.6 — already-open #scratch, then Save
+
+Avery 0.1.5: claim and no-whole-form `NOTE_COMMIT_REQUIRES_OWNER_PATH` passed.
+Whole-form writes `c5275de` / `12eaed94` / `6cef42f0` claimed then
+`LOAD_OPENER_UNVERIFIED`; `#scratch` showed B2 text but `note_present=false`
+and Save never clicked. Portable Bridge **0.1.6** treats `#scratch` /
+Private Load Note as `already_open` (getElementById + same-origin frames) and
+does not require Active Loads. The worker prefers the tab that probes scratch.
+With `allow_whole_form_save`, type `#scratch` then click Save / Save & Exit and
+verify `note_present`. If the text is already in `#scratch` but Save is missing,
+terminal is `typed_but_not_saved`. Harvest and agent Bearer unchanged. X1
+untouched. **Not LIVE_VALIDATED.** Handoff:
+[ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
+## Ascend write note v0.1.5 — claim path, timeout, stringify
+
+Avery 0.1.4 on load 1763: writes `8a7dcacb` / `a433ed36` stayed `DISPATCHED`.
+Public receipts omitted `claimed_at`; complete 422’d on extra
+`allow_whole_form_save` (`[object Object]`); Save-as-`<a>` was `MISSING`.
+Portable Bridge **0.1.5** claims with 1s/4s `WRITE_SOON` + popup poll + tab
+wake; reclaims the same principal; publishes `claimed_at` / `claim_deadline_at`;
+fails unclaimed writes `BRIDGE_CLAIM_TIMEOUT` (90s / 180s after claim);
+stringifies popup/API `error_code`; ignores extra complete fields; treats Save
+links and `input value` as commit controls. Without `allow_whole_form_save`,
+after claim the terminal is `NOTE_COMMIT_REQUIRES_OWNER_PATH` (no type/save).
+With the flag: type `#scratch` → Save / Save & Exit → verify. Harvest and
+agent Bearer unchanged. X1 untouched. **Not LIVE_VALIDATED.** Handoff:
+[ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
+## Ascend write note v0.1.4 — atlas #scratch + explicit whole-form Save
+
+Booking Logistics atlas: Private Load Note is `textarea#scratch` (Load Basics,
+OBSERVE_OR_FILL); Public Load Note is `#notes`; there is no per-field save — only
+whole-form Save / Save & Exit. Bridge **0.1.4** types `#scratch` only. Whole-form
+Save requires an approval that sets `allow_whole_form_save: true` (or mint action
+`ASCEND_ADD_INTERNAL_NOTE_VIA_SAVE`). Prefer stay-on-load Save; Save & Exit is used
+only when that is the unique commit, then the load is re-opened to read `#scratch`.
+Without the flag, behavior stays `NOTE_COMMIT_REQUIRES_OWNER_PATH`. Receipts document
+`commit_kind=WHOLE_FORM_SAVE` and `whole_form_save_risk`. Status/assign/money/New Load
+/public notes stay blocked. Harvest and agent Bearer unchanged. X1 untouched.
+**Not LIVE_VALIDATED.** Handoff: [ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
+## Ascend write note v0.1.3 — field-fail opener and owner-path commit
+
+Avery field report on load 1763 (PR #8 / 0.1.2): `403` without approval passed; mint+POST
+went `DISPATCHED` then `FAILED` `LOAD_OPENER_UNVERIFIED`; note never appeared; Avery did
+not click Save Load. Bridge popup showed harvest `ACTIVE_VIEW_UNVERIFIED`. Live label is
+**Private Load Note**; the only commit seen was **Save & Exit to Load Board**.
+
+Portable Bridge **0.1.3** opens a load without a verified Active Loads view (already-open
+Private Load Note workspace, unique row View/Details/Open, or unique searchbox fill with
+no submit). Whole-form **Save Load** / **Save & Exit** is `NOTE_COMMIT_REQUIRES_OWNER_PATH`
+and is not clicked. Receipts add `stage` / `opener_strategy` / `note_label` / `commit_kind`.
+Popup Last write is separate from harvest. X1 untouched. Harvest and agent Bearer unchanged.
+**Not LIVE_VALIDATED.** Handoff: [ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
+## Ascend write note v0 — private internal note, APPROVAL_REQUIRED
+
+First write on the portable/agent facade: `POST /v1/ascend/loads/{load_id}/notes` after a
+one-use demo approval (`POST /v1/ascend/approvals` or the dashboard mint button). Default
+ActionPolicy `ASCEND_ADD_INTERNAL_NOTE` is APPROVAL_REQUIRED. Receipts are CANDIDATE with
+`PENDING_APPROVAL` | `DISPATCHED` | `VERIFIED` | `FAILED` — no silent success. Verify-after-write
+requires note presence. Portable Bridge 0.1.3 can open a load without a verified Active Loads
+view and type Private Load Note / Private/Internal Notes only; Save Load, Save & Exit, assign,
+status, money, New Load and public notes stay blocked. Harvest and
+agent Bearer reads are unchanged. X1 untouched. **Not LIVE_VALIDATED.** Handoff:
+[ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
+Verification: 89 focused tests passed (`tests/test_ascend_notes.py`,
+`tests/test_portable_bridge_extension.py`, `tests/test_portable_leases.py`,
+`tests/test_ascend_facade.py`, `tests/test_agent_sessions.py`, `tests/test_api.py`,
+`tests/test_control_plane.py`). New coverage: SAVE/Save Changes preferred over
+Save & Exit; Save & Exit reopen takes ≥3 attempts (not instant fail); background
+scratch-scan `verified_via_scratch_scan`; complete without `tab_hint` stores
+`missing` on GET. Ruff + Node `--check` passed. Two existing Starlette/AnyIO
+deprecation warnings remain. Avery 0.1.10 B `9eff223c` is FIELD LIVE_VALIDATED
+for 1763 SAVE_STAY already_open only.
+
 ## Ascend capability map v0 — foundation, not every write LIVE
 
-Additive portable-bridge slice on `main` (does not implement PR #8 private-note write). Avery/agents
-call HTTP; Bridge remains the authenticated Ascend actuator. Delivered:
+Additive portable-bridge slice on `main`. Avery/agents call HTTP; Bridge remains the
+authenticated Ascend actuator. Private-note write is FIELD LIVE_VALIDATED on PR #8.
+Delivered:
 
 - [ASCEND_CAPABILITY_MAP_V0.md](docs/ASCEND_CAPABILITY_MAP_V0.md) READ / WRITE / AUTOMATION matrix
 - Atlas JSON `extensions/portable-bridge/atlas.json` (`textarea#scratch`, `#notes`, Load Basics)

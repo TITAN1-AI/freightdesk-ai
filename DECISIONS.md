@@ -1,5 +1,95 @@
 # Decisions - 2026-09-20
 
+## Avery 0.1.10 SAVE_STAY on 1763 is FIELD LIVE_VALIDATED
+
+Owner-reported Avery smoke on `04e0617`: 403 without approval PASS; A `d5c8a6cd`
+`NOTE_COMMIT_REQUIRES_OWNER_PATH` `already_open`; B `9eff223c` VERIFIED
+`SAVE_STAY` `already_open` `note_present=true` `bridge_version=0.1.10`. Scope is
+that exact private-internal-note path only. See docs/ASCEND_WRITE_NOTE_V0.md.
+
+## Worker owns post–Save & Exit reopen; never trust a stale content script
+
+0.1.9 B completed in ~1s with `opener_strategy=none` and `tab_hint` null.
+PING-ready tabs skipped reinject, so 0.1.9 reopen helpers never ran. 0.1.10
+always injects write content before ADD_INTERNAL_NOTE, then the background
+retries reopen for real seconds (scratch scan, REOPEN_AND_VERIFY, then
+`/loads/{id}`). Complete stores `tab_hint` or `missing`. See
+docs/ASCEND_WRITE_NOTE_V0.md.
+
+## After Save & Exit, wait for the board then reopen 1763 before failing
+
+0.1.8 tab prefer worked, but whole-form `07a344d3` failed `stage=reopen`
+`LOAD_OPENER_UNVERIFIED` `none` after Save & Exit. 0.1.9 waits for the board,
+retries reopen three times with backoff (unique row, search+Enter, or
+`https://ascendtms.com/loads/{id}`), prefers stay-on-load Save whenever a Save
+control exists, and VERIFIED if `#scratch` anywhere still shows the note.
+Public `GET /v1/ascend/writes/{id}` includes `tab_hint`. See
+docs/ASCEND_WRITE_NOTE_V0.md.
+
+## Prefer the Ascend tab that already has #scratch; never searchbox past it
+
+0.1.7 whole-form writes failed `unique_searchbox` on the Active Loads tab while
+1763 Load Basics already showed `#scratch`. 0.1.8 probes every Ascend tab,
+focuses the scratch tab, records `tab_hint`, and forbids `unique_searchbox`
+when any tab already has Private Load Note / `#scratch`. See
+docs/ASCEND_WRITE_NOTE_V0.md.
+
+## After Save & Exit, reopen the load and verify #scratch before failing
+
+0.1.6 wrote the B2 note on 1763 then failed the receipt because Save & Exit
+returned to the board and one-shot reopen hit `LOAD_OPENER_UNVERIFIED`. 0.1.7
+verifies in-place when `#scratch` is still visible; otherwise settles the board,
+reopens 1763, and `VERIFIED` only when `#scratch` contains the text. Prefer
+stay-on-load Save so reopen is unnecessary. See docs/ASCEND_WRITE_NOTE_V0.md.
+
+## Visible #scratch is already-open; do not require Active Loads to write
+
+0.1.5 whole-form writes failed `LOAD_OPENER_UNVERIFIED` while Private Load Note
+was on screen. 0.1.6 binds `textarea#scratch` (and same-origin frames) first and
+skips the board opener when that field exists. Prefer the tab that probes
+scratch. After typing, click Save / Save & Exit only with
+`allow_whole_form_save`; leftover typed text without a save control is
+`typed_but_not_saved`. See docs/ASCEND_WRITE_NOTE_V0.md.
+
+## Bridge must claim pending writes and never stringify errors as [object Object]
+
+0.1.4 left Avery writes `DISPATCHED`: public receipts hid `claimed_at`, the
+service worker only had a 1-minute alarm, and complete 422’d because
+`allow_whole_form_save` is extra on `WriteCompleteBody` (`extra=forbid`). 0.1.5
+wakes via `WRITE_SOON` / popup `POLL_WRITES` / tab events, reclaims the same
+principal, publishes `claimed_at`, fails unclaimed dispatches
+`BRIDGE_CLAIM_TIMEOUT`, ignores extra complete fields, and stringifies
+code/message objects in the popup and complete path. See
+docs/ASCEND_WRITE_NOTE_V0.md.
+
+## Whole-form Save for Private Load Note is explicit and approval-gated
+
+Atlas (Booking Logistics): `#scratch` has no note-specific save. 0.1.4 may click
+Save / Save & Exit only when the one-use approval sets `allow_whole_form_save`
+(or `ASCEND_ADD_INTERNAL_NOTE_VIA_SAVE`). Prefer stay-on-load Save; re-open after
+Save & Exit and require `#scratch` read-back for VERIFIED. Without the flag, keep
+`NOTE_COMMIT_REQUIRES_OWNER_PATH`. Never type `#notes`. Document the whole-form
+risk on the receipt. See docs/ASCEND_WRITE_NOTE_V0.md.
+
+## Note write opens a load without Active Loads verification; Save & Exit stays owner-gated
+
+Field fail on 1763: opener required a board row, and harvest `ACTIVE_VIEW_UNVERIFIED`
+masked the write. 0.1.3 opens from an already-visible Private Load Note workspace, a
+unique View/Details/Open row, or a unique searchbox fill (no submit). Do not auto-click
+**Save Load** or **Save & Exit to Load Board** — those are unproven whole-form saves.
+Fail `NOTE_COMMIT_REQUIRES_OWNER_PATH` instead. Keep APPROVAL_REQUIRED and
+verify-after-write. See docs/ASCEND_WRITE_NOTE_V0.md.
+
+## First Ascend write is a private internal note behind APPROVAL_REQUIRED
+
+Ship a minimal facade write: `ASCEND_ADD_INTERNAL_NOTE` only. Default policy is
+APPROVAL_REQUIRED; mint via `POST /v1/ascend/approvals` or the owner dashboard button.
+Receipts never claim success without verify-after-write (`note_present`). The portable
+Bridge may type Private/Internal Notes; it still refuses Save Load, assign, status,
+money, New Load and customer-visible notes. Harvest/agent Bearer paths stay intact.
+X1 is untouched. Do not mark LIVE_VALIDATED until Avery field-passes.
+See docs/ASCEND_WRITE_NOTE_V0.md.
+
 ## Capability map first; one write at a time
 
 Ship a documented READ / WRITE / AUTOMATION map before enabling more LIVE writes. Avery calls

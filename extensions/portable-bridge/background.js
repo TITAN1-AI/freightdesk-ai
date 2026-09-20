@@ -3,8 +3,11 @@ const DEFAULT_API = 'http://127.0.0.1:8787';
 const ASCEND_ORIGIN = 'https://ascendtms.com';
 const ALARM = 'portable-harvest';
 const PORTABLE_HEADER = { 'X-FreightDesk-Portable': '1' };
-const CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'content.js']);
+const CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'write-note.js', 'content.js']);
+const WRITE_ALARM = 'portable-writes';
+const WRITE_SOON = 'portable-writes-soon';
 const CONTENT_RELOAD_MESSAGE = 'Reload the Ascend Active Loads tab now (F5), then press Start harvest.';
+let writePollInFlight = null;
 
 async function stored() {
   return chrome.storage.local.get({
@@ -15,6 +18,7 @@ async function stored() {
     harvest_enabled: false,
     last_error: null,
     last_harvest: null,
+    last_write: null,
     signed_in: false
   });
 }
@@ -46,11 +50,28 @@ async function request(path, { method = 'GET', token = null, body = null, extraH
   let payload = null;
   try { payload = await response.json(); } catch { payload = null; }
   if (!response.ok) {
-    const detail = payload?.detail || ('HTTP_' + response.status);
-    const code = response.status === 401 ? 'NOT_SIGNED_IN' : String(detail);
+    const code = response.status === 401 ? 'NOT_SIGNED_IN' : detailCode(payload, response.status);
     throw Object.assign(new Error(code), { code, status: response.status });
   }
   return payload;
+}
+
+function detailCode(payload, status) {
+  const detail = payload && payload.detail;
+  const code = safeCode(detail);
+  if (code && code !== 'ERROR' && code !== '[object Object]') return code;
+  return 'HTTP_' + status;
+}
+
+function safeCode(value) {
+  if (value == null || value === '') return null;
+  if (typeof value === 'string') return value === '[object Object]' ? 'ERROR' : value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value) && value.length) return safeCode(value[0]);
+  if (typeof value === 'object') {
+    return safeCode(value.code || value.error_code || value.msg || value.message || value.detail || value.type) || 'ERROR';
+  }
+  return 'ERROR';
 }
 
 async function publicStatus() {
@@ -62,6 +83,7 @@ async function publicStatus() {
     lease: state.lease,
     last_error: state.last_error,
     last_harvest: state.last_harvest,
+    last_write: state.last_write,
     live_validated: false,
     production_writes: false,
     native_messaging: false,
@@ -85,16 +107,21 @@ async function signInPlaceholder() {
     extraHeaders: PORTABLE_HEADER,
     body: { placeholder: true }
   });
-  return save({
+  await armWritePolls();
+  const next = await save({
     device_token: payload.device_token,
     device_id: payload.device_id,
     signed_in: true,
     last_error: null
   });
+  await pollWrites();
+  return next;
 }
 
 async function signOut() {
   await chrome.alarms.clear(ALARM);
+  await chrome.alarms.clear(WRITE_ALARM);
+  await chrome.alarms.clear(WRITE_SOON);
   return save({
     device_token: null,
     device_id: null,
@@ -102,7 +129,8 @@ async function signOut() {
     harvest_enabled: false,
     signed_in: false,
     last_error: null,
-    last_harvest: null
+    last_harvest: null,
+    last_write: null
   });
 }
 
@@ -114,7 +142,10 @@ async function createLease() {
     token: state.device_token,
     body: { origin: ASCEND_ORIGIN, scope: 'VISIBLE_BOARD_ONLY', ttl_seconds: 900 }
   });
-  return save({ lease, last_error: null });
+  await armWritePolls();
+  const next = await save({ lease, last_error: null });
+  await pollWrites();
+  return next;
 }
 
 async function revokeLease() {
@@ -129,6 +160,506 @@ async function revokeLease() {
   return save({ lease, harvest_enabled: false, last_error: null });
 }
 
+async function armWritePolls() {
+  await chrome.alarms.create(WRITE_ALARM, { periodInMinutes: 1 });
+  await chrome.alarms.create(WRITE_SOON, { when: Date.now() + 1000 });
+}
+
+function scheduleWriteSoon() {
+  chrome.alarms.create(WRITE_SOON, { when: Date.now() + 4000 });
+}
+
+async function markWrite(patch) {
+  const state = await stored();
+  const prev = state.last_write || {};
+  return save({ last_write: { ...prev, ...patch, updated_at: new Date().toISOString() } });
+}
+
+async function claimPendingWithRetry(token) {
+  let last = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await request('/v1/portable/writes/pending', { token });
+    } catch (error) {
+      last = error;
+      const code = safeCode(error?.code) || 'NOTE_CLAIM_FAILED';
+      if (code === 'NOT_SIGNED_IN' || code === 'device_session_required') throw error;
+      await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)));
+    }
+  }
+  throw last || Object.assign(new Error('NOTE_CLAIM_FAILED'), { code: 'NOTE_CLAIM_FAILED' });
+}
+
+async function pollWrites() {
+  if (writePollInFlight) return writePollInFlight;
+  writePollInFlight = pollWritesOnce().finally(() => { writePollInFlight = null; });
+  return writePollInFlight;
+}
+
+async function pollWritesOnce() {
+  const state = await stored();
+  if (!state.device_token) return;
+  scheduleWriteSoon();
+  if (state.last_write && (state.last_write.status === 'DISPATCHED' || state.last_write.status === 'IDLE')) {
+    await markWrite({
+      status: 'DISPATCHED',
+      stage: state.last_write.stage === 'claimed' ? 'claimed' : 'claim_wait',
+      error_code: null,
+      write_id: state.last_write.write_id || null
+    });
+  }
+  let pending;
+  try {
+    pending = await claimPendingWithRetry(state.device_token);
+  } catch (error) {
+    const code = safeCode(error.code) || 'NOTE_CLAIM_FAILED';
+    if (code === 'NOT_SIGNED_IN' || code === 'device_session_required') return;
+    await markWrite({ write_id: state.last_write?.write_id || null, status: 'FAILED', error_code: code, stage: 'claim' });
+    return;
+  }
+  if (!pending?.pending || !pending.write_id) {
+    const timeout = safeCode(pending?.error_code);
+    if (timeout === 'BRIDGE_CLAIM_TIMEOUT') {
+      await markWrite({
+        write_id: pending.write_id || state.last_write?.write_id || null,
+        status: 'FAILED',
+        error_code: 'BRIDGE_CLAIM_TIMEOUT',
+        stage: 'claim'
+      });
+    }
+    return;
+  }
+  await markWrite({
+    write_id: pending.write_id,
+    load_id: pending.load_id,
+    status: 'DISPATCHED',
+    stage: 'claimed',
+    error_code: null,
+    allow_whole_form_save: !!pending.allow_whole_form_save,
+    commit_kind: pending.commit_kind || null
+  });
+  const tabs = await chrome.tabs.query({ url: ASCEND_ORIGIN + '/*' });
+  if (!tabs.length) {
+    await completeWrite(state.device_token, pending.write_id, {
+      verified: false,
+      note_present: false,
+      error_code: 'ASCEND_TAB_MISSING',
+      live_validated: false,
+      production_writes: false,
+      stage: 'tab',
+      opener_strategy: 'none',
+      tab_hint: 'no_tab',
+      bridge_version: '0.1.10'
+    });
+    return;
+  }
+  for (const candidate of tabs) {
+    await ensureWriteContent(candidate);
+  }
+  const choice = await pickWriteTab(tabs, pending.load_id);
+  const tab = choice?.tab;
+  const tabHint = choice.tab_hint || (tab?.id ? ('tab:' + tab.id) : 'no_tab');
+  if (tab?.id && chrome.tabs?.update) {
+    try { await chrome.tabs.update(tab.id, { active: true }); } catch { /* keep going */ }
+  }
+  await ensureWriteContent(tab);
+  let result;
+  try {
+    result = await chrome.tabs.sendMessage(tab.id, {
+      action: 'ADD_INTERNAL_NOTE',
+      write_id: pending.write_id,
+      load_id: pending.load_id,
+      text: pending.text,
+      note_kind: pending.note_kind || 'PRIVATE_INTERNAL',
+      allow_whole_form_save: !!pending.allow_whole_form_save,
+      forbid_searchbox: !!choice.scratch_present,
+      tab_hint: tabHint
+    });
+  } catch {
+    result = { verified: false, note_present: false, error_code: 'CONTENT_UNAVAILABLE', stage: 'content' };
+  }
+  const shouldReopen = result?.save_variant === 'SAVE_AND_EXIT'
+    || result?.stage === 'reopen'
+    || result?.error_code === 'LOAD_OPENER_UNVERIFIED'
+    || result?.error_code === 'CONTENT_UNAVAILABLE'
+    || result?.error_code === 'note_not_present';
+  if (shouldReopen && (!result?.verified || !result?.note_present)) {
+    result = await reopenFromBackground(tabs, tab, pending, result, tabHint);
+  } else if (!result?.verified || !result?.note_present) {
+    const recovered = await recoverNoteOnAnyTab(tabs, pending.load_id, pending.text);
+    if (recovered.note_present) {
+      result = {
+        ...(result || {}),
+        verified: true,
+        note_present: true,
+        error_code: null,
+        stage: 'verify',
+        opener_strategy: result?.opener_strategy || 'already_open',
+        verify_reason: 'verified_via_scratch_scan',
+        tab_hint: recovered.tab_hint || tabHint
+      };
+    }
+  }
+  await completeWrite(state.device_token, pending.write_id, {
+    verified: !!result?.verified,
+    note_present: !!result?.note_present,
+    error_code: safeCode(result?.error_code),
+    live_validated: false,
+    production_writes: false,
+    stage: result?.stage || 'execute',
+    opener_strategy: result?.opener_strategy || null,
+    note_label: result?.note_label || null,
+    commit_kind: result?.commit_kind || null,
+    save_variant: result?.save_variant || null,
+    tab_hint: tabHint,
+    reopen_attempts: result?.reopen_attempts || 0,
+    verify_reason: result?.verify_reason || null,
+    bridge_version: '0.1.10',
+    allow_whole_form_save: !!pending.allow_whole_form_save
+  });
+}
+
+async function ensureWriteContent(tab) {
+  if (!tab?.id || !ascendTabUrl(tab.url)) return 'skipped';
+  try {
+    await injectIsolatedContent(tab.id);
+  } catch { /* keep probing */ }
+  if (await pingTab(tab.id)) return 'injected';
+  return 'reload_required';
+}
+
+function knownLoadTabUrl(loadId) {
+  const id = String(loadId || '');
+  if (!/^\d{1,20}$/.test(id)) return null;
+  return ASCEND_ORIGIN + '/loads/' + id;
+}
+
+async function waitTabComplete(tabId, timeoutMs) {
+  if (!tabId) return 'no_tab';
+  if (!chrome.tabs?.onUpdated) {
+    await new Promise((resolve) => setTimeout(resolve, Math.min(timeoutMs || 2000, 2000)));
+    return 'slept';
+  }
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (reason) => {
+      if (done) return;
+      done = true;
+      try { chrome.tabs.onUpdated.removeListener(listener); } catch { /* ignore */ }
+      resolve(reason);
+    };
+    const timer = setTimeout(() => finish('timeout'), timeoutMs == null ? 4000 : timeoutMs);
+    const listener = (id, info) => {
+      if (id === tabId && info.status === 'complete') {
+        clearTimeout(timer);
+        finish('complete');
+      }
+    };
+    chrome.tabs.onUpdated.addListener(listener);
+  });
+}
+
+async function reopenFromBackground(tabs, tab, pending, result, tabHint, backoffMs) {
+  const step = backoffMs == null ? 1000 : backoffMs;
+  let attempts = Number(result?.reopen_attempts) || 0;
+  let lastStrategy = result?.opener_strategy || 'none';
+  let latest = tabs || [];
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, step * (attempt + 1)));
+    attempts += 1;
+    try { latest = await chrome.tabs.query({ url: ASCEND_ORIGIN + '/*' }); } catch { latest = tabs || []; }
+    const recovered = await recoverNoteOnAnyTab(latest, pending.load_id, pending.text);
+    if (recovered.note_present) {
+      return {
+        ...(result || {}),
+        verified: true,
+        note_present: true,
+        error_code: null,
+        stage: 'verify',
+        opener_strategy: lastStrategy === 'none' ? 'already_open' : lastStrategy,
+        tab_hint: recovered.tab_hint || tabHint,
+        reopen_attempts: attempts,
+        verify_reason: 'verified_via_scratch_scan'
+      };
+    }
+    for (const candidate of latest) {
+      await ensureWriteContent(candidate);
+      try {
+        const reply = await chrome.tabs.sendMessage(candidate.id, {
+          action: 'REOPEN_AND_VERIFY',
+          load_id: pending.load_id,
+          text: pending.text,
+          tab_hint: tabHint,
+          reopen_backoff_ms: 5,
+          wait_board_attempts: 4
+        });
+        lastStrategy = reply?.opener_strategy || lastStrategy;
+        attempts += Number(reply?.reopen_attempts) || 0;
+        if (reply?.note_present || reply?.verified) {
+          return {
+            ...(result || {}),
+            ...reply,
+            verified: true,
+            note_present: true,
+            error_code: null,
+            stage: 'verify',
+            tab_hint: tabHint,
+            reopen_attempts: attempts,
+            verify_reason: reply?.verify_reason || null
+          };
+        }
+      } catch { /* try next tab or URL */ }
+    }
+    const href = knownLoadTabUrl(pending.load_id);
+    const target = latest.find((item) => item.active) || tab || latest[0];
+    if (href && target?.id && chrome.tabs?.update) {
+      try {
+        await chrome.tabs.update(target.id, { url: href });
+        lastStrategy = 'known_load_url';
+        await waitTabComplete(target.id, 4000);
+        await ensureWriteContent(target);
+        const verify = await chrome.tabs.sendMessage(target.id, {
+          action: 'VERIFY_NOTE',
+          load_id: pending.load_id,
+          text: pending.text,
+          tab_hint: tabHint
+        });
+        if (verify?.note_present || verify?.verified) {
+          return {
+            ...(result || {}),
+            verified: true,
+            note_present: true,
+            error_code: null,
+            stage: 'verify',
+            opener_strategy: 'known_load_url',
+            tab_hint: tabHint,
+            reopen_attempts: attempts,
+            verify_reason: verify?.verify_reason || 'verified_via_scratch_scan'
+          };
+        }
+      } catch { /* next backoff */ }
+    }
+  }
+  const finalScan = await recoverNoteOnAnyTab(latest, pending.load_id, pending.text);
+  if (finalScan.note_present) {
+    return {
+      ...(result || {}),
+      verified: true,
+      note_present: true,
+      error_code: null,
+      stage: 'verify',
+      opener_strategy: lastStrategy,
+      tab_hint: finalScan.tab_hint || tabHint,
+      reopen_attempts: attempts,
+      verify_reason: 'verified_via_scratch_scan'
+    };
+  }
+  return {
+    ...(result || {}),
+    verified: false,
+    note_present: false,
+    error_code: safeCode(result?.error_code) || 'LOAD_OPENER_UNVERIFIED',
+    stage: 'reopen',
+    opener_strategy: lastStrategy || 'none',
+    tab_hint: tabHint,
+    reopen_attempts: attempts,
+    verify_reason: null
+  };
+}
+
+async function recoverNoteOnAnyTab(tabs, loadId, text) {
+  const probed = [];
+  for (const tab of tabs || []) {
+    const probe = await probeTabScratch(tab, loadId, text);
+    probed.push({ tab, scratch: !!probe.scratch, note_present: !!probe.note_present });
+    if (probe.note_present) {
+      return {
+        note_present: true,
+        tab_hint: tabHintFor({ tab, scratch: true }, probed)
+      };
+    }
+  }
+  return { note_present: false };
+}
+
+async function probeTabScratchDom(tab, expectedText) {
+  if (!tab?.id || typeof chrome === 'undefined' || !chrome.scripting?.executeScript) {
+    return { scratch: false, note_present: false };
+  }
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id, allFrames: true },
+      world: 'ISOLATED',
+      args: [String(expectedText || '')],
+      func: (expected) => {
+        const seen = [];
+        const walk = (root, acc) => {
+          if (!root || seen.indexOf(root) >= 0) return;
+          seen.push(root);
+          acc.push(root);
+          let frames = [];
+          try { frames = [...root.querySelectorAll('iframe,frame')]; } catch { frames = []; }
+          for (const frame of frames) {
+            try { walk(frame.contentDocument, acc); } catch { /* cross-origin */ }
+          }
+        };
+        const docs = [];
+        walk(document, docs);
+        for (const root of docs) {
+          let el = null;
+          try { el = root.getElementById ? root.getElementById('scratch') : null; } catch { el = null; }
+          if (el) {
+            const value = String(el.value || '');
+            return { scratch: true, note_present: !!(expected && value.indexOf(expected) >= 0) };
+          }
+          let labeled = [];
+          try { labeled = [...root.querySelectorAll('textarea,[role="textbox"],label')]; } catch { labeled = []; }
+          for (const node of labeled) {
+            const text = String(
+              (node.getAttribute && node.getAttribute('aria-label')) || node.placeholder || node.textContent || ''
+            ).replace(/\s+/g, ' ').trim().toLowerCase();
+            if (text.indexOf('private load note') >= 0 || text.indexOf('private notes') >= 0 ||
+                text.indexOf('internal notes') >= 0 || text.indexOf('internal load note') >= 0) {
+              const value = String(node.value || '');
+              return { scratch: true, note_present: !!(expected && value.indexOf(expected) >= 0) };
+            }
+          }
+        }
+        return { scratch: false, note_present: false };
+      }
+    });
+    return {
+      scratch: (results || []).some((item) => !!(item && item.result && item.result.scratch)),
+      note_present: (results || []).some((item) => !!(item && item.result && item.result.note_present))
+    };
+  } catch {
+    return { scratch: false, note_present: false };
+  }
+}
+
+async function probeTabScratch(tab, loadId, expectedText) {
+  if (!tab?.id || typeof chrome === 'undefined' || !chrome.tabs?.sendMessage) {
+    return { scratch: false, note_present: false };
+  }
+  let messageProbe = { scratch: false, note_present: false };
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (typeof ensureAscendContent === 'function') {
+      try { await ensureAscendContent(tab, { allowReload: false }); } catch { /* keep probing */ }
+    }
+    try {
+      const reply = await chrome.tabs.sendMessage(tab.id, {
+        action: 'PROBE_NOTE_WORKSPACE',
+        load_id: loadId,
+        text: expectedText || null
+      });
+      messageProbe = {
+        scratch: !!(reply?.scratch || reply?.already_open),
+        note_label: reply?.note_label || null,
+        note_present: !!reply?.note_present
+      };
+      if (messageProbe.note_present || (messageProbe.scratch && !expectedText)) return messageProbe;
+      break;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
+    }
+  }
+  const domProbe = await probeTabScratchDom(tab, expectedText);
+  if (domProbe.note_present || (domProbe.scratch && !expectedText)) {
+    return {
+      scratch: true,
+      note_present: !!domProbe.note_present,
+      note_label: messageProbe.note_label || 'scratch'
+    };
+  }
+  return messageProbe;
+}
+
+function tabHintFor(chosen, probed) {
+  if (!chosen?.tab) return 'no_tab';
+  const reason = chosen.scratch ? 'scratch' : (chosen.urlHit ? 'url' : (chosen.active ? 'active' : 'first'));
+  const skipped = (probed || []).filter((item) => item.tab && item.tab.id !== chosen.tab.id)
+    .map((item) => (item.scratch ? 'scratch:' : 'board:') + item.tab.id);
+  return (reason + ':' + chosen.tab.id + (skipped.length ? ';skip=' + skipped.join(',') : '')).slice(0, 80);
+}
+
+async function pickWriteTab(tabs, loadId) {
+  const id = String(loadId || '');
+  const probed = [];
+  for (const tab of tabs || []) {
+    const probe = await probeTabScratch(tab, id);
+    probed.push({
+      tab,
+      scratch: !!probe.scratch,
+      urlHit: !!(id && String(tab.url || '').includes(id)),
+      active: !!tab.active
+    });
+  }
+  const withScratch = probed.filter((item) => item.scratch);
+  let chosen = null;
+  if (withScratch.length === 1) chosen = withScratch[0];
+  else if (withScratch.length > 1) {
+    const url = withScratch.filter((item) => item.urlHit);
+    chosen = url.length === 1 ? url[0] : (withScratch.find((item) => item.active) || withScratch[0]);
+  } else {
+    const urlHits = probed.filter((item) => item.urlHit);
+    chosen = urlHits.length === 1 ? urlHits[0]
+      : (probed.find((item) => item.active) || probed[0] || null);
+  }
+  return {
+    tab: chosen?.tab || null,
+    tab_hint: tabHintFor(chosen, probed),
+    scratch_present: withScratch.length > 0
+  };
+}
+
+async function completeWrite(token, writeId, body) {
+  const payload = {
+    verified: !!body?.verified,
+    note_present: !!body?.note_present,
+    error_code: safeCode(body?.error_code),
+    live_validated: false,
+    production_writes: false,
+    stage: body?.stage || null,
+    opener_strategy: body?.opener_strategy || null,
+    note_label: body?.note_label || null,
+    commit_kind: body?.commit_kind || null,
+    save_variant: body?.save_variant || null,
+    tab_hint: body?.tab_hint || 'missing',
+    reopen_attempts: body?.reopen_attempts || 0,
+    verify_reason: body?.verify_reason || null,
+    bridge_version: body?.bridge_version || '0.1.10'
+  };
+  const local = {
+    write_id: writeId,
+    status: payload.verified && payload.note_present ? 'VERIFIED' : 'FAILED',
+    error_code: payload.error_code,
+    stage: payload.stage,
+    opener_strategy: payload.opener_strategy,
+    note_label: payload.note_label,
+    commit_kind: payload.commit_kind,
+    save_variant: payload.save_variant,
+    tab_hint: payload.tab_hint,
+    reopen_attempts: payload.reopen_attempts,
+    verify_reason: payload.verify_reason,
+    bridge_version: payload.bridge_version,
+    allow_whole_form_save: !!body?.allow_whole_form_save,
+    completed_at: new Date().toISOString()
+  };
+  try {
+    const receipt = await request('/v1/portable/writes/' + writeId + '/complete', {
+      method: 'POST',
+      token,
+      body: payload
+    });
+    await save({ last_write: { ...local, status: receipt?.status || local.status,
+      error_code: safeCode(receipt?.error_code) || local.error_code } });
+  } catch (error) {
+    await save({ last_write: { ...local, status: 'FAILED',
+      error_code: safeCode(error.code) || 'NOTE_COMPLETE_FAILED',
+      stage: local.stage || 'complete' } });
+  }
+}
+
 async function setHarvest(enabled) {
   const state = await stored();
   if (enabled) {
@@ -137,6 +668,7 @@ async function setHarvest(enabled) {
       throw Object.assign(new Error('LEASE_MISSING'), { code: 'LEASE_MISSING' });
     }
     await chrome.alarms.create(ALARM, { periodInMinutes: 1 });
+    await armWritePolls();
     await save({ harvest_enabled: true, last_error: null });
     await ensureOpenAscendTabs({ allowReload: false });
     await harvestOnce();
@@ -283,15 +815,27 @@ chrome.runtime.onInstalled.addListener((details) => {
   chrome.storage.local.set({ api_base: DEFAULT_API, harvest_enabled: false, live_validated: false });
   const allowReload = details.reason === 'install' || details.reason === 'update';
   ensureOpenAscendTabs({ allowReload });
+  armWritePolls();
 });
 
 chrome.runtime.onStartup.addListener(() => {
   ensureOpenAscendTabs({ allowReload: false });
+  armWritePolls();
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === ALARM) harvestOnce();
+  if (alarm.name === WRITE_ALARM || alarm.name === WRITE_SOON) pollWrites();
 });
+
+if (chrome.tabs?.onUpdated) {
+  chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && ascendTabUrl(tab?.url)) pollWrites();
+  });
+}
+if (chrome.tabs?.onActivated) {
+  chrome.tabs.onActivated.addListener(() => { pollWrites(); });
+}
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   const actions = {
@@ -302,6 +846,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     REVOKE: revokeLease,
     START: () => setHarvest(true),
     STOP: () => setHarvest(false),
+    POLL_WRITES: pollWrites,
     SET_API: async () => {
       const apiBase = String(message.api_base || DEFAULT_API).replace(/\/$/, '');
       if (!/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(apiBase)) {
