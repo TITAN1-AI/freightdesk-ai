@@ -1,5 +1,14 @@
 # Decisions - 2026-09-20
 
+## Visible #scratch is already-open; do not require Active Loads to write
+
+0.1.5 whole-form writes failed `LOAD_OPENER_UNVERIFIED` while Private Load Note
+was on screen. 0.1.6 binds `textarea#scratch` (and same-origin frames) first and
+skips the board opener when that field exists. Prefer the tab that probes
+scratch. After typing, click Save / Save & Exit only with
+`allow_whole_form_save`; leftover typed text without a save control is
+`typed_but_not_saved`. See docs/ASCEND_WRITE_NOTE_V0.md.
+
 ## Bridge must claim pending writes and never stringify errors as [object Object]
 
 0.1.4 left Avery writes `DISPATCHED`: public receipts hid `claimed_at`, the

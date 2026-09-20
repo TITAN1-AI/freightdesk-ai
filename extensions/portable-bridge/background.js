@@ -251,7 +251,7 @@ async function pollWritesOnce() {
     });
     return;
   }
-  const tab = pickWriteTab(tabs, pending.load_id);
+  const tab = await pickWriteTab(tabs, pending.load_id);
   await ensureAscendContent(tab, { allowReload: false });
   let result;
   try {
@@ -281,11 +281,36 @@ async function pollWritesOnce() {
   });
 }
 
-function pickWriteTab(tabs, loadId) {
+async function pickWriteTab(tabs, loadId) {
   const id = String(loadId || '');
-  const urlHits = (tabs || []).filter((tab) => id && String(tab.url || '').includes(id));
-  if (urlHits.length === 1) return urlHits[0];
-  return (tabs || []).find((tab) => tab.active) || tabs[0] || null;
+  const probed = [];
+  for (const tab of tabs || []) {
+    let scratch = false;
+    try {
+      const reply = (typeof chrome !== 'undefined' && chrome.tabs?.sendMessage)
+        ? await chrome.tabs.sendMessage(tab.id, { action: 'PROBE_NOTE_WORKSPACE', load_id: id })
+        : null;
+      scratch = !!reply?.scratch;
+    } catch {
+      scratch = false;
+    }
+    probed.push({
+      tab,
+      scratch,
+      urlHit: !!(id && String(tab.url || '').includes(id)),
+      active: !!tab.active
+    });
+  }
+  const withScratch = probed.filter((item) => item.scratch);
+  if (withScratch.length === 1) return withScratch[0].tab;
+  if (withScratch.length > 1) {
+    const url = withScratch.filter((item) => item.urlHit);
+    if (url.length === 1) return url[0].tab;
+    return (withScratch.find((item) => item.active) || withScratch[0]).tab;
+  }
+  const urlHits = probed.filter((item) => item.urlHit);
+  if (urlHits.length === 1) return urlHits[0].tab;
+  return (probed.find((item) => item.active) || probed[0] || {}).tab || null;
 }
 
 async function completeWrite(token, writeId, body) {

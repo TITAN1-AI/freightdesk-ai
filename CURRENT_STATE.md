@@ -1,5 +1,19 @@
 # Current state — 2026-09-20
 
+## Ascend write note v0.1.6 — already-open #scratch, then Save
+
+Avery 0.1.5: claim and no-whole-form `NOTE_COMMIT_REQUIRES_OWNER_PATH` passed.
+Whole-form writes `c5275de` / `12eaed94` / `6cef42f0` claimed then
+`LOAD_OPENER_UNVERIFIED`; `#scratch` showed B2 text but `note_present=false`
+and Save never clicked. Portable Bridge **0.1.6** treats `#scratch` /
+Private Load Note as `already_open` (getElementById + same-origin frames) and
+does not require Active Loads. The worker prefers the tab that probes scratch.
+With `allow_whole_form_save`, type `#scratch` then click Save / Save & Exit and
+verify `note_present`. If the text is already in `#scratch` but Save is missing,
+terminal is `typed_but_not_saved`. Harvest and agent Bearer unchanged. X1
+untouched. **Not LIVE_VALIDATED.** Handoff:
+[ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
 ## Ascend write note v0.1.5 — claim path, timeout, stringify
 
 Avery 0.1.4 on load 1763: writes `8a7dcacb` / `a433ed36` stayed `DISPATCHED`.

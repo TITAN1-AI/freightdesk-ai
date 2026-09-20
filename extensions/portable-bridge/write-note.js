@@ -223,38 +223,102 @@
     };
   }
 
+  function frameDocuments(doc) {
+    const out = [];
+    const seen = [];
+    const walk = (root) => {
+      if (!root || seen.indexOf(root) >= 0) return;
+      seen.push(root);
+      out.push(root);
+      let frames = [];
+      try { frames = [...root.querySelectorAll('iframe,frame')]; } catch { frames = []; }
+      for (const frame of frames) {
+        try { walk(frame.contentDocument); } catch { /* cross-origin */ }
+      }
+    };
+    walk(doc);
+    return out;
+  }
+
+  function collect(root, selector) {
+    try { return [...root.querySelectorAll(selector)]; } catch { return []; }
+  }
+
+  function findScratch(doc) {
+    for (const root of frameDocuments(doc)) {
+      let el = null;
+      try { el = root.getElementById ? root.getElementById(PRIVATE_NOTE_ID) : null; } catch { el = null; }
+      if (el) {
+        const item = mapControl(el);
+        item.visible = true;
+        return item;
+      }
+      const notes = collect(root, 'textarea,[role="textbox"]').map(mapControl)
+        .filter((item) => isPrivateNoteControl(item));
+      if (notes.length === 1) {
+        notes[0].visible = true;
+        return notes[0];
+      }
+    }
+    return null;
+  }
+
+  function probeWorkspace(doc, loadId) {
+    const scratch = findScratch(doc);
+    const workspace = planWorkspace(scan(doc), loadId);
+    return {
+      scratch: !!scratch,
+      already_open: !!(scratch || workspace.ready),
+      note_label: (scratch && (scratch.label || scratch.id)) || workspace.note_label || null
+    };
+  }
+
   function scan(doc) {
-    const textareas = [...doc.querySelectorAll('textarea,[role="textbox"]')].map(mapControl);
-    const buttons = [...doc.querySelectorAll('button,input[type="submit"],input[type="button"],[role="button"]')]
-      .map(mapControl);
-    const headings = [...doc.querySelectorAll('h1,h2,h3,[role="heading"]')].map((el) => ({
-      el, text: norm(el.textContent), visible: visible(el)
-    }));
-    const inputs = [...doc.querySelectorAll('input,select')].map(mapControl);
-    const labeled = [...doc.querySelectorAll('label')].map((el) => {
-      const forId = el.getAttribute('for');
-      const control = (forId && doc.getElementById) ? doc.getElementById(forId) : el.querySelector?.('input,span,strong');
-      return {
-        el,
-        label: norm(el.textContent),
-        visible: visible(el),
-        value: control ? String(control.value || control.textContent || '').trim() : ''
-      };
-    });
-    const searchboxes = [...doc.querySelectorAll('input[type="search"],[role="searchbox"]')]
-      .filter((el) => visible(el) && String(el.tagName || '').toUpperCase() !== 'TEXTAREA')
-      .map(mapControl);
+    const docs = frameDocuments(doc);
+    const textareas = [];
+    const buttons = [];
+    const headings = [];
+    const inputs = [];
+    const labeled = [];
+    const searchboxes = [];
+    const rows = [];
+    const links = [];
+    for (const root of docs) {
+      textareas.push(...collect(root, 'textarea,[role="textbox"]').map(mapControl));
+      buttons.push(...collect(root, 'button,input[type="submit"],input[type="button"],[role="button"]').map(mapControl));
+      headings.push(...collect(root, 'h1,h2,h3,[role="heading"]').map((el) => ({
+        el, text: norm(el.textContent), visible: visible(el)
+      })));
+      inputs.push(...collect(root, 'input,select').map(mapControl));
+      labeled.push(...collect(root, 'label').map((el) => {
+        const forId = el.getAttribute('for');
+        const control = (forId && root.getElementById) ? root.getElementById(forId) : el.querySelector?.('input,span,strong');
+        return {
+          el,
+          label: norm(el.textContent),
+          visible: visible(el),
+          value: control ? String(control.value || control.textContent || '').trim() : ''
+        };
+      }));
+      searchboxes.push(...collect(root, 'input[type="search"],[role="searchbox"]')
+        .filter((el) => visible(el) && String(el.tagName || '').toUpperCase() !== 'TEXTAREA')
+        .map(mapControl));
+      rows.push(...collect(root, 'tbody > tr,[role="row"]').filter(visible).map((row) => ({
+        el: row,
+        cells: collect(row, 'td,[role="cell"],[role="gridcell"],a,button,[role="link"],[role="button"]')
+          .map(mapControl)
+      })));
+      links.push(...collect(root, 'a,[role="link"]').map(mapControl));
+    }
     if (!searchboxes.length) {
       const labeledSearch = inputs.filter((item) => item.visible && /\bsearch\b/.test(item.label) &&
         !/submit|button|hidden/.test(item.role));
       if (labeledSearch.length === 1) searchboxes.push(labeledSearch[0]);
     }
-    const rows = [...doc.querySelectorAll('tbody > tr,[role="row"]')].filter(visible).map((row) => ({
-      el: row,
-      cells: [...row.querySelectorAll('td,[role="cell"],[role="gridcell"],a,button,[role="link"],[role="button"]')]
-        .map(mapControl)
-    }));
-    const links = [...doc.querySelectorAll('a,[role="link"]')].map(mapControl);
+    const scratch = findScratch(doc);
+    if (scratch && !textareas.some((item) => item.el === scratch.el || item.id === PRIVATE_NOTE_ID)) {
+      textareas.push(scratch);
+    }
     return {
       textareas,
       buttons,
@@ -288,12 +352,23 @@
   }
 
   function planWorkspace(scanResult, loadId) {
-    const notes = (scanResult.textareas || []).filter((item) => item.visible && isPrivateNoteControl(item));
+    const notes = (scanResult.textareas || []).filter((item) =>
+      (item.visible || String(item.id || '') === PRIVATE_NOTE_ID) && isPrivateNoteControl(item));
     if (notes.length > 1) return { ready: false, code: 'PRIVATE_NOTE_AMBIGUOUS' };
     if (notes.length !== 1) return { ready: false };
-    const noteLabel = notes[0].label;
+    const note = notes[0];
+    const noteLabel = note.label || note.id || PRIVATE_NOTE_ID;
+    if (String(note.id || '') === PRIVATE_NOTE_ID) {
+      return {
+        ready: true,
+        strategy: 'already_open',
+        note,
+        note_label: noteLabel,
+        identity: identityProven(scanResult, loadId) ? 'proven' : 'scratch_visible'
+      };
+    }
     if (identityProven(scanResult, loadId)) {
-      return { ready: true, strategy: 'already_open', note: notes[0], note_label: noteLabel };
+      return { ready: true, strategy: 'already_open', note, note_label: noteLabel };
     }
     const labeledOthers = [...(scanResult.inputs || []), ...(scanResult.labeled || [])].filter((item) => {
       const value = String(item.value || '').trim();
@@ -305,7 +380,7 @@
     return {
       ready: true,
       strategy: 'already_open',
-      note: notes[0],
+      note,
       note_label: noteLabel,
       identity: 'private_note_workspace'
     };
@@ -386,9 +461,19 @@
   }
 
   function scratchValue(doc) {
+    const found = findScratch(doc);
+    if (found) return String(found.value || found.el?.value || '');
     const el = doc.getElementById ? doc.getElementById(PRIVATE_NOTE_ID) : null;
-    if (!el || (typeof visible === 'function' && el.getClientRects && !visible(el))) return '';
+    if (!el) return '';
     return String(el.value || '');
+  }
+
+  function typeNote(box, text) {
+    if (!box) return;
+    if (typeof box.focus === 'function') box.focus();
+    box.value = String(text);
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    box.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   function verifyPresence(doc, text) {
@@ -403,6 +488,15 @@
   }
 
   async function openWorkspace(doc, loadId) {
+    const scratch = findScratch(doc);
+    if (scratch) {
+      return {
+        ok: true,
+        opener_strategy: 'already_open',
+        note_label: scratch.label || scratch.id || PRIVATE_NOTE_ID,
+        stage: 'workspace'
+      };
+    }
     const first = scan(doc);
     const workspace = planWorkspace(first, loadId);
     if (workspace.ready) {
@@ -448,20 +542,32 @@
       return report({ error_code: 'ORIGIN_NOT_ALLOWLISTED', stage: 'origin' });
     }
     try {
-      const opened = await openWorkspace(doc, command.load_id);
+      let opened = await openWorkspace(doc, command.load_id);
+      const scratch = findScratch(doc);
+      const alreadyTyped = !!(scratch && command.text &&
+        String(scratch.value || scratch.el?.value || '').includes(command.text));
       if (!opened.ok) {
-        return report({
-          error_code: opened.error_code,
-          stage: opened.stage,
-          opener_strategy: opened.opener_strategy,
-          note_label: opened.note_label || null
-        });
+        if (scratch) {
+          opened = {
+            ok: true,
+            opener_strategy: 'already_open',
+            note_label: scratch.label || scratch.id || PRIVATE_NOTE_ID,
+            stage: 'workspace'
+          };
+        } else {
+          return report({
+            error_code: opened.error_code,
+            stage: opened.stage,
+            opener_strategy: opened.opener_strategy,
+            note_label: opened.note_label || null
+          });
+        }
       }
       const planned = inspect(scan(doc), command);
       if (!planned.ok) {
         return report({
-          error_code: planned.code,
-          stage: 'inspect',
+          error_code: alreadyTyped ? 'typed_but_not_saved' : planned.code,
+          stage: alreadyTyped ? 'commit' : 'inspect',
           opener_strategy: opened.opener_strategy,
           note_label: planned.note_label || opened.note_label || null,
           commit_kind: planned.commit_kind || null,
@@ -477,11 +583,7 @@
           allow_whole_form_save: !!command.allow_whole_form_save
         });
       }
-      const box = planned.target.el;
-      box.focus();
-      box.value = command.text;
-      box.dispatchEvent(new Event('input', { bubbles: true }));
-      box.dispatchEvent(new Event('change', { bubbles: true }));
+      typeNote(planned.target.el, command.text);
       activate(planned.commit.el);
       if (planned.commit_kind === 'WHOLE_FORM_SAVE' && planned.save_variant === 'SAVE_AND_EXIT') {
         let reopened = { ok: true, opener_strategy: opened.opener_strategy };
@@ -533,6 +635,8 @@
     inspect,
     scan,
     execute,
+    findScratch,
+    probeWorkspace,
     planWorkspace,
     planOpener,
     planCommit,

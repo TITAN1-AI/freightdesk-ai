@@ -9,6 +9,11 @@
       sendResponse({ ok: true, ready: true });
       return;
     }
+    if (message.action === 'PROBE_NOTE_WORKSPACE') {
+      const probe = FreightDeskPortableWriteNote.probeWorkspace(document, message.load_id);
+      sendResponse({ ok: true, ...probe });
+      return;
+    }
     if (message.action === 'ADD_INTERNAL_NOTE') {
       Promise.resolve().then(async () => {
         if (location.origin !== ORIGIN) {

@@ -16,7 +16,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     manifest = json.loads((EXT / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["manifest_version"] == 3
     assert manifest["name"] == "FreightDesk Bridge"
-    assert manifest["version"] == "0.1.5"
+    assert manifest["version"] == "0.1.6"
     assert "nativeMessaging" not in manifest["permissions"]
     assert manifest["permissions"] == ["storage", "alarms", "scripting"]
     assert manifest["host_permissions"][0] == "https://ascendtms.com/*"
@@ -28,7 +28,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     assert "externally_connectable" not in manifest
     assert "web_accessible_resources" not in manifest
     identity = (EXT / "build.js").read_text(encoding="utf-8")
-    assert "extension_version: '0.1.5'" in identity
+    assert "extension_version: '0.1.6'" in identity
     assert "native_messaging: false" in identity
     assert "live_validated: false" in identity
     assert "production_writes: false" in identity
@@ -44,6 +44,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     assert "FORBIDDEN_ACTIONS" in write_note
     content = (EXT / "content.js").read_text(encoding="utf-8")
     assert "ADD_INTERNAL_NOTE" in content
+    assert "PROBE_NOTE_WORKSPACE" in content
     assert "HARVEST_BOARD" in content
     assert "chrome.runtime.connectNative" not in "\n".join(path.read_text(encoding="utf-8") for path in EXT.glob("*.js"))
     assert "FreightDeskAscendHost" not in sources
@@ -86,6 +87,7 @@ def test_portable_reinjects_content_and_keeps_manual_reload_copy():
     assert "writeBanner" in popup_js
     assert "NOTE_COMMIT_REQUIRES_OWNER_PATH" in popup_js
     assert "BRIDGE_CLAIM_TIMEOUT" in popup_js
+    assert "typed_but_not_saved" in popup_js
     assert "formatLastWrite" in popup_js
     assert "safeCode" in popup_js
     assert "POLL_WRITES" in popup_js
@@ -255,12 +257,23 @@ def test_portable_write_note_opener_and_owner_path():
         "  rows: [], labeled: [], href: 'https://ascendtms.com/loads', title: ''",
         "}, '1763');",
         "if (!identified.ready) throw new Error('identity workspace missed');",
+        "const scratchOpen = W.planWorkspace({",
+        "  textareas: [{id:'scratch', label:'', visible:false, value:''}],",
+        "  headings: [], inputs: [], rows: [], labeled: [], href: 'https://ascendtms.com/loads', title: ''",
+        "}, '1763');",
+        "if (!scratchOpen.ready || scratchOpen.strategy !== 'already_open') throw new Error('#scratch must already-open without board/identity: ' + JSON.stringify(scratchOpen));",
         "const conflict = W.planWorkspace({",
         "  textareas: [{label:'Private Load Note', visible:true, value:''}],",
         "  headings: [], inputs: [{label:'Load Number', value:'1755', visible:true}],",
         "  rows: [], labeled: [], href: 'https://ascendtms.com/loads', title: ''",
         "}, '1763');",
         "if (conflict.ready || conflict.code !== 'LOAD_IDENTITY_UNVERIFIED') throw new Error('conflict leaked: ' + JSON.stringify(conflict));",
+        "const scratchWins = W.planWorkspace({",
+        "  textareas: [{id:'scratch', label:'Private Load Note', visible:true, value:''}],",
+        "  headings: [], inputs: [{label:'Load Number', value:'1755', visible:true}],",
+        "  rows: [], labeled: [], href: 'https://ascendtms.com/loads', title: ''",
+        "}, '1763');",
+        "if (!scratchWins.ready || scratchWins.strategy !== 'already_open') throw new Error('#scratch should skip identity/opener: ' + JSON.stringify(scratchWins));",
         "const noBoard = W.planOpener({ rows: [], searchboxes: [], buttons: [], links: [] }, '1763');",
         "if (noBoard.error !== 'LOAD_OPENER_UNVERIFIED') throw new Error('expected opener unverified, got ' + JSON.stringify(noBoard));",
         "const row = W.planOpener({",
@@ -377,15 +390,23 @@ def test_portable_write_note_execute_skips_save_and_exit():
 def test_portable_write_tab_prefers_url_with_load_id():
     background = (EXT / "background.js").read_text(encoding="utf-8")
     script = "\n".join([
+        "const chrome = { tabs: { sendMessage: async (id) => ({ scratch: id === 9 }) } };",
         _extract_function(background, "pickWriteTab"),
         "const tabs = [",
         "  {id:1, url:'https://ascendtms.com/loads', active:true},",
         "  {id:2, url:'https://ascendtms.com/loads/1763', active:false}",
         "];",
-        "const picked = pickWriteTab(tabs, '1763');",
-        "if (picked.id !== 2) throw new Error('expected url match, got ' + JSON.stringify(picked));",
-        "const fallback = pickWriteTab([{id:3, url:'https://ascendtms.com/', active:true}], '1763');",
-        "if (fallback.id !== 3) throw new Error('expected active fallback');",
+        "(async () => {",
+        "  const picked = await pickWriteTab(tabs, '1763');",
+        "  if (picked.id !== 2) throw new Error('expected url match, got ' + JSON.stringify(picked));",
+        "  const fallback = await pickWriteTab([{id:3, url:'https://ascendtms.com/', active:true}], '1763');",
+        "  if (fallback.id !== 3) throw new Error('expected active fallback');",
+        "  const scratchTab = await pickWriteTab([",
+        "    {id:8, url:'https://ascendtms.com/loads', active:true},",
+        "    {id:9, url:'https://ascendtms.com/loads', active:false}",
+        "  ], '1763');",
+        "  if (scratchTab.id !== 9) throw new Error('expected scratch probe, got ' + JSON.stringify(scratchTab));",
+        "})().catch((error) => { console.error(error); process.exit(1); });",
     ])
     completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
     assert completed.returncode == 0, completed.stderr or completed.stdout
@@ -480,6 +501,112 @@ def test_portable_write_note_execute_whole_form_save_on_scratch():
         "  if (publicNotes.value !== 'customer visible' || publicNotes.events.includes('input')) throw new Error('touched #notes');",
         "  if (!save.events.includes('click')) throw new Error('did not activate stay-on-load Save');",
         "  if (saveExit.events.includes('click')) throw new Error('activated Save & Exit when Save was available');",
+        "})().catch((error) => { console.error(error); process.exit(1); });",
+    ])
+    completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+def test_portable_write_note_already_open_scratch_skips_opener():
+    script = "\n".join([
+        "const fs = require('fs');",
+        "globalThis.getComputedStyle = () => ({ visibility: 'visible' });",
+        "globalThis.MouseEvent = class { constructor(type, init) { this.type = type; Object.assign(this, init || {}); } };",
+        "globalThis.Event = class { constructor(type, init) { this.type = type; Object.assign(this, init || {}); } };",
+        "function el(tag, attrs) {",
+        "  attrs = attrs || {};",
+        "  const node = {",
+        "    id: attrs.id || '',",
+        "    tagName: String(tag).toUpperCase(),",
+        "    textContent: attrs.text || attrs.label || '',",
+        "    value: attrs.value || '',",
+        "    placeholder: attrs.placeholder || '',",
+        "    labels: attrs.label ? [{ textContent: attrs.label }] : [],",
+        "    events: [],",
+        "    children: attrs.children || [],",
+        "    getClientRects: () => (attrs.hidden ? [] : [{}]),",
+        "    getAttribute: (name) => name === 'id' ? (attrs.id || '') : ((attrs.attrs || {})[name] || null),",
+        "    closest: () => null,",
+        "    matches: () => false,",
+        "    focus() { node.focused = true; },",
+        "    dispatchEvent(ev) { node.events.push(ev.type); return true; },",
+        "    querySelectorAll() { return []; },",
+        "    querySelector() { return null; }",
+        "  };",
+        "  return node;",
+        "}",
+        "const scratch = el('textarea', { id: 'scratch', label: 'Private Load Note', value: '' });",
+        "const save = el('button', { label: 'Save', text: 'Save' });",
+        "const board = {",
+        "  title: 'AscendTMS',",
+        "  defaultView: { location: { origin: 'https://ascendtms.com', href: 'https://ascendtms.com/loads' } },",
+        "  getElementById: (id) => id === 'scratch' ? scratch : null,",
+        "  querySelectorAll(sel) {",
+        "    if (sel.includes('iframe')) return [];",
+        "    if (sel.includes('textarea')) return [];",
+        "    if (sel.includes('button,input[type=\"submit\"]')) return [save];",
+        "    if (sel.includes('h1,h2')) return [];",
+        "    if (sel.includes('input[type=\"search\"]')) return [];",
+        "    if (sel.includes('tbody')) return [];",
+        "    if (sel.includes('input,select')) return [];",
+        "    if (sel === 'label') return [];",
+        "    if (sel.includes('[data-note-kind')) return [];",
+        "    if (sel.includes('a,[role=\"link\"]')) return [];",
+        "    return [];",
+        "  }",
+        "};",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-note.js")) + ", 'utf8'));",
+        "const W = globalThis.FreightDeskPortableWriteNote;",
+        "(async () => {",
+        "  if (!W.findScratch(board) || W.findScratch(board).id !== 'scratch') throw new Error('findScratch missed #scratch');",
+        "  const probe = W.probeWorkspace(board, '1763');",
+        "  if (!probe.scratch || !probe.already_open) throw new Error('probe: ' + JSON.stringify(probe));",
+        "  const noFlag = await W.execute(board, { action: 'ADD_INTERNAL_NOTE', load_id: '1763', text: 'B2-note', note_kind: 'PRIVATE_INTERNAL', origin: 'https://ascendtms.com' });",
+        "  if (noFlag.error_code !== 'NOTE_COMMIT_REQUIRES_OWNER_PATH') throw new Error('no flag: ' + JSON.stringify(noFlag));",
+        "  if (noFlag.opener_strategy !== 'already_open') throw new Error('must not LOAD_OPENER_UNVERIFIED when #scratch exists: ' + JSON.stringify(noFlag));",
+        "  if (scratch.value === 'B2-note' || save.events.includes('click')) throw new Error('typed/saved without flag');",
+        "  const allowed = await W.execute(board, { action: 'ADD_INTERNAL_NOTE', load_id: '1763', text: 'B2-note', note_kind: 'PRIVATE_INTERNAL', origin: 'https://ascendtms.com', allow_whole_form_save: true });",
+        "  if (!allowed.ok || !allowed.note_present || allowed.opener_strategy !== 'already_open') throw new Error('allowed: ' + JSON.stringify(allowed));",
+        "  if (scratch.value !== 'B2-note') throw new Error('did not type #scratch');",
+        "  if (!save.events.includes('click')) throw new Error('did not click Save');",
+        "  const typed = el('textarea', { id: 'scratch', label: 'Private Load Note', value: 'B2-note' });",
+        "  const emptyDoc = {",
+        "    title: 'AscendTMS',",
+        "    defaultView: { location: { origin: 'https://ascendtms.com', href: 'https://ascendtms.com/loads' } },",
+        "    getElementById: (id) => id === 'scratch' ? typed : null,",
+        "    querySelectorAll(sel) {",
+        "      if (sel.includes('iframe')) return [];",
+        "      if (sel.includes('textarea')) return [];",
+        "      if (sel.includes('button,input[type=\"submit\"]')) return [];",
+        "      if (sel.includes('h1,h2')) return [];",
+        "      if (sel.includes('input[type=\"search\"]')) return [];",
+        "      if (sel.includes('tbody')) return [];",
+        "      if (sel.includes('input,select')) return [];",
+        "      if (sel === 'label') return [];",
+        "      if (sel.includes('[data-note-kind')) return [];",
+        "      if (sel.includes('a,[role=\"link\"]')) return [];",
+        "      return [];",
+        "    }",
+        "  };",
+        "  const leftover = await W.execute(emptyDoc, { action: 'ADD_INTERNAL_NOTE', load_id: '1763', text: 'B2-note', note_kind: 'PRIVATE_INTERNAL', origin: 'https://ascendtms.com', allow_whole_form_save: true });",
+        "  if (leftover.error_code !== 'typed_but_not_saved') throw new Error('typed leftover: ' + JSON.stringify(leftover));",
+        "  const frameScratch = el('textarea', { id: 'scratch', label: 'Private Load Note', value: '' });",
+        "  const frameDoc = {",
+        "    getElementById: (id) => id === 'scratch' ? frameScratch : null,",
+        "    querySelectorAll(sel) {",
+        "      if (sel.includes('iframe')) return [];",
+        "      if (sel.includes('textarea')) return [frameScratch];",
+        "      return [];",
+        "    }",
+        "  };",
+        "  const framed = {",
+        "    getElementById: () => null,",
+        "    querySelectorAll(sel) {",
+        "      if (sel.includes('iframe')) return [{ contentDocument: frameDoc }];",
+        "      return [];",
+        "    }",
+        "  };",
+        "  if (!W.findScratch(framed) || W.findScratch(framed).id !== 'scratch') throw new Error('iframe #scratch missed');",
         "})().catch((error) => { console.error(error); process.exit(1); });",
     ])
     completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
