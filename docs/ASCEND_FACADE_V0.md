@@ -1,7 +1,8 @@
 # Ascend facade v0
 
 Read endpoints for product/Avery over **portable UI harvest**, not the X1 native host and not an
-Ascend retail API. Demo-gated (`FREIGHTDESK_MODE=demo`). Writes are out of scope.
+Ascend retail API. Demo-gated (`FREIGHTDESK_MODE=demo`). The only write on this facade is an
+APPROVAL_REQUIRED private internal note; see [ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md).
 
 | Claim | v0 |
 | --- | --- |
@@ -9,7 +10,7 @@ Ascend retail API. Demo-gated (`FREIGHTDESK_MODE=demo`). Writes are out of scope
 | Coverage | VISIBLE_BOARD_ONLY |
 | Evidence | CANDIDATE / CANDIDATE_ONLY |
 | LIVE_VALIDATED | **false** |
-| Production writes | **false** — no Save, assign, notes, uploads, New Load |
+| Production writes | **false** — Save, assign, status, money, New Load stay blocked. Private note is a separate CANDIDATE write |
 | Empty harvest | `loads: []` and `harvest_available: false` (HTTP 200, never 500) |
 | Revoked lease | Last snapshot remains readable; new harvest posts are rejected |
 

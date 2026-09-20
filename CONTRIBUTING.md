@@ -6,6 +6,8 @@ The latest browser repair is [X1 / WebBridge V2 audit fixes](docs/WEBBRIDGE_V2_A
 The portable product track is [Portable Bridge v0](docs/PORTABLE_BRIDGE.md).
 The Avery/product harvest read is [Ascend facade v0](docs/ASCEND_FACADE_V0.md).
 Agent Bearer (no popup) is [Agent Ascend API v0](docs/AGENT_ASCEND_API_V0.md).
+The first write (private internal note, APPROVAL_REQUIRED) is
+[Ascend write note v0](docs/ASCEND_WRITE_NOTE_V0.md).
 
 ## Branches and handoffs
 

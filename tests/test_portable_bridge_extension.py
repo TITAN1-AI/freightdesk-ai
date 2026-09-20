@@ -8,32 +8,43 @@ ROOT = Path(__file__).resolve().parents[1]
 EXT = ROOT / "extensions" / "portable-bridge"
 FORBIDDEN = ("nativeMessaging", "connectNative", "eval(", "new Function", "document.cookie",
              "WebSocket(", ".click(", ".submit(", "ASCEND_SAVE", "ASCEND_SET_DRIVER")
+CONTENT_FILES = ["build.js", "board-view.js", "harvest.js", "write-note.js", "content.js"]
+READ_ONLY_JS = ("background.js", "board-view.js", "harvest.js", "popup.js", "build.js")
 
 
 def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     manifest = json.loads((EXT / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["manifest_version"] == 3
     assert manifest["name"] == "FreightDesk Bridge"
-    assert manifest["version"] == "0.1.1"
+    assert manifest["version"] == "0.1.2"
     assert "nativeMessaging" not in manifest["permissions"]
     assert manifest["permissions"] == ["storage", "alarms", "scripting"]
     assert manifest["host_permissions"][0] == "https://ascendtms.com/*"
     assert "http://127.0.0.1/*" in manifest["host_permissions"]
     assert manifest["content_scripts"][0]["matches"] == ["https://ascendtms.com/*"]
-    assert manifest["content_scripts"][0]["js"] == ["build.js", "board-view.js", "harvest.js", "content.js"]
+    assert manifest["content_scripts"][0]["js"] == CONTENT_FILES
     assert manifest["content_scripts"][0]["world"] == "ISOLATED"
     assert manifest["content_scripts"][0]["all_frames"] is False
     assert "externally_connectable" not in manifest
     assert "web_accessible_resources" not in manifest
     identity = (EXT / "build.js").read_text(encoding="utf-8")
-    assert "extension_version: '0.1.1'" in identity
+    assert "extension_version: '0.1.2'" in identity
     assert "native_messaging: false" in identity
     assert "live_validated: false" in identity
     assert "production_writes: false" in identity
-    sources = "\n".join(path.read_text(encoding="utf-8") for path in EXT.glob("*.js"))
+    sources = "\n".join((EXT / name).read_text(encoding="utf-8") for name in READ_ONLY_JS)
     for token in FORBIDDEN:
         assert token not in sources
-    assert "chrome.runtime.connectNative" not in sources
+    write_note = (EXT / "write-note.js").read_text(encoding="utf-8")
+    for token in ("nativeMessaging", "connectNative", "eval(", "new Function", "document.cookie",
+                  "WebSocket(", ".click(", ".submit(", "ASCEND_SAVE", "ASCEND_SET_DRIVER"):
+        assert token not in write_note
+    assert "ADD_INTERNAL_NOTE" in write_note
+    assert "WRITE_ACTION_FORBIDDEN" in write_note
+    content = (EXT / "content.js").read_text(encoding="utf-8")
+    assert "ADD_INTERNAL_NOTE" in content
+    assert "HARVEST_BOARD" in content
+    assert "chrome.runtime.connectNative" not in "\n".join(path.read_text(encoding="utf-8") for path in EXT.glob("*.js"))
     assert "FreightDeskAscendHost" not in sources
 
 
@@ -51,7 +62,7 @@ def test_portable_reinjects_content_and_keeps_manual_reload_copy():
     popup_js = (EXT / "popup.js").read_text(encoding="utf-8")
     popup_html = (EXT / "popup.html").read_text(encoding="utf-8")
     readme = (EXT / "README.md").read_text(encoding="utf-8")
-    assert "CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'content.js'])" in background
+    assert "CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'write-note.js', 'content.js'])" in background
     assert "chrome.scripting.executeScript" in background
     inject = background.split("async function injectIsolatedContent", 1)[1].split("async function ensureAscendContent", 1)[0]
     assert "world: 'ISOLATED'" in inject
@@ -126,7 +137,7 @@ def test_portable_harvest_start_injects_without_reloading():
     background = (EXT / "background.js").read_text(encoding="utf-8")
     script = "\n".join([
         "const ASCEND_ORIGIN = 'https://ascendtms.com';",
-        "const CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'content.js']);",
+        "const CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'write-note.js', 'content.js']);",
         "let injected = false;",
         "const calls = [];",
         "const chrome = {",
@@ -152,7 +163,7 @@ def test_portable_harvest_start_injects_without_reloading():
         "  if (calls.some((item) => item[0] === 'reload')) throw new Error('harvest must not reload');",
         "  const inject = calls.find((item) => item[0] === 'inject')[1];",
         "  if (inject.world !== 'ISOLATED' || inject.target.frameIds[0] !== 0) throw new Error('bad target');",
-        "  if (inject.files.join(',') !== 'build.js,board-view.js,harvest.js,content.js') throw new Error('bad files');",
+        "  if (inject.files.join(',') !== 'build.js,board-view.js,harvest.js,write-note.js,content.js') throw new Error('bad files');",
         "  injected = true;",
         "  const ready = await ensureAscendContent(tab, { allowReload: true });",
         "  if (ready !== 'ready') throw new Error('expected ready, got ' + ready);",
@@ -164,6 +175,40 @@ def test_portable_harvest_start_injects_without_reloading():
         "  const blocked = await ensureAscendContent({id: 8, url: 'https://ascendtms.com/loads/1763', status: 'complete'}, { allowReload: true });",
         "  if (blocked !== 'reload_required') throw new Error('detail path must not reload');",
         "})().catch((error) => { console.error(error); process.exit(1); });",
+    ])
+    completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+def test_portable_write_note_blocks_non_note_actions():
+    script = "\n".join([
+        "const fs = require('fs');",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-note.js")) + ", 'utf8'));",
+        "const W = globalThis.FreightDeskPortableWriteNote;",
+        "if (!W || W.action !== 'ADD_INTERNAL_NOTE') throw new Error('write module missing');",
+        "const scan = {",
+        "  textareas: [{label:'Private Notes', visible:true, value:''}],",
+        "  buttons: [{label:'Add Note', visible:true}]",
+        "};",
+        "const ok = W.inspect(scan, {action:'ADD_INTERNAL_NOTE', note_kind:'PRIVATE_INTERNAL'});",
+        "if (!ok.ok) throw new Error('expected private note plan, got ' + ok.code);",
+        "for (const action of ['ASCEND_SAVE_LOAD','ASCEND_SET_DRIVER','ASCEND_UPDATE_STATUS','ASCEND_NEW_LOAD','ADD_PUBLIC_NOTE']) {",
+        "  const result = W.inspect(scan, {action});",
+        "  if (result.ok || result.code !== 'WRITE_ACTION_FORBIDDEN') throw new Error(action + ' leaked: ' + JSON.stringify(result));",
+        "}",
+        "const kind = W.inspect(scan, {action:'ADD_INTERNAL_NOTE', note_kind:'PUBLIC'});",
+        "if (kind.ok || kind.code !== 'NOTE_KIND_FORBIDDEN') throw new Error('public kind leaked');",
+        "const publicOnly = W.inspect({",
+        "  textareas: [{label:'Notes', visible:true, value:''}],",
+        "  buttons: [{label:'Add Note', visible:true}]",
+        "}, {action:'ADD_INTERNAL_NOTE'});",
+        "if (publicOnly.ok || publicOnly.code !== 'PUBLIC_NOTE_BLOCKED') throw new Error('public notes leaked');",
+        "const saveLoad = W.inspect({",
+        "  textareas: [{label:'Private Notes', visible:true, value:''}],",
+        "  buttons: [{label:'Save Load', visible:true}]",
+        "}, {action:'ADD_INTERNAL_NOTE'});",
+        "if (saveLoad.ok || saveLoad.code !== 'NOTE_SAVE_CONTROL_UNVERIFIED') throw new Error('save load accepted');",
+        "if (!W.isForbiddenCommitLabel('Assign carrier') || W.isNoteCommitLabel('Save Load')) throw new Error('label helpers');",
     ])
     completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
     assert completed.returncode == 0, completed.stderr or completed.stdout

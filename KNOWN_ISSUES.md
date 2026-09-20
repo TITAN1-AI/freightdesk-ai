@@ -1,3 +1,10 @@
+# Known issues - Ascend write note v0 2026-09-20
+
+Private-internal-note write is implemented offline and **not LIVE_VALIDATED**. Live Private Notes
+control, note-specific Add/Save vs Save Load, load-open gesture, and read-back surface remain
+UNKNOWN. Demo approval mint is not production authority. Other writes stay blocked. See
+docs/ASCEND_WRITE_NOTE_V0.md.
+
 # Known issues - portable bridge v0 2026-09-19
 
 Track B is a demo/unpacked foundation, not a store product. The Ascend facade reads stored harvest
@@ -7,10 +14,11 @@ isolated reinject on open Ascend tabs; a full Active Loads reload is still requi
 browser blocks that inject or the tab is not exact `/` or `/loads`. Remaining gaps: FreightDesk
 Cloud OAuth/device-code auth, multi-tenant agent identity, HTTPS cloud API origin, Chrome/Edge
 store listing and icons, Firefox, full dashboard shipment list from harvest, stronger token
-storage, operational values, writes, AUTO_MAP, and any LIVE_VALIDATED harvest. Localhost host
-permissions must be replaced before store submission. Revoke stops further accepted posts; the
-last snapshot stays readable on the facade. BL live ops and X1 native enrollment are unchanged.
-See docs/AGENT_ASCEND_API_V0.md and docs/ASCEND_FACADE_V0.md.
+storage, operational values, general writes, AUTO_MAP, and any LIVE_VALIDATED harvest or note
+write. Localhost host permissions must be replaced before store submission. Revoke stops further
+accepted posts; the last snapshot stays readable on the facade. BL live ops and X1 native
+enrollment are unchanged.
+See docs/AGENT_ASCEND_API_V0.md, docs/ASCEND_FACADE_V0.md and docs/ASCEND_WRITE_NOTE_V0.md.
 
 # Known issues - audit repair 2026-09-13
 

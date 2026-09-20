@@ -1,3 +1,20 @@
+# Current state — 2026-09-20
+
+## Ascend write note v0 — private internal note, APPROVAL_REQUIRED
+
+First write on the portable/agent facade: `POST /v1/ascend/loads/{load_id}/notes` after a
+one-use demo approval (`POST /v1/ascend/approvals` or the dashboard mint button). Default
+ActionPolicy `ASCEND_ADD_INTERNAL_NOTE` is APPROVAL_REQUIRED. Receipts are CANDIDATE with
+`PENDING_APPROVAL` | `DISPATCHED` | `VERIFIED` | `FAILED` — no silent success. Verify-after-write
+requires note presence. Portable Bridge 0.1.2 can open a load and type Private/Internal Notes
+only; Save Load, assign, status, money, New Load and public notes stay blocked. Harvest and
+agent Bearer reads are unchanged. X1 untouched. **Not LIVE_VALIDATED.** Handoff:
+[ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
+Verification: focused tests in `tests/test_ascend_notes.py`,
+`tests/test_portable_bridge_extension.py`, plus prior agent/facade/lease/API modules.
+No vendor write and no LIVE_VALIDATED claim.
+
 # Current state — 2026-09-19
 
 ## Agent session auth v0 — Bearer for Avery, no popup

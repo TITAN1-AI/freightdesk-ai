@@ -3,7 +3,8 @@ const DEFAULT_API = 'http://127.0.0.1:8787';
 const ASCEND_ORIGIN = 'https://ascendtms.com';
 const ALARM = 'portable-harvest';
 const PORTABLE_HEADER = { 'X-FreightDesk-Portable': '1' };
-const CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'content.js']);
+const CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'write-note.js', 'content.js']);
+const WRITE_ALARM = 'portable-writes';
 const CONTENT_RELOAD_MESSAGE = 'Reload the Ascend Active Loads tab now (F5), then press Start harvest.';
 
 async function stored() {
@@ -85,16 +86,20 @@ async function signInPlaceholder() {
     extraHeaders: PORTABLE_HEADER,
     body: { placeholder: true }
   });
-  return save({
+  await chrome.alarms.create(WRITE_ALARM, { periodInMinutes: 1 });
+  const next = await save({
     device_token: payload.device_token,
     device_id: payload.device_id,
     signed_in: true,
     last_error: null
   });
+  await pollWrites();
+  return next;
 }
 
 async function signOut() {
   await chrome.alarms.clear(ALARM);
+  await chrome.alarms.clear(WRITE_ALARM);
   return save({
     device_token: null,
     device_id: null,
@@ -114,7 +119,10 @@ async function createLease() {
     token: state.device_token,
     body: { origin: ASCEND_ORIGIN, scope: 'VISIBLE_BOARD_ONLY', ttl_seconds: 900 }
   });
-  return save({ lease, last_error: null });
+  await chrome.alarms.create(WRITE_ALARM, { periodInMinutes: 1 });
+  const next = await save({ lease, last_error: null });
+  await pollWrites();
+  return next;
 }
 
 async function revokeLease() {
@@ -129,6 +137,66 @@ async function revokeLease() {
   return save({ lease, harvest_enabled: false, last_error: null });
 }
 
+async function pollWrites() {
+  const state = await stored();
+  if (!state.device_token) return;
+  let pending;
+  try {
+    pending = await request('/v1/portable/writes/pending', { token: state.device_token });
+  } catch (error) {
+    const code = error.code || 'NOTE_CLAIM_FAILED';
+    if (code === 'NOT_SIGNED_IN' || code === 'device_session_required') return;
+    await save({ last_error: { code, message: harvestMessage(code) } });
+    return;
+  }
+  if (!pending?.pending || !pending.write_id) return;
+  const tabs = await chrome.tabs.query({ url: ASCEND_ORIGIN + '/*' });
+  if (!tabs.length) {
+    await completeWrite(state.device_token, pending.write_id, {
+      verified: false,
+      note_present: false,
+      error_code: 'ASCEND_TAB_MISSING',
+      live_validated: false,
+      production_writes: false
+    });
+    return;
+  }
+  const tab = tabs.find((item) => item.active) || tabs[0];
+  await ensureAscendContent(tab, { allowReload: false });
+  let result;
+  try {
+    result = await chrome.tabs.sendMessage(tab.id, {
+      action: 'ADD_INTERNAL_NOTE',
+      write_id: pending.write_id,
+      load_id: pending.load_id,
+      text: pending.text,
+      note_kind: pending.note_kind || 'PRIVATE_INTERNAL'
+    });
+  } catch {
+    result = { verified: false, note_present: false, error_code: 'CONTENT_UNAVAILABLE' };
+  }
+  await completeWrite(state.device_token, pending.write_id, {
+    verified: !!result?.verified,
+    note_present: !!result?.note_present,
+    error_code: result?.error_code || null,
+    live_validated: false,
+    production_writes: false
+  });
+}
+
+async function completeWrite(token, writeId, body) {
+  try {
+    await request('/v1/portable/writes/' + writeId + '/complete', {
+      method: 'POST',
+      token,
+      body
+    });
+  } catch (error) {
+    await save({ last_error: { code: error.code || 'NOTE_COMPLETE_FAILED',
+      message: harvestMessage(error.code || 'NOTE_COMPLETE_FAILED') } });
+  }
+}
+
 async function setHarvest(enabled) {
   const state = await stored();
   if (enabled) {
@@ -137,6 +205,7 @@ async function setHarvest(enabled) {
       throw Object.assign(new Error('LEASE_MISSING'), { code: 'LEASE_MISSING' });
     }
     await chrome.alarms.create(ALARM, { periodInMinutes: 1 });
+    await chrome.alarms.create(WRITE_ALARM, { periodInMinutes: 1 });
     await save({ harvest_enabled: true, last_error: null });
     await ensureOpenAscendTabs({ allowReload: false });
     await harvestOnce();
@@ -287,10 +356,12 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 chrome.runtime.onStartup.addListener(() => {
   ensureOpenAscendTabs({ allowReload: false });
+  chrome.alarms.create(WRITE_ALARM, { periodInMinutes: 1 });
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === ALARM) harvestOnce();
+  if (alarm.name === WRITE_ALARM) pollWrites();
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

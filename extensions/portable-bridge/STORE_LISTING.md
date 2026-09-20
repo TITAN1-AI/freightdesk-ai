@@ -3,7 +3,7 @@
 Status: **draft only**. Not submitted to Chrome Web Store or Edge Add-ons.
 
 Name: FreightDesk Bridge  
-Summary: Read-only Ascend Active Loads harvest into FreightDesk. No native host. No writes.
+Summary: Ascend Active Loads harvest into FreightDesk plus approved private internal notes. No native host. Other writes blocked.
 
 Permission justification (draft):
 

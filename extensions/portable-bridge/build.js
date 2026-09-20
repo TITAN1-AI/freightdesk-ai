@@ -1,10 +1,11 @@
 // Packaged identity for the portable product track. No native protocol.
 globalThis.FreightDeskPortableBuild = Object.freeze({
-  extension_version: '0.1.1',
+  extension_version: '0.1.2',
   product: 'portable-bridge',
   track: 'B',
   native_messaging: false,
   production_writes: false,
+  note_write: 'APPROVAL_REQUIRED_PRIVATE_INTERNAL',
   live_validated: false,
   harvest_class: 'CANDIDATE',
   coverage: 'VISIBLE_BOARD_ONLY',

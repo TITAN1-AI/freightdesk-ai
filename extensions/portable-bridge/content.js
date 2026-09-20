@@ -9,6 +9,15 @@
       sendResponse({ ok: true, ready: true });
       return;
     }
+    if (message.action === 'ADD_INTERNAL_NOTE') {
+      Promise.resolve().then(async () => {
+        if (location.origin !== ORIGIN) {
+          return { ok: false, verified: false, note_present: false, error_code: 'ORIGIN_NOT_ALLOWLISTED' };
+        }
+        return FreightDeskPortableWriteNote.execute(document, { ...message, origin: ORIGIN });
+      }).then(sendResponse);
+      return true;
+    }
     if (message.action !== 'HARVEST_BOARD') return;
     Promise.resolve().then(async () => {
       if (location.origin !== ORIGIN) return { ok: false, code: 'ORIGIN_NOT_ALLOWLISTED' };

@@ -16,11 +16,12 @@ Engineering handoff: [docs/PORTABLE_BRIDGE.md](../../docs/PORTABLE_BRIDGE.md).
 | Auth | DPAPI enrollment / pairing | Demo placeholder device session (cloud OAuth later) |
 | Lease | Host-owned Windows read lease | Cloud/demo capability lease, revocable |
 | Harvest | Host-leased identity/map jobs | VISIBLE_BOARD_ONLY board snapshot, **CANDIDATE** |
-| Writes | Blocked | Blocked in extension and API |
+| Writes | Blocked | Harvest blocked; approved **private internal note** only ([write note v0](../../docs/ASCEND_WRITE_NOTE_V0.md)) |
 | LIVE_VALIDATED | Narrow historical X1 reads only | **No** — this track is not live-validated |
 
 v0 harvest never clicks Save, assign, notes, uploads, or wizard New Load. Maps/harvest are
-evidence-only. Booking Logistics live ops stay on the Avery stack until a separate cutover.
+evidence-only. A separately approved private/internal note can be typed by the Bridge; other
+writes stay blocked. Booking Logistics live ops stay on the Avery stack until a separate cutover.
 
 ## Load unpacked (Chrome or Edge)
 
@@ -87,7 +88,17 @@ curl -sS -X POST http://127.0.0.1:8787/v1/portable/leases \
 # Read the facade after Bridge has posted harvest (or when harvest is empty)
 curl -sS http://127.0.0.1:8787/v1/ascend/status -H "Authorization: Bearer $AGENT"
 curl -sS http://127.0.0.1:8787/v1/ascend/loads -H "Authorization: Bearer $AGENT"
+
+# Optional: approved private internal note (not LIVE_VALIDATED)
+# APPROVAL=$(curl -sS -X POST http://127.0.0.1:8787/v1/ascend/approvals \
+#   -H "Authorization: Bearer $AGENT" -H 'Content-Type: application/json' \
+#   -d '{"action":"ASCEND_ADD_INTERNAL_NOTE","load_id":"1763"}' \
+#   | python -c 'import json,sys; print(json.load(sys.stdin)["approval_token"])')
+# curl -sS -X POST http://127.0.0.1:8787/v1/ascend/loads/1763/notes \
+#   -H "Authorization: Bearer $AGENT" -H 'Content-Type: application/json' \
+#   -d "{\"text\":\"internal ops note\",\"approval_token\":\"$APPROVAL\"}"
 ```
+See [ASCEND_WRITE_NOTE_V0.md](../../docs/ASCEND_WRITE_NOTE_V0.md) for approval, receipts, and LIVE gaps.
 
 Extension/device path (popup Demo sign-in) is unchanged: `POST /v1/portable/session` with
 `X-FreightDesk-Portable: 1`, then the same lease/harvest/facade routes using the device token.
@@ -106,7 +117,7 @@ From a full Windows checkout (same suite as CI):
 Focused:
 
 ```powershell
-.\.tools\python\python.exe -m pytest tests/test_portable_leases.py tests/test_portable_bridge_extension.py tests/test_ascend_facade.py --basetemp=C:\FreightDeskRuntime\Data\TestRuns\portable-bridge
+.\.tools\python\python.exe -m pytest tests/test_portable_leases.py tests/test_portable_bridge_extension.py tests/test_ascend_facade.py tests/test_ascend_notes.py --basetemp=C:\FreightDeskRuntime\Data\TestRuns\portable-bridge
 ```
 
 An existing Python 3.12+ environment can run the same pytest modules. The extension test also
@@ -124,6 +135,7 @@ Field smoke (owner-manual, after Load unpacked on an already-open Active Loads t
 - Chrome Web Store / Edge Add-ons listing, icons, privacy disclosure, review
 - HTTPS cloud API origin in `host_permissions` (replace localhost stub)
 - Firefox
-- Operational field values, AUTO_MAP, writes, and any LIVE_VALIDATED claim
+- Operational field values, AUTO_MAP, general writes, and any LIVE_VALIDATED claim
+  (private-note write is CANDIDATE / not field-passed)
 - Dashboard shipment list / freshness UI bound to portable harvest
 - Token storage stronger than `chrome.storage.local`

@@ -1,3 +1,15 @@
+# Decisions - 2026-09-20
+
+## First Ascend write is a private internal note behind APPROVAL_REQUIRED
+
+Ship a minimal facade write: `ASCEND_ADD_INTERNAL_NOTE` only. Default policy is
+APPROVAL_REQUIRED; mint via `POST /v1/ascend/approvals` or the owner dashboard button.
+Receipts never claim success without verify-after-write (`note_present`). The portable
+Bridge may type Private/Internal Notes; it still refuses Save Load, assign, status,
+money, New Load and customer-visible notes. Harvest/agent Bearer paths stay intact.
+X1 is untouched. Do not mark LIVE_VALIDATED until Avery field-passes.
+See docs/ASCEND_WRITE_NOTE_V0.md.
+
 # Decisions - 2026-09-19
 
 ## Agents authenticate with a demo Bearer, not the extension popup

@@ -2,6 +2,7 @@
   "read_tracking": "ALLOW",
   "read_tms": "ALLOW",
   "read_ascend": "ALLOW",
+  "ASCEND_ADD_INTERNAL_NOTE": "APPROVAL_REQUIRED",
   "assign_carrier": "APPROVAL_REQUIRED",
   "update_status": "APPROVAL_REQUIRED",
   "update_rates": "APPROVAL_REQUIRED",
