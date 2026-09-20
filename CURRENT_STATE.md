@@ -26,13 +26,15 @@ status, money, New Load and public notes stay blocked. Harvest and
 agent Bearer reads are unchanged. X1 untouched. **Not LIVE_VALIDATED.** Handoff:
 [ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
 
-Verification: 68 focused tests passed (`tests/test_ascend_notes.py`,
+Verification: 72 focused tests passed (`tests/test_ascend_notes.py`,
 `tests/test_portable_bridge_extension.py`, `tests/test_portable_leases.py`,
 `tests/test_ascend_facade.py`, `tests/test_agent_sessions.py`, `tests/test_api.py`,
-`tests/test_control_plane.py`). Ruff passed on the changed modules. Node syntax
-passed on portable-bridge JS and `portable-notes.js`. Two existing
-Starlette/AnyIO deprecation warnings remain. No vendor write and no
-LIVE_VALIDATED claim.
+`tests/test_control_plane.py`). New coverage: already-open Private Load Note
+workspace, unique row/searchbox opener, Save & Exit → `NOTE_COMMIT_REQUIRES_OWNER_PATH`
+without typing or clicking, receipt diagnostics, URL-preferring write tab.
+Ruff passed on the changed modules. Node syntax passed on portable-bridge JS and
+`portable-notes.js`. Two existing Starlette/AnyIO deprecation warnings remain.
+No vendor write and no LIVE_VALIDATED claim.
 
 # Current state — 2026-09-19
 
