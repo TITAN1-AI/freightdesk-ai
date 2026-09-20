@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 from datetime import timedelta
 from types import SimpleNamespace
 
@@ -326,6 +327,17 @@ def test_ascend_api_never_launches_browser_or_uses_demo_auth(client, monkeypatch
     assert 'ascend' in str(RuntimePaths.from_environment().path('Browser','booking-logistics','ascend'))
 
 
+def test_dashboard_ascend_panel_extracts_across_newlines():
+    markup = (ROOT / "app" / "dashboard" / "index.html").read_text(encoding="utf-8")
+    match = re.search(r'<section class="panel" id="ascend">.*?</section>', markup, re.S)
+    assert match is not None
+    panel = match.group()
+    assert 'id="ascend-content"' in panel
+    assert 'id="status-approval-form"' in panel
+    assert 'id="status-value"' in panel
+    assert "To Be Billed" in panel
+
+
 def test_real_playwright_offline_dom_and_session_reuse(tmp_path):
     """A real browser, but all HTTP is fulfilled with synthetic HTML; no Ascend navigation."""
     async def run():
@@ -355,9 +367,12 @@ def test_real_playwright_offline_dom_and_session_reuse(tmp_path):
                             'executor_status':'STOPPED', 'last_verified_company':None, 'last_successful_read':None},
                             'loads':[], 'pending_approvals':[], 'audit':[], 'production_writes':'BLOCKED'})
                     await context.route('**/api/ascend/summary', summary)
-                    import re
-                    panel = re.search(r'<section class="panel" id="ascend">.*?</section>',
-                        (ROOT/'app'/'dashboard'/'index.html').read_text(encoding='utf-8')).group()
+                    markup = (ROOT/'app'/'dashboard'/'index.html').read_text(encoding='utf-8')
+                    match = re.search(r'<section class="panel" id="ascend">.*?</section>', markup, re.S)
+                    assert match is not None
+                    panel = match.group()
+                    assert 'id="ascend-content"' in panel
+                    assert 'id="status-approval-form"' in panel
                     await page.set_content(panel)
                     await page.add_script_tag(path=str(ROOT/'app'/'dashboard'/'ascend.js'))
                     from playwright.async_api import expect
