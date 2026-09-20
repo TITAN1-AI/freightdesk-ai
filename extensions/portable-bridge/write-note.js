@@ -118,11 +118,11 @@
   function pickStaySave(stay) {
     if (!stay.length) return null;
     if (stay.length === 1) return stay[0];
-    const exact = stay.filter((item) => {
-      const key = norm(item.label);
-      return key === 'save' || key === 'save load';
-    });
-    return exact[0] || stay[0];
+    const save = stay.filter((item) => norm(item.label) === 'save');
+    if (save.length) return save[0];
+    const saveLoad = stay.filter((item) => norm(item.label) === 'save load');
+    if (saveLoad.length) return saveLoad[0];
+    return stay[0];
   }
 
   function planCommit(scan, options) {
