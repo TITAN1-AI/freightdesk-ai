@@ -123,15 +123,15 @@ status, money, New Load and public notes stay blocked. Harvest and
 agent Bearer reads are unchanged. X1 untouched. **Not LIVE_VALIDATED.** Handoff:
 [ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
 
-Verification: 86 focused tests passed (`tests/test_ascend_notes.py`,
+Verification: 89 focused tests passed (`tests/test_ascend_notes.py`,
 `tests/test_portable_bridge_extension.py`, `tests/test_portable_leases.py`,
 `tests/test_ascend_facade.py`, `tests/test_agent_sessions.py`, `tests/test_api.py`,
-`tests/test_control_plane.py`). New coverage: Save & Exit → board → search+Enter
-or `/loads/1763` or iframe `#scratch` → VERIFIED; hidden Save wins over Save &
-Exit; `GET /v1/ascend/writes/{id}` returns `tab_hint`; recover note on another
-tab. Ruff + Node `--check` passed. Two existing Starlette/AnyIO deprecation
-warnings remain. No vendor write and no LIVE_VALIDATED claim until the receipt
-is VERIFIED.
+`tests/test_control_plane.py`). New coverage: SAVE/Save Changes preferred over
+Save & Exit; Save & Exit reopen takes ≥3 attempts (not instant fail); background
+scratch-scan `verified_via_scratch_scan`; complete without `tab_hint` stores
+`missing` on GET. Ruff + Node `--check` passed. Two existing Starlette/AnyIO
+deprecation warnings remain. No vendor write and no LIVE_VALIDATED claim until
+the receipt is VERIFIED.
 
 # Current state — 2026-09-19
 
