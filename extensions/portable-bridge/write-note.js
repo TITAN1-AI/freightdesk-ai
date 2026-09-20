@@ -6,7 +6,9 @@
     'private notes', 'internal notes', 'private load note', 'private load notes',
     'internal load note', 'internal load notes'
   ]);
-  const PUBLIC_LABELS = Object.freeze(['notes', 'load posting notes', 'public load notes', 'public notes']);
+  const PUBLIC_LABELS = Object.freeze([
+    'notes', 'load posting notes', 'public load notes', 'public load note', 'public notes'
+  ]);
   const NOTE_COMMIT = Object.freeze([
     'add note', 'save note', 'add internal note', 'save internal note',
     'add private note', 'save private note', 'add private load note', 'save private load note'
@@ -21,6 +23,8 @@
   ]);
   const OPEN_NAMES = Object.freeze(['view', 'details', 'open']);
   const IDENTITY_LABELS = Object.freeze(['load number', 'load id', 'load #', 'load no', 'load no.']);
+  const PRIVATE_NOTE_ID = 'scratch';
+  const PUBLIC_NOTE_ID = 'notes';
 
   function fail(code) {
     const error = new Error(code);
@@ -49,6 +53,25 @@
   function isPublicNoteLabel(label) {
     const key = norm(label);
     return PUBLIC_LABELS.includes(key) && !isPrivateNoteLabel(key);
+  }
+
+  function isPublicNoteControl(item) {
+    if (String(item?.id || '') === PUBLIC_NOTE_ID) return true;
+    return isPublicNoteLabel(item?.label);
+  }
+
+  function isPrivateNoteControl(item) {
+    if (isPublicNoteControl(item)) return false;
+    if (String(item?.id || '') === PRIVATE_NOTE_ID) return true;
+    return isPrivateNoteLabel(item?.label);
+  }
+
+  function classifyWholeFormSave(label) {
+    const key = norm(label);
+    if (isNoteCommitLabel(key)) return null;
+    if (/^save\s*(&|and)\s*exit\b/.test(key)) return 'SAVE_AND_EXIT';
+    if (key === 'save' || key === 'save load') return 'SAVE_STAY';
+    return null;
   }
 
   function isNoteCommitLabel(label) {
@@ -85,27 +108,48 @@
       opener_strategy: null,
       note_label: null,
       commit_kind: null,
+      save_variant: null,
+      allow_whole_form_save: false,
       ...partial
     };
   }
 
-  function planCommit(scan) {
+  function planCommit(scan, options) {
+    const allow = !!(options && options.allow_whole_form_save);
     const commits = (scan.buttons || []).filter((item) => item.visible && isNoteCommitLabel(item.label));
-    const ownerPath = (scan.buttons || []).filter((item) => item.visible && isOwnerPathCommit(item.label));
+    const stay = (scan.buttons || []).filter((item) => item.visible && classifyWholeFormSave(item.label) === 'SAVE_STAY');
+    const exit = (scan.buttons || []).filter((item) => item.visible && classifyWholeFormSave(item.label) === 'SAVE_AND_EXIT');
     const forbidden = (scan.buttons || []).filter((item) => item.visible && isForbiddenCommitLabel(item.label));
     if (commits.length === 1) {
-      return { ok: true, commit: commits[0], commit_kind: 'NOTE_SPECIFIC', forbidden_visible: forbidden.length };
+      return { ok: true, commit: commits[0], commit_kind: 'NOTE_SPECIFIC', save_variant: 'NOTE_SPECIFIC',
+        forbidden_visible: forbidden.length };
     }
     if (commits.length > 1) {
       return { ok: false, code: 'NOTE_SAVE_CONTROL_UNVERIFIED', commit_kind: 'AMBIGUOUS',
         forbidden_visible: forbidden.length };
     }
-    if (ownerPath.length) {
+    const chosen = stay.length === 1 ? stay[0] : (stay.length === 0 && exit.length === 1 ? exit[0] : null);
+    const saveVariant = stay.length === 1 ? 'SAVE_STAY' : (chosen ? 'SAVE_AND_EXIT' : null);
+    if (stay.length > 1 || (stay.length === 0 && exit.length > 1)) {
+      return { ok: false, code: 'NOTE_SAVE_CONTROL_UNVERIFIED', commit_kind: 'AMBIGUOUS',
+        forbidden_visible: forbidden.length };
+    }
+    if (chosen) {
+      if (!allow) {
+        return {
+          ok: false,
+          code: 'NOTE_COMMIT_REQUIRES_OWNER_PATH',
+          commit_kind: 'WHOLE_FORM_SAVE',
+          save_variant: saveVariant,
+          owner_path_label: chosen.label,
+          forbidden_visible: forbidden.length
+        };
+      }
       return {
-        ok: false,
-        code: 'NOTE_COMMIT_REQUIRES_OWNER_PATH',
+        ok: true,
+        commit: chosen,
         commit_kind: 'WHOLE_FORM_SAVE',
-        owner_path_label: ownerPath[0].label,
+        save_variant: saveVariant,
         forbidden_visible: forbidden.length
       };
     }
@@ -123,21 +167,22 @@
     if (command.change_status || command.assign || command.rates || command.new_load || command.send) {
       return { ok: false, code: 'WRITE_ACTION_FORBIDDEN' };
     }
-    const privateNotes = (scan.textareas || []).filter((item) => item.visible && isPrivateNoteLabel(item.label));
-    const publicNotes = (scan.textareas || []).filter((item) => item.visible && isPublicNoteLabel(item.label));
+    const privateNotes = (scan.textareas || []).filter((item) => item.visible && isPrivateNoteControl(item));
+    const publicNotes = (scan.textareas || []).filter((item) => item.visible && isPublicNoteControl(item));
     if (publicNotes.length && !privateNotes.length) {
       return { ok: false, code: 'PUBLIC_NOTE_BLOCKED' };
     }
     if (privateNotes.length !== 1) {
       return { ok: false, code: privateNotes.length ? 'PRIVATE_NOTE_AMBIGUOUS' : 'PRIVATE_NOTE_NOT_FOUND' };
     }
-    const commit = planCommit(scan);
+    const commit = planCommit(scan, command);
     if (!commit.ok) {
       return {
         ok: false,
         code: commit.code,
         commit_kind: commit.commit_kind,
-        note_label: privateNotes[0].label,
+        save_variant: commit.save_variant || null,
+        note_label: privateNotes[0].label || privateNotes[0].id,
         forbidden_visible: commit.forbidden_visible
       };
     }
@@ -146,13 +191,15 @@
       target: privateNotes[0],
       commit: commit.commit,
       commit_kind: commit.commit_kind,
-      note_label: privateNotes[0].label
+      save_variant: commit.save_variant || null,
+      note_label: privateNotes[0].label || privateNotes[0].id
     };
   }
 
   function mapControl(el) {
     return {
       el,
+      id: String(el.id || el.getAttribute?.('id') || ''),
       label: controlLabel(el),
       visible: visible(el),
       value: el.value || el.textContent || '',
@@ -228,7 +275,7 @@
   }
 
   function planWorkspace(scanResult, loadId) {
-    const notes = (scanResult.textareas || []).filter((item) => item.visible && isPrivateNoteLabel(item.label));
+    const notes = (scanResult.textareas || []).filter((item) => item.visible && isPrivateNoteControl(item));
     if (notes.length > 1) return { ready: false, code: 'PRIVATE_NOTE_AMBIGUOUS' };
     if (notes.length !== 1) return { ready: false };
     const noteLabel = notes[0].label;
@@ -325,10 +372,17 @@
     return scan(doc);
   }
 
+  function scratchValue(doc) {
+    const el = doc.getElementById ? doc.getElementById(PRIVATE_NOTE_ID) : null;
+    if (!el || (typeof visible === 'function' && el.getClientRects && !visible(el))) return '';
+    return String(el.value || '');
+  }
+
   function verifyPresence(doc, text) {
     const expected = String(text || '');
+    if (expected && scratchValue(doc).includes(expected)) return true;
     const scanned = scan(doc);
-    const privateNotes = scanned.textareas.filter((item) => item.visible && isPrivateNoteLabel(item.label));
+    const privateNotes = scanned.textareas.filter((item) => item.visible && isPrivateNoteControl(item));
     if (privateNotes.some((item) => String(item.value || '').includes(expected))) return true;
     const listed = [...doc.querySelectorAll('[data-note-kind="private"],[data-note-kind="internal"]')]
       .some((el) => visible(el) && String(el.textContent || '').includes(expected));
@@ -397,7 +451,17 @@
           stage: 'inspect',
           opener_strategy: opened.opener_strategy,
           note_label: planned.note_label || opened.note_label || null,
-          commit_kind: planned.commit_kind || null
+          commit_kind: planned.commit_kind || null,
+          save_variant: planned.save_variant || null,
+          allow_whole_form_save: !!command.allow_whole_form_save
+        });
+      }
+      if (isPublicNoteControl(planned.target) || String(planned.target.id || '') === PUBLIC_NOTE_ID) {
+        return report({
+          error_code: 'PUBLIC_NOTE_BLOCKED',
+          stage: 'inspect',
+          opener_strategy: opened.opener_strategy,
+          allow_whole_form_save: !!command.allow_whole_form_save
         });
       }
       const box = planned.target.el;
@@ -406,6 +470,30 @@
       box.dispatchEvent(new Event('input', { bubbles: true }));
       box.dispatchEvent(new Event('change', { bubbles: true }));
       activate(planned.commit.el);
+      if (planned.commit_kind === 'WHOLE_FORM_SAVE' && planned.save_variant === 'SAVE_AND_EXIT') {
+        let reopened = { ok: true, opener_strategy: opened.opener_strategy };
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+          if (verifyPresence(doc, command.text)) break;
+          if (!planWorkspace(scan(doc), command.load_id).ready) {
+            reopened = await openWorkspace(doc, command.load_id);
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        }
+        if (!reopened.ok) {
+          return report({
+            error_code: reopened.error_code || 'LOAD_DETAIL_UNVERIFIED',
+            stage: 'reopen',
+            opener_strategy: reopened.opener_strategy || opened.opener_strategy,
+            note_label: planned.note_label,
+            commit_kind: planned.commit_kind,
+            save_variant: planned.save_variant,
+            allow_whole_form_save: true
+          });
+        }
+      } else if (planned.commit_kind === 'WHOLE_FORM_SAVE') {
+        await settleWorkspace(doc, command.load_id);
+      }
       const notePresent = verifyPresence(doc, command.text);
       return report({
         ok: notePresent,
@@ -415,7 +503,9 @@
         stage: 'verify',
         opener_strategy: opened.opener_strategy,
         note_label: planned.note_label,
-        commit_kind: planned.commit_kind
+        commit_kind: planned.commit_kind,
+        save_variant: planned.save_variant || null,
+        allow_whole_form_save: !!command.allow_whole_form_save
       });
     } catch (error) {
       return report({
@@ -439,6 +529,9 @@
     isForbiddenCommitLabel,
     isOwnerPathCommit,
     isLoadIdentityLabel,
+    isPrivateNoteControl,
+    isPublicNoteControl,
+    classifyWholeFormSave,
     origin: ORIGIN
   });
 })();

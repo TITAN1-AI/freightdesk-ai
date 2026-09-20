@@ -1,12 +1,13 @@
 # Known issues - Ascend write note v0 2026-09-20
 
-Private-internal-note write is implemented offline and **not LIVE_VALIDATED**. Avery 1763
-field pass (0.1.2) failed `LOAD_OPENER_UNVERIFIED`; live control is **Private Load Note**
-with only **Save & Exit to Load Board** (no note-specific Add/Save). 0.1.3 treats that as
-`NOTE_COMMIT_REQUIRES_OWNER_PATH` and does not click it. Whether a note-only commit exists
-anywhere, and how a real note read-back looks, remain UNKNOWN. Harvest
-`ACTIVE_VIEW_UNVERIFIED` is independent of the write. Demo approval mint is not production
-authority. Other writes stay blocked. See docs/ASCEND_WRITE_NOTE_V0.md.
+Private-internal-note write is implemented offline and **not LIVE_VALIDATED**. Atlas says
+`#scratch` is committed only by whole-form Save. 0.1.4 will click Save only with
+`allow_whole_form_save` on the approval; otherwise `NOTE_COMMIT_REQUIRES_OWNER_PATH`.
+Whether 1763 exposes stay-on-load Save vs only Save & Exit, and whether `#scratch`
+retains text after Save, remain UNKNOWN until Avery re-tests. Whole-form Save can
+submit unrelated dirty fields — documented on the receipt, not eliminated. Harvest
+`ACTIVE_VIEW_UNVERIFIED` is independent of the write. Demo approval mint is not
+production authority. Other writes stay blocked. See docs/ASCEND_WRITE_NOTE_V0.md.
 
 # Known issues - portable bridge v0 2026-09-19
 

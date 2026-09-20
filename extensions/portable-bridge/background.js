@@ -175,7 +175,8 @@ async function pollWrites() {
       write_id: pending.write_id,
       load_id: pending.load_id,
       text: pending.text,
-      note_kind: pending.note_kind || 'PRIVATE_INTERNAL'
+      note_kind: pending.note_kind || 'PRIVATE_INTERNAL',
+      allow_whole_form_save: !!pending.allow_whole_form_save
     });
   } catch {
     result = { verified: false, note_present: false, error_code: 'CONTENT_UNAVAILABLE', stage: 'content' };
@@ -189,7 +190,9 @@ async function pollWrites() {
     stage: result?.stage || null,
     opener_strategy: result?.opener_strategy || null,
     note_label: result?.note_label || null,
-    commit_kind: result?.commit_kind || null
+    commit_kind: result?.commit_kind || null,
+    save_variant: result?.save_variant || null,
+    allow_whole_form_save: !!pending.allow_whole_form_save
   });
 }
 
@@ -209,6 +212,8 @@ async function completeWrite(token, writeId, body) {
     opener_strategy: body?.opener_strategy || null,
     note_label: body?.note_label || null,
     commit_kind: body?.commit_kind || null,
+    save_variant: body?.save_variant || null,
+    allow_whole_form_save: !!body?.allow_whole_form_save,
     completed_at: new Date().toISOString()
   };
   try {

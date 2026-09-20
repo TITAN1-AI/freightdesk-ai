@@ -1,5 +1,14 @@
 # Decisions - 2026-09-20
 
+## Whole-form Save for Private Load Note is explicit and approval-gated
+
+Atlas (Booking Logistics): `#scratch` has no note-specific save. 0.1.4 may click
+Save / Save & Exit only when the one-use approval sets `allow_whole_form_save`
+(or `ASCEND_ADD_INTERNAL_NOTE_VIA_SAVE`). Prefer stay-on-load Save; re-open after
+Save & Exit and require `#scratch` read-back for VERIFIED. Without the flag, keep
+`NOTE_COMMIT_REQUIRES_OWNER_PATH`. Never type `#notes`. Document the whole-form
+risk on the receipt. See docs/ASCEND_WRITE_NOTE_V0.md.
+
 ## Note write opens a load without Active Loads verification; Save & Exit stays owner-gated
 
 Field fail on 1763: opener required a board row, and harvest `ACTIVE_VIEW_UNVERIFIED`

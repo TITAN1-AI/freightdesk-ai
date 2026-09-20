@@ -16,7 +16,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     manifest = json.loads((EXT / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["manifest_version"] == 3
     assert manifest["name"] == "FreightDesk Bridge"
-    assert manifest["version"] == "0.1.3"
+    assert manifest["version"] == "0.1.4"
     assert "nativeMessaging" not in manifest["permissions"]
     assert manifest["permissions"] == ["storage", "alarms", "scripting"]
     assert manifest["host_permissions"][0] == "https://ascendtms.com/*"
@@ -28,7 +28,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     assert "externally_connectable" not in manifest
     assert "web_accessible_resources" not in manifest
     identity = (EXT / "build.js").read_text(encoding="utf-8")
-    assert "extension_version: '0.1.3'" in identity
+    assert "extension_version: '0.1.4'" in identity
     assert "native_messaging: false" in identity
     assert "live_validated: false" in identity
     assert "production_writes: false" in identity
@@ -216,6 +216,12 @@ def test_portable_write_note_blocks_non_note_actions():
         "if (!W.isForbiddenCommitLabel('Assign carrier') || W.isNoteCommitLabel('Save Load')) throw new Error('label helpers');",
         "if (!W.isOwnerPathCommit('Save & Exit to Load Board') || W.isNoteCommitLabel('Save & Exit to Load Board')) throw new Error('owner path helper');",
         "if (!W.isPrivateNoteLabel('Private Load Note')) throw new Error('private load note label');",
+        "if (!W.isPrivateNoteControl({id:'scratch', label:''}) || W.isPrivateNoteControl({id:'notes', label:'Notes'})) throw new Error('atlas ids');",
+        "const publicId = W.inspect({",
+        "  textareas: [{id:'notes', label:'Public Load Note', visible:true, value:''}],",
+        "  buttons: [{label:'Save', visible:true}]",
+        "}, {action:'ADD_INTERNAL_NOTE', allow_whole_form_save:true});",
+        "if (publicId.ok || publicId.code !== 'PUBLIC_NOTE_BLOCKED') throw new Error('public #notes leaked: ' + JSON.stringify(publicId));",
     ])
     completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
     assert completed.returncode == 0, completed.stderr or completed.stdout
@@ -358,6 +364,101 @@ def test_portable_write_tab_prefers_url_with_load_id():
         "if (picked.id !== 2) throw new Error('expected url match, got ' + JSON.stringify(picked));",
         "const fallback = pickWriteTab([{id:3, url:'https://ascendtms.com/', active:true}], '1763');",
         "if (fallback.id !== 3) throw new Error('expected active fallback');",
+    ])
+    completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+def test_portable_write_note_whole_form_save_requires_flag():
+    script = "\n".join([
+        "const fs = require('fs');",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-note.js")) + ", 'utf8'));",
+        "const W = globalThis.FreightDeskPortableWriteNote;",
+        "const scan = {",
+        "  textareas: [{id:'scratch', label:'Private Load Note', visible:true, value:''}],",
+        "  buttons: [{label:'Save', visible:true}, {label:'Save & Exit to Load Board', visible:true}]",
+        "};",
+        "const denied = W.inspect(scan, {action:'ADD_INTERNAL_NOTE'});",
+        "if (denied.ok || denied.code !== 'NOTE_COMMIT_REQUIRES_OWNER_PATH') throw new Error('flagless save leaked: ' + JSON.stringify(denied));",
+        "const allowed = W.inspect(scan, {action:'ADD_INTERNAL_NOTE', allow_whole_form_save:true});",
+        "if (!allowed.ok || allowed.commit_kind !== 'WHOLE_FORM_SAVE') throw new Error('flagged save blocked: ' + JSON.stringify(allowed));",
+        "if (allowed.save_variant !== 'SAVE_STAY') throw new Error('should prefer stay-on-load Save: ' + JSON.stringify(allowed));",
+        "if (allowed.target.id !== 'scratch') throw new Error('must target #scratch');",
+        "const exitOnly = W.inspect({",
+        "  textareas: [{id:'scratch', label:'Private Load Note', visible:true, value:''}],",
+        "  buttons: [{label:'Save & Exit to Load Board', visible:true}]",
+        "}, {action:'ADD_INTERNAL_NOTE', allow_whole_form_save:true});",
+        "if (!exitOnly.ok || exitOnly.save_variant !== 'SAVE_AND_EXIT') throw new Error('exit-only flagged path: ' + JSON.stringify(exitOnly));",
+        "if (W.classifyWholeFormSave('Save') !== 'SAVE_STAY' || W.classifyWholeFormSave('Save & Exit to Load Board') !== 'SAVE_AND_EXIT') throw new Error('classify');",
+    ])
+    completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+def test_portable_write_note_execute_whole_form_save_on_scratch():
+    script = "\n".join([
+        "const fs = require('fs');",
+        "globalThis.getComputedStyle = () => ({ visibility: 'visible' });",
+        "globalThis.MouseEvent = class { constructor(type, init) { this.type = type; Object.assign(this, init || {}); } };",
+        "globalThis.Event = class { constructor(type, init) { this.type = type; Object.assign(this, init || {}); } };",
+        "function el(tag, attrs) {",
+        "  attrs = attrs || {};",
+        "  const node = {",
+        "    id: attrs.id || '',",
+        "    tagName: String(tag).toUpperCase(),",
+        "    textContent: attrs.text || attrs.label || '',",
+        "    value: attrs.value || '',",
+        "    placeholder: attrs.placeholder || '',",
+        "    labels: attrs.label ? [{ textContent: attrs.label }] : [],",
+        "    events: [],",
+        "    children: attrs.children || [],",
+        "    getClientRects: () => (attrs.hidden ? [] : [{}]),",
+        "    getAttribute: (name) => name === 'id' ? (attrs.id || '') : ((attrs.attrs || {})[name] || null),",
+        "    closest: () => null,",
+        "    matches: () => false,",
+        "    focus() { node.focused = true; },",
+        "    dispatchEvent(ev) { node.events.push(ev.type); return true; },",
+        "    querySelectorAll() { return []; },",
+        "    querySelector() { return null; }",
+        "  };",
+        "  return node;",
+        "}",
+        "const scratch = el('textarea', { id: 'scratch', label: 'Private Load Note', value: '' });",
+        "const publicNotes = el('textarea', { id: 'notes', label: 'Public Load Note', value: 'customer visible' });",
+        "const save = el('button', { label: 'Save', text: 'Save' });",
+        "const saveExit = el('button', { label: 'Save & Exit to Load Board', text: 'Save & Exit to Load Board' });",
+        "const heading = el('h2', { text: 'Load Basics' });",
+        "const doc = {",
+        "  title: 'AscendTMS',",
+        "  defaultView: { location: { origin: 'https://ascendtms.com', href: 'https://ascendtms.com/loads' } },",
+        "  getElementById: (id) => id === 'scratch' ? scratch : (id === 'notes' ? publicNotes : null),",
+        "  querySelectorAll(sel) {",
+        "    if (sel.includes('textarea')) return [scratch, publicNotes];",
+        "    if (sel.includes('button,input[type=\"submit\"]')) return [save, saveExit];",
+        "    if (sel.includes('h1,h2')) return [heading];",
+        "    if (sel.includes('input[type=\"search\"]')) return [];",
+        "    if (sel.includes('tbody')) return [];",
+        "    if (sel.includes('input,select')) return [];",
+        "    if (sel === 'label') return [];",
+        "    if (sel.includes('[data-note-kind')) return [];",
+        "    if (sel.includes('a,[role=\"link\"]')) return [];",
+        "    return [];",
+        "  }",
+        "};",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-note.js")) + ", 'utf8'));",
+        "const W = globalThis.FreightDeskPortableWriteNote;",
+        "(async () => {",
+        "  const denied = await W.execute(doc, { action: 'ADD_INTERNAL_NOTE', load_id: '1763', text: 'secret-note', note_kind: 'PRIVATE_INTERNAL', origin: 'https://ascendtms.com' });",
+        "  if (denied.error_code !== 'NOTE_COMMIT_REQUIRES_OWNER_PATH') throw new Error('denied: ' + JSON.stringify(denied));",
+        "  if (scratch.value === 'secret-note' || save.events.includes('click') || saveExit.events.includes('click')) throw new Error('typed or saved without flag');",
+        "  const allowed = await W.execute(doc, { action: 'ADD_INTERNAL_NOTE', load_id: '1763', text: 'secret-note', note_kind: 'PRIVATE_INTERNAL', origin: 'https://ascendtms.com', allow_whole_form_save: true });",
+        "  if (!allowed.ok || !allowed.note_present || allowed.commit_kind !== 'WHOLE_FORM_SAVE') throw new Error('allowed: ' + JSON.stringify(allowed));",
+        "  if (allowed.save_variant !== 'SAVE_STAY') throw new Error('expected SAVE_STAY, got ' + allowed.save_variant);",
+        "  if (scratch.value !== 'secret-note') throw new Error('did not type #scratch');",
+        "  if (publicNotes.value !== 'customer visible' || publicNotes.events.includes('input')) throw new Error('touched #notes');",
+        "  if (!save.events.includes('click')) throw new Error('did not activate stay-on-load Save');",
+        "  if (saveExit.events.includes('click')) throw new Error('activated Save & Exit when Save was available');",
+        "})().catch((error) => { console.error(error); process.exit(1); });",
     ])
     completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
     assert completed.returncode == 0, completed.stderr or completed.stdout

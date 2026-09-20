@@ -21,8 +21,9 @@ def fixture_executor(store=None):
     return execute, ledger
 
 
-def mint_approval(client, token, load_id="1763", text=None):
-    body = {"action": "ASCEND_ADD_INTERNAL_NOTE", "load_id": load_id}
+def mint_approval(client, token, load_id="1763", text=None, allow_whole_form_save=False,
+                  action="ASCEND_ADD_INTERNAL_NOTE"):
+    body = {"action": action, "load_id": load_id, "allow_whole_form_save": allow_whole_form_save}
     if text is not None:
         body["text"] = text
     response = client.post("/v1/ascend/approvals", json=body, headers=agent_headers(token))
@@ -174,6 +175,7 @@ def test_dashboard_exposes_note_approval_controls(client):
     html = client.get("/").text
     assert "mint-note-approval" in html
     assert "note-approval-form" in html
+    assert "note-allow-whole-form-save" in html
     assert client.get("/assets/portable-notes.js").status_code == 200
 
 
@@ -239,3 +241,71 @@ def test_bridge_complete_keeps_opener_and_commit_diagnostics(client):
     fetched = client.get(f"/v1/ascend/writes/{posted['write_id']}", headers=agent_headers(token))
     assert fetched.json()["error_code"] == "NOTE_COMMIT_REQUIRES_OWNER_PATH"
     assert fetched.json()["opener_strategy"] == "already_open"
+    assert fetched.json()["allow_whole_form_save"] is False
+
+
+def test_whole_form_save_requires_approval_flag(client):
+    token = mint_agent(client)
+    minted = mint_approval(client, token, "1763")
+    assert minted["allow_whole_form_save"] is False
+    posted = client.post("/v1/ascend/loads/1763/notes",
+                         json={"text": "needs owner path", "approval_token": minted["approval_token"]},
+                         headers=agent_headers(token)).json()
+    assert posted["status"] == "DISPATCHED"
+    assert posted["allow_whole_form_save"] is False
+    claimed = client.get("/v1/portable/writes/pending", headers=agent_headers(token)).json()
+    assert claimed["allow_whole_form_save"] is False
+    assert claimed["text"] == "needs owner path"
+
+
+def test_whole_form_save_approval_flag_dispatches_mock_save_path(client):
+    token = mint_agent(client)
+    ledger = {}
+
+    def execute(job):
+        assert job["allow_whole_form_save"] is True
+        notes = ledger.setdefault(job["load_id"], [])
+        notes.append(job["text"])
+        return {
+            "verified": True,
+            "note_present": True,
+            "error_code": None,
+            "commit_kind": "WHOLE_FORM_SAVE",
+            "save_variant": "SAVE_STAY",
+            "note_label": "scratch",
+            "stage": "verify",
+        }
+
+    client.app.state.notes.executor = execute
+    minted = mint_approval(client, token, "1763", allow_whole_form_save=True)
+    assert minted["allow_whole_form_save"] is True
+    assert minted["commit_kind"] == "WHOLE_FORM_SAVE"
+    assert "textarea#scratch" in minted["whole_form_save_risk"]
+    response = client.post("/v1/ascend/loads/1763/notes",
+                           json={"text": "scratch via save", "approval_token": minted["approval_token"]},
+                           headers=agent_headers(token))
+    assert response.status_code == 200
+    receipt = response.json()
+    assert receipt["status"] == "VERIFIED"
+    assert receipt["note_present"] is True
+    assert receipt["allow_whole_form_save"] is True
+    assert receipt["commit_kind"] == "WHOLE_FORM_SAVE"
+    assert receipt["save_variant"] == "SAVE_STAY"
+    assert "textarea#scratch" in receipt["whole_form_save_risk"]
+    assert "scratch via save" not in str(receipt)
+    assert ledger["1763"] == ["scratch via save"]
+
+
+def test_via_save_action_is_alias_for_whole_form_flag(client):
+    token = mint_agent(client)
+    minted = mint_approval(client, token, "1763", action="ASCEND_ADD_INTERNAL_NOTE_VIA_SAVE")
+    assert minted["action"] == "ASCEND_ADD_INTERNAL_NOTE"
+    assert minted["allow_whole_form_save"] is True
+    claimed_posted = client.post("/v1/ascend/loads/1763/notes",
+                                 json={"text": "via save alias", "approval_token": minted["approval_token"]},
+                                 headers=agent_headers(token)).json()
+    assert claimed_posted["status"] == "DISPATCHED"
+    assert claimed_posted["allow_whole_form_save"] is True
+    claimed = client.get("/v1/portable/writes/pending", headers=agent_headers(token)).json()
+    assert claimed["allow_whole_form_save"] is True
+    assert claimed["text"] == "via save alias"

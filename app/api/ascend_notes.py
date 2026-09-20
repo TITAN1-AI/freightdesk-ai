@@ -24,7 +24,8 @@ def install_ascend_note_routes(api, identity):
 
         Default ActionPolicy is APPROVAL_REQUIRED. The dashboard button posts here too.
         """
-        return notes(request).mint_approval(actor.id, body.action, body.load_id, body.text)
+        return notes(request).mint_approval(
+            actor.id, body.action, body.load_id, body.text, body.allow_whole_form_save)
 
     @api.post("/v1/ascend/loads/{load_id}/notes")
     def add_internal_note(load_id: str, body: NoteWriteBody, request: Request,
@@ -52,4 +53,4 @@ def install_ascend_note_routes(api, identity):
         return notes(request).complete(
             token, write_id, body.verified, body.note_present, body.error_code,
             body.live_validated, body.production_writes, body.stage, body.opener_strategy,
-            body.note_label, body.commit_kind)
+            body.note_label, body.commit_kind, body.save_variant)

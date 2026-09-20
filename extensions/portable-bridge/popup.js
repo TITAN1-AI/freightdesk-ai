@@ -40,7 +40,7 @@ function writeBanner(write) {
     LOAD_OPENER_UNVERIFIED: 'Could not open the load workspace (no unique row, searchbox, or already-open Private Load Note). Harvest Active Loads is not required.',
     LOAD_IDENTITY_UNVERIFIED: 'A private note control is visible, but this tab is not proven as the requested load.',
     LOAD_DETAIL_UNVERIFIED: 'Opened a load control, but the load workspace did not settle.',
-    NOTE_COMMIT_REQUIRES_OWNER_PATH: 'Private Load Note is visible, but Ascend only offers Save Load / Save & Exit. Bridge will not click that.',
+    NOTE_COMMIT_REQUIRES_OWNER_PATH: 'Private Load Note (#scratch) needs a whole-form Save approval (allow_whole_form_save). Without it, Bridge will not click Save / Save & Exit.',
     NOTE_SAVE_CONTROL_UNVERIFIED: 'No note-specific Add/Save Note control was found. Bridge will not click Save Load.',
     ASCEND_TAB_MISSING: 'Open an authenticated Ascend tab, then retry the note write.',
     PRIVATE_NOTE_NOT_FOUND: 'Private Load Note / Private Notes was not found on the load workspace.',

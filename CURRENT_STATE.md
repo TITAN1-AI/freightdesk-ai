@@ -1,5 +1,18 @@
 # Current state — 2026-09-20
 
+## Ascend write note v0.1.4 — atlas #scratch + explicit whole-form Save
+
+Booking Logistics atlas: Private Load Note is `textarea#scratch` (Load Basics,
+OBSERVE_OR_FILL); Public Load Note is `#notes`; there is no per-field save — only
+whole-form Save / Save & Exit. Bridge **0.1.4** types `#scratch` only. Whole-form
+Save requires an approval that sets `allow_whole_form_save: true` (or mint action
+`ASCEND_ADD_INTERNAL_NOTE_VIA_SAVE`). Prefer stay-on-load Save; Save & Exit is used
+only when that is the unique commit, then the load is re-opened to read `#scratch`.
+Without the flag, behavior stays `NOTE_COMMIT_REQUIRES_OWNER_PATH`. Receipts document
+`commit_kind=WHOLE_FORM_SAVE` and `whole_form_save_risk`. Status/assign/money/New Load
+/public notes stay blocked. Harvest and agent Bearer unchanged. X1 untouched.
+**Not LIVE_VALIDATED.** Handoff: [ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
 ## Ascend write note v0.1.3 — field-fail opener and owner-path commit
 
 Avery field report on load 1763 (PR #8 / 0.1.2): `403` without approval passed; mint+POST
@@ -26,13 +39,13 @@ status, money, New Load and public notes stay blocked. Harvest and
 agent Bearer reads are unchanged. X1 untouched. **Not LIVE_VALIDATED.** Handoff:
 [ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
 
-Verification: 72 focused tests passed (`tests/test_ascend_notes.py`,
+Verification: 77 focused tests passed (`tests/test_ascend_notes.py`,
 `tests/test_portable_bridge_extension.py`, `tests/test_portable_leases.py`,
 `tests/test_ascend_facade.py`, `tests/test_agent_sessions.py`, `tests/test_api.py`,
-`tests/test_control_plane.py`). New coverage: already-open Private Load Note
-workspace, unique row/searchbox opener, Save & Exit → `NOTE_COMMIT_REQUIRES_OWNER_PATH`
-without typing or clicking, receipt diagnostics, URL-preferring write tab.
-Ruff passed on the changed modules. Node syntax passed on portable-bridge JS and
+`tests/test_control_plane.py`). New coverage: missing `allow_whole_form_save` stays
+`NOTE_COMMIT_REQUIRES_OWNER_PATH`; flagged approval + fixture Save path VERIFIED;
+`#scratch` typed and stay-on-load Save clicked; `#notes` never written. Ruff passed
+on the changed modules. Node syntax passed on portable-bridge JS and
 `portable-notes.js`. Two existing Starlette/AnyIO deprecation warnings remain.
 No vendor write and no LIVE_VALIDATED claim.
 

@@ -15,17 +15,24 @@ from app.services.auth_tokens import token_digest
 from app.services.mail_sync import digest
 
 NOTE_ACTION = "ASCEND_ADD_INTERNAL_NOTE"
+NOTE_ACTION_VIA_SAVE = "ASCEND_ADD_INTERNAL_NOTE_VIA_SAVE"
 NOTE_KIND = "PRIVATE_INTERNAL"
 MAX_NOTE_CHARS = 4000
 LOAD_ID = re.compile(r"^\d{1,20}$")
 APPROVAL_TTL = timedelta(minutes=15)
 EVIDENCE_CLASS = "CANDIDATE"
+WHOLE_FORM_SAVE_RISK = (
+    "Atlas (Booking Logistics): Private Load Note is textarea#scratch on Load Basics "
+    "(OBSERVE_OR_FILL). Public Load Note is #notes and stays blocked. Ascend has no "
+    "note-specific save; Save / Save & Exit submits the whole load form."
+)
 
 
 class ApprovalMintBody(Model):
     action: str = Field(min_length=8, max_length=64)
     load_id: str = Field(min_length=1, max_length=20)
     text: str | None = Field(default=None, max_length=MAX_NOTE_CHARS, repr=False)
+    allow_whole_form_save: bool = False
 
 
 class NoteWriteBody(Model):
@@ -43,6 +50,7 @@ class WriteCompleteBody(Model):
     opener_strategy: str | None = Field(default=None, max_length=64)
     note_label: str | None = Field(default=None, max_length=80)
     commit_kind: str | None = Field(default=None, max_length=64)
+    save_variant: str | None = Field(default=None, max_length=32)
 
 
 def normalize_note_text(value: str) -> str:
@@ -75,10 +83,13 @@ class AscendNoteService:
         self.portable = portable
         self.executor = None
 
-    def mint_approval(self, actor_id: str, action: str, load_id: str, text: str | None = None) -> dict:
+    def mint_approval(self, actor_id: str, action: str, load_id: str, text: str | None = None,
+                      allow_whole_form_save: bool = False) -> dict:
         self._require_demo()
         load_id = require_load_id(load_id)
-        if action != NOTE_ACTION:
+        if action == NOTE_ACTION_VIA_SAVE:
+            allow_whole_form_save = True
+        elif action != NOTE_ACTION:
             raise ValueError("approval_action_unsupported")
         if self.policies.evaluate(NOTE_ACTION) == ActionPolicy.FORBIDDEN:
             raise PermissionError("policy_forbidden")
@@ -98,13 +109,22 @@ class AscendNoteService:
             "consumed_at": None,
             "write_id": None,
             "one_use": True,
+            "allow_whole_form_save": bool(allow_whole_form_save),
+            "commit_kind": "WHOLE_FORM_SAVE" if allow_whole_form_save else None,
         }
         with self.store.transaction():
             self.store.put(self.tenant, "ascend_note_approval", record["id"], record)
             self._audit("ASCEND_NOTE_APPROVAL_MINTED",
                         "Demo one-use approval minted for a private internal note.",
-                        {"approval_id": record["id"], "load_id": load_id, "action": NOTE_ACTION},
+                        {"approval_id": record["id"], "load_id": load_id, "action": NOTE_ACTION,
+                         "allow_whole_form_save": bool(allow_whole_form_save)},
                         actor_id)
+        how = ("Pass approval_token to POST /v1/ascend/loads/{load_id}/notes. "
+               "Dashboard button or this mint is the demo grant; default policy is APPROVAL_REQUIRED.")
+        if allow_whole_form_save:
+            how = ("This approval acknowledges commit_kind=WHOLE_FORM_SAVE. Bridge may click "
+                   "Save / Save & Exit to persist textarea#scratch (Private Load Note). "
+                   + WHOLE_FORM_SAVE_RISK)
         return {
             "approval_id": record["id"],
             "approval_token": token,
@@ -114,11 +134,13 @@ class AscendNoteService:
             "text_digest": text_digest,
             "expires_at": record["expires_at"],
             "one_use": True,
+            "allow_whole_form_save": bool(allow_whole_form_save),
+            "commit_kind": "WHOLE_FORM_SAVE" if allow_whole_form_save else None,
+            "whole_form_save_risk": WHOLE_FORM_SAVE_RISK if allow_whole_form_save else None,
             "policy": str(self.policies.evaluate(NOTE_ACTION)),
             "live_validated": False,
             "production_writes": False,
-            "how": "Pass approval_token to POST /v1/ascend/loads/{load_id}/notes. "
-                   "Dashboard button or this mint is the demo grant; default policy is APPROVAL_REQUIRED.",
+            "how": how,
         }
 
     def add_note(self, actor_id: str, load_id: str, text: str, approval_token: str | None) -> tuple[int, dict]:
@@ -143,7 +165,8 @@ class AscendNoteService:
                 self._persist_write(receipt, None, actor_id, "ASCEND_NOTE_APPROVAL_REQUIRED")
                 return 403, receipt
         receipt = self._new_receipt(actor_id, load_id, text_digest, "DISPATCHED", now,
-                                    approval_id=None if approval is None else approval["id"])
+                                    approval_id=None if approval is None else approval["id"],
+                                    allow_whole_form_save=bool(approval and approval.get("allow_whole_form_save")))
         self._persist_write(receipt, text, actor_id, "ASCEND_NOTE_DISPATCHED")
         if approval is not None:
             approval["write_id"] = receipt["write_id"]
@@ -180,6 +203,8 @@ class AscendNoteService:
             "load_id": record["load_id"],
             "text": secret["text"],
             "text_digest": record["text_digest"],
+            "allow_whole_form_save": bool(record.get("allow_whole_form_save")),
+            "commit_kind": "WHOLE_FORM_SAVE" if record.get("allow_whole_form_save") else None,
             "live_validated": False,
             "production_writes": False,
         }
@@ -187,7 +212,8 @@ class AscendNoteService:
     def complete(self, token: str, write_id: str, verified: bool, note_present: bool,
                  error_code: str | None, live_validated: bool, production_writes: bool,
                  stage: str | None = None, opener_strategy: str | None = None,
-                 note_label: str | None = None, commit_kind: str | None = None) -> dict:
+                 note_label: str | None = None, commit_kind: str | None = None,
+                 save_variant: str | None = None) -> dict:
         self._require_demo()
         principal = self.portable._require_principal(token)
         if live_validated or production_writes:
@@ -203,13 +229,17 @@ class AscendNoteService:
             record.update(status=status, verified=status == "VERIFIED", note_present=note_present,
                           error_code=code, completed_at=now.isoformat(), completed_by=principal["id"],
                           stage=_diag(stage), opener_strategy=_diag(opener_strategy),
-                          note_label=_diag(note_label, 80), commit_kind=_diag(commit_kind))
+                          note_label=_diag(note_label, 80), commit_kind=_diag(commit_kind),
+                          save_variant=_diag(save_variant, 32))
             self.store.put(self.tenant, "ascend_note_write", record["id"], record)
             self._audit("ASCEND_NOTE_" + status, "Private-note write completed with verify-after-write.",
                         {"write_id": record["id"], "load_id": record["load_id"], "note_present": note_present,
                          "error_code": code, "stage": record.get("stage"),
                          "opener_strategy": record.get("opener_strategy"),
-                         "commit_kind": record.get("commit_kind")}, principal["id"])
+                         "commit_kind": record.get("commit_kind"),
+                         "save_variant": record.get("save_variant"),
+                         "allow_whole_form_save": bool(record.get("allow_whole_form_save"))},
+                        principal["id"])
         return self._public(record)
 
     def _finish_dispatched(self, receipt: dict, text: str) -> tuple[int, dict]:
@@ -218,7 +248,8 @@ class AscendNoteService:
             return 200, receipt
         try:
             result = executor({"load_id": receipt["load_id"], "text": text,
-                               "text_digest": receipt["text_digest"], "action": NOTE_ACTION})
+                               "text_digest": receipt["text_digest"], "action": NOTE_ACTION,
+                               "allow_whole_form_save": bool(receipt.get("allow_whole_form_save"))})
         except Exception:
             result = {"verified": False, "note_present": False, "error_code": "executor_failed"}
         status, code = self._verify_outcome(bool(result.get("verified")), bool(result.get("note_present")),
@@ -232,7 +263,8 @@ class AscendNoteService:
                           stage=_diag(result.get("stage")),
                           opener_strategy=_diag(result.get("opener_strategy")),
                           note_label=_diag(result.get("note_label"), 80),
-                          commit_kind=_diag(result.get("commit_kind")))
+                          commit_kind=_diag(result.get("commit_kind")),
+                          save_variant=_diag(result.get("save_variant"), 32))
             self.store.put(self.tenant, "ascend_note_write", record["id"], record)
             self._audit("ASCEND_NOTE_" + status, "Fixture executor finished verify-after-write.",
                         {"write_id": record["id"], "load_id": record["load_id"],
@@ -265,7 +297,8 @@ class AscendNoteService:
             return match
 
     def _new_receipt(self, actor_id: str, load_id: str, text_digest: str, status: str, now,
-                     error_code: str | None = None, approval_id: str | None = None) -> dict:
+                     error_code: str | None = None, approval_id: str | None = None,
+                     allow_whole_form_save: bool = False) -> dict:
         write_id = secrets.token_hex(16)
         return {
             "id": write_id,
@@ -293,7 +326,9 @@ class AscendNoteService:
             "stage": None,
             "opener_strategy": None,
             "note_label": None,
-            "commit_kind": None,
+            "commit_kind": "WHOLE_FORM_SAVE" if allow_whole_form_save else None,
+            "save_variant": None,
+            "allow_whole_form_save": bool(allow_whole_form_save),
         }
 
     def _persist_write(self, receipt: dict, text: str | None, actor_id: str, event: str):
@@ -311,12 +346,16 @@ class AscendNoteService:
                         actor_id)
 
     def _public(self, record: dict) -> dict:
-        return {key: record.get(key) for key in (
+        public = {key: record.get(key) for key in (
             "receipt_id", "write_id", "action", "note_kind", "load_id", "status",
             "evidence_class", "live_validated", "production_writes", "policy", "verified",
             "note_present", "text_digest", "error_code", "approval_id", "created_at",
             "dispatched_at", "completed_at", "stage", "opener_strategy", "note_label",
-            "commit_kind")}
+            "commit_kind", "save_variant", "allow_whole_form_save")}
+        public["whole_form_save_risk"] = (
+            WHOLE_FORM_SAVE_RISK if record.get("allow_whole_form_save")
+            or record.get("commit_kind") == "WHOLE_FORM_SAVE" else None)
+        return public
 
     def _verify_outcome(self, verified: bool, note_present: bool, error_code: str | None) -> tuple[str, str | None]:
         if verified and note_present:
