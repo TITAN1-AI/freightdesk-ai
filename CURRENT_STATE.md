@@ -18,9 +18,12 @@ Verification: 117 focused tests passed (`tests/test_ascend_status.py`,
 `tests/test_ascend_notes.py`, `tests/test_ascend_capabilities.py`,
 `tests/test_portable_bridge_extension.py`, `tests/test_ascend_facade.py`,
 `tests/test_agent_sessions.py`, `tests/test_portable_leases.py`,
-`tests/test_api.py`, `tests/test_control_plane.py`). Ruff + Node `--check`
-passed on the touched modules. Two existing Starlette/AnyIO deprecation
-warnings remain. **Do not merge** until Avery VERIFIED.
+`tests/test_api.py`, `tests/test_control_plane.py`). Windows CI on the
+0.1.11 commit failed `test_real_playwright_offline_dom_and_session_reuse`
+because `#ascend` is now multi-line; the extractor uses `re.S` and a
+newline-safe unit check. Ruff + Node `--check` passed on the touched
+modules. Two existing Starlette/AnyIO deprecation warnings remain.
+**Do not merge** until Avery VERIFIED.
 
 ## Ascend write note v0.1.10 — FIELD LIVE_VALIDATED (Avery 1763 SAVE_STAY)
 
