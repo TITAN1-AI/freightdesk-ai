@@ -1,5 +1,14 @@
 # Decisions - 2026-09-20
 
+## Note write opens a load without Active Loads verification; Save & Exit stays owner-gated
+
+Field fail on 1763: opener required a board row, and harvest `ACTIVE_VIEW_UNVERIFIED`
+masked the write. 0.1.3 opens from an already-visible Private Load Note workspace, a
+unique View/Details/Open row, or a unique searchbox fill (no submit). Do not auto-click
+**Save Load** or **Save & Exit to Load Board** — those are unproven whole-form saves.
+Fail `NOTE_COMMIT_REQUIRES_OWNER_PATH` instead. Keep APPROVAL_REQUIRED and
+verify-after-write. See docs/ASCEND_WRITE_NOTE_V0.md.
+
 ## First Ascend write is a private internal note behind APPROVAL_REQUIRED
 
 Ship a minimal facade write: `ASCEND_ADD_INTERNAL_NOTE` only. Default policy is

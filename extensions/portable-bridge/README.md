@@ -64,8 +64,9 @@ The popup banner repeats that action. A full manual reload is still required whe
 blocks programmatic injection (policy, discarded tab, or a path the extension will not reload).
 
 The popup shows distinct states for not signed in, missing lease, allowlist/origin failures,
-and an unreachable API. Harvest posts only to `http://127.0.0.1` / `http://localhost` in this
-package.
+and an unreachable API. **Last write** is separate from harvest: a harvest
+`ACTIVE_VIEW_UNVERIFIED` banner does not describe a note-write failure. Harvest posts only
+to `http://127.0.0.1` / `http://localhost` in this package.
 
 ## Facade curl (demo)
 

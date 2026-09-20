@@ -16,6 +16,7 @@ async function stored() {
     harvest_enabled: false,
     last_error: null,
     last_harvest: null,
+    last_write: null,
     signed_in: false
   });
 }
@@ -63,6 +64,7 @@ async function publicStatus() {
     lease: state.lease,
     last_error: state.last_error,
     last_harvest: state.last_harvest,
+    last_write: state.last_write,
     live_validated: false,
     production_writes: false,
     native_messaging: false,
@@ -107,7 +109,8 @@ async function signOut() {
     harvest_enabled: false,
     signed_in: false,
     last_error: null,
-    last_harvest: null
+    last_harvest: null,
+    last_write: null
   });
 }
 
@@ -146,7 +149,7 @@ async function pollWrites() {
   } catch (error) {
     const code = error.code || 'NOTE_CLAIM_FAILED';
     if (code === 'NOT_SIGNED_IN' || code === 'device_session_required') return;
-    await save({ last_error: { code, message: harvestMessage(code) } });
+    await save({ last_write: { write_id: null, status: 'FAILED', error_code: code, stage: 'claim' } });
     return;
   }
   if (!pending?.pending || !pending.write_id) return;
@@ -157,11 +160,13 @@ async function pollWrites() {
       note_present: false,
       error_code: 'ASCEND_TAB_MISSING',
       live_validated: false,
-      production_writes: false
+      production_writes: false,
+      stage: 'tab',
+      opener_strategy: 'none'
     });
     return;
   }
-  const tab = tabs.find((item) => item.active) || tabs[0];
+  const tab = pickWriteTab(tabs, pending.load_id);
   await ensureAscendContent(tab, { allowReload: false });
   let result;
   try {
@@ -173,27 +178,50 @@ async function pollWrites() {
       note_kind: pending.note_kind || 'PRIVATE_INTERNAL'
     });
   } catch {
-    result = { verified: false, note_present: false, error_code: 'CONTENT_UNAVAILABLE' };
+    result = { verified: false, note_present: false, error_code: 'CONTENT_UNAVAILABLE', stage: 'content' };
   }
   await completeWrite(state.device_token, pending.write_id, {
     verified: !!result?.verified,
     note_present: !!result?.note_present,
     error_code: result?.error_code || null,
     live_validated: false,
-    production_writes: false
+    production_writes: false,
+    stage: result?.stage || null,
+    opener_strategy: result?.opener_strategy || null,
+    note_label: result?.note_label || null,
+    commit_kind: result?.commit_kind || null
   });
 }
 
+function pickWriteTab(tabs, loadId) {
+  const id = String(loadId || '');
+  const urlHits = (tabs || []).filter((tab) => id && String(tab.url || '').includes(id));
+  if (urlHits.length === 1) return urlHits[0];
+  return (tabs || []).find((tab) => tab.active) || tabs[0] || null;
+}
+
 async function completeWrite(token, writeId, body) {
+  const local = {
+    write_id: writeId,
+    status: body?.verified && body?.note_present ? 'VERIFIED' : 'FAILED',
+    error_code: body?.error_code || null,
+    stage: body?.stage || null,
+    opener_strategy: body?.opener_strategy || null,
+    note_label: body?.note_label || null,
+    commit_kind: body?.commit_kind || null,
+    completed_at: new Date().toISOString()
+  };
   try {
-    await request('/v1/portable/writes/' + writeId + '/complete', {
+    const receipt = await request('/v1/portable/writes/' + writeId + '/complete', {
       method: 'POST',
       token,
       body
     });
+    await save({ last_write: { ...local, status: receipt?.status || local.status,
+      error_code: receipt?.error_code || local.error_code } });
   } catch (error) {
-    await save({ last_error: { code: error.code || 'NOTE_COMPLETE_FAILED',
-      message: harvestMessage(error.code || 'NOTE_COMPLETE_FAILED') } });
+    await save({ last_write: { ...local, status: 'FAILED',
+      error_code: error.code || 'NOTE_COMPLETE_FAILED', stage: local.stage || 'complete' } });
   }
 }
 

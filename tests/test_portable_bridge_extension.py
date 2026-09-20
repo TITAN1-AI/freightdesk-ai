@@ -16,7 +16,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     manifest = json.loads((EXT / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["manifest_version"] == 3
     assert manifest["name"] == "FreightDesk Bridge"
-    assert manifest["version"] == "0.1.2"
+    assert manifest["version"] == "0.1.3"
     assert "nativeMessaging" not in manifest["permissions"]
     assert manifest["permissions"] == ["storage", "alarms", "scripting"]
     assert manifest["host_permissions"][0] == "https://ascendtms.com/*"
@@ -28,7 +28,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     assert "externally_connectable" not in manifest
     assert "web_accessible_resources" not in manifest
     identity = (EXT / "build.js").read_text(encoding="utf-8")
-    assert "extension_version: '0.1.2'" in identity
+    assert "extension_version: '0.1.3'" in identity
     assert "native_messaging: false" in identity
     assert "live_validated: false" in identity
     assert "production_writes: false" in identity
@@ -82,6 +82,9 @@ def test_portable_reinjects_content_and_keeps_manual_reload_copy():
     assert "attachFailed" in popup_js
     assert "reload the Ascend tab first" in popup_js
     assert "reload that Active Loads tab (F5)" in popup_html
+    assert "last-write" in popup_html
+    assert "writeBanner" in popup_js
+    assert "NOTE_COMMIT_REQUIRES_OWNER_PATH" in popup_js
     assert "Reload the Ascend **Active Loads** tab now" in readme
     assert "chrome.scripting.executeScript" in readme
 
@@ -208,8 +211,153 @@ def test_portable_write_note_blocks_non_note_actions():
         "  textareas: [{label:'Private Notes', visible:true, value:''}],",
         "  buttons: [{label:'Save Load', visible:true}]",
         "}, {action:'ADD_INTERNAL_NOTE'});",
-        "if (saveLoad.ok || saveLoad.code !== 'NOTE_SAVE_CONTROL_UNVERIFIED') throw new Error('save load accepted');",
+        "if (saveLoad.ok || saveLoad.code !== 'NOTE_COMMIT_REQUIRES_OWNER_PATH') throw new Error('save load accepted');",
+        "if (saveLoad.commit_kind !== 'WHOLE_FORM_SAVE') throw new Error('save load kind');",
         "if (!W.isForbiddenCommitLabel('Assign carrier') || W.isNoteCommitLabel('Save Load')) throw new Error('label helpers');",
+        "if (!W.isOwnerPathCommit('Save & Exit to Load Board') || W.isNoteCommitLabel('Save & Exit to Load Board')) throw new Error('owner path helper');",
+        "if (!W.isPrivateNoteLabel('Private Load Note')) throw new Error('private load note label');",
+    ])
+    completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+def test_portable_write_note_opener_and_owner_path():
+    script = "\n".join([
+        "const fs = require('fs');",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-note.js")) + ", 'utf8'));",
+        "const W = globalThis.FreightDeskPortableWriteNote;",
+        "const already = W.planWorkspace({",
+        "  textareas: [{label:'Private Load Note', visible:true, value:''}],",
+        "  headings: [{text:'load basics', visible:true}],",
+        "  inputs: [], rows: [], labeled: [], href: 'https://ascendtms.com/loads', title: ''",
+        "}, '1763');",
+        "if (!already.ready || already.strategy !== 'already_open') throw new Error('already-open workspace missed: ' + JSON.stringify(already));",
+        "const identified = W.planWorkspace({",
+        "  textareas: [{label:'Private Load Note', visible:true, value:''}],",
+        "  headings: [{text:'load 1763', visible:true}],",
+        "  inputs: [{label:'Load Number', value:'1763', visible:true}],",
+        "  rows: [], labeled: [], href: 'https://ascendtms.com/loads', title: ''",
+        "}, '1763');",
+        "if (!identified.ready) throw new Error('identity workspace missed');",
+        "const conflict = W.planWorkspace({",
+        "  textareas: [{label:'Private Load Note', visible:true, value:''}],",
+        "  headings: [], inputs: [{label:'Load Number', value:'1755', visible:true}],",
+        "  rows: [], labeled: [], href: 'https://ascendtms.com/loads', title: ''",
+        "}, '1763');",
+        "if (conflict.ready || conflict.code !== 'LOAD_IDENTITY_UNVERIFIED') throw new Error('conflict leaked: ' + JSON.stringify(conflict));",
+        "const noBoard = W.planOpener({ rows: [], searchboxes: [], buttons: [], links: [] }, '1763');",
+        "if (noBoard.error !== 'LOAD_OPENER_UNVERIFIED') throw new Error('expected opener unverified, got ' + JSON.stringify(noBoard));",
+        "const row = W.planOpener({",
+        "  rows: [{cells:[{text:'1763', label:'1763', visible:true, tag:'td'},{text:'View', label:'View', visible:true, tag:'a'}]}],",
+        "  searchboxes: [], buttons: [], links: []",
+        "}, '1763');",
+        "if (row.strategy !== 'unique_row_opener') throw new Error('row opener missed: ' + JSON.stringify(row));",
+        "const search = W.planOpener({",
+        "  rows: [], buttons: [], links: [],",
+        "  searchboxes: [{label:'search', visible:true, value:''}]",
+        "}, '1763');",
+        "if (search.strategy !== 'unique_searchbox') throw new Error('searchbox opener missed: ' + JSON.stringify(search));",
+        "const owner = W.inspect({",
+        "  textareas: [{label:'Private Load Note', visible:true, value:''}],",
+        "  buttons: [{label:'Save & Exit to Load Board', visible:true}]",
+        "}, {action:'ADD_INTERNAL_NOTE'});",
+        "if (owner.ok || owner.code !== 'NOTE_COMMIT_REQUIRES_OWNER_PATH') throw new Error('save and exit accepted: ' + JSON.stringify(owner));",
+        "if (owner.commit_kind !== 'WHOLE_FORM_SAVE') throw new Error('owner commit kind');",
+        "const missing = W.inspect({",
+        "  textareas: [{label:'Private Load Note', visible:true, value:''}],",
+        "  buttons: []",
+        "}, {action:'ADD_INTERNAL_NOTE'});",
+        "if (missing.ok || missing.code !== 'NOTE_SAVE_CONTROL_UNVERIFIED') throw new Error('missing save code: ' + JSON.stringify(missing));",
+        "const source = fs.readFileSync(" + json.dumps(str(EXT / "write-note.js")) + ", 'utf8');",
+        "if (source.includes('.click(') || source.includes('.submit(')) throw new Error('write-note used native click/submit');",
+        "if (!source.includes('NOTE_COMMIT_REQUIRES_OWNER_PATH')) throw new Error('owner path code missing');",
+        "if (!source.includes('fillNoSubmit')) throw new Error('search fill helper missing');",
+    ])
+    completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+def test_portable_write_note_execute_skips_save_and_exit():
+    script = "\n".join([
+        "const fs = require('fs');",
+        "globalThis.getComputedStyle = () => ({ visibility: 'visible' });",
+        "globalThis.MouseEvent = class { constructor(type, init) { this.type = type; Object.assign(this, init || {}); } };",
+        "globalThis.Event = class { constructor(type, init) { this.type = type; Object.assign(this, init || {}); } };",
+        "function el(tag, attrs) {",
+        "  attrs = attrs || {};",
+        "  const node = {",
+        "    tagName: String(tag).toUpperCase(),",
+        "    textContent: attrs.text || attrs.label || '',",
+        "    value: attrs.value || '',",
+        "    placeholder: attrs.placeholder || '',",
+        "    labels: attrs.label ? [{ textContent: attrs.label }] : [],",
+        "    events: [],",
+        "    children: attrs.children || [],",
+        "    getClientRects: () => (attrs.hidden ? [] : [{}]),",
+        "    getAttribute: (name) => (attrs.attrs || {})[name] || null,",
+        "    closest: () => null,",
+        "    matches: () => false,",
+        "    focus() { node.focused = true; },",
+        "    dispatchEvent(ev) { node.events.push(ev.type); return true; },",
+        "    querySelectorAll(sel) {",
+        "      return (node.children || []).filter((child) => {",
+        "        if (sel.includes('td') && child.tagName === 'TD') return true;",
+        "        if (sel.includes('a') && child.tagName === 'A') return true;",
+        "        if (sel.includes('button') && child.tagName === 'BUTTON') return true;",
+        "        return false;",
+        "      });",
+        "    },",
+        "    querySelector() { return null; }",
+        "  };",
+        "  return node;",
+        "}",
+        "const note = el('textarea', { label: 'Private Load Note', value: '' });",
+        "const saveExit = el('button', { label: 'Save & Exit to Load Board', text: 'Save & Exit to Load Board' });",
+        "const heading = el('h2', { text: 'Load Basics' });",
+        "const doc = {",
+        "  title: 'AscendTMS',",
+        "  defaultView: { location: { origin: 'https://ascendtms.com', href: 'https://ascendtms.com/loads' } },",
+        "  getElementById: () => null,",
+        "  querySelectorAll(sel) {",
+        "    if (sel.includes('textarea')) return [note];",
+        "    if (sel.includes('button,input[type=\"submit\"]')) return [saveExit];",
+        "    if (sel.includes('h1,h2')) return [heading];",
+        "    if (sel.includes('input[type=\"search\"]')) return [];",
+        "    if (sel.includes('tbody')) return [];",
+        "    if (sel.includes('input,select')) return [];",
+        "    if (sel === 'label') return [];",
+        "    if (sel.includes('[data-note-kind')) return [];",
+        "    if (sel.includes('a,[role=\"link\"]')) return [];",
+        "    return [];",
+        "  }",
+        "};",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-note.js")) + ", 'utf8'));",
+        "const W = globalThis.FreightDeskPortableWriteNote;",
+        "(async () => {",
+        "  const result = await W.execute(doc, { action: 'ADD_INTERNAL_NOTE', load_id: '1763', text: 'secret-note', note_kind: 'PRIVATE_INTERNAL', origin: 'https://ascendtms.com' });",
+        "  if (result.ok || result.error_code !== 'NOTE_COMMIT_REQUIRES_OWNER_PATH') throw new Error('execute should fail owner path: ' + JSON.stringify(result));",
+        "  if (result.opener_strategy !== 'already_open') throw new Error('should skip board opener: ' + JSON.stringify(result));",
+        "  if (result.commit_kind !== 'WHOLE_FORM_SAVE') throw new Error('commit kind: ' + JSON.stringify(result));",
+        "  if (note.value === 'secret-note') throw new Error('must not type when only Save & Exit exists');",
+        "  if (saveExit.events.includes('click')) throw new Error('must not activate Save & Exit');",
+        "})().catch((error) => { console.error(error); process.exit(1); });",
+    ])
+    completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+def test_portable_write_tab_prefers_url_with_load_id():
+    background = (EXT / "background.js").read_text(encoding="utf-8")
+    script = "\n".join([
+        _extract_function(background, "pickWriteTab"),
+        "const tabs = [",
+        "  {id:1, url:'https://ascendtms.com/loads', active:true},",
+        "  {id:2, url:'https://ascendtms.com/loads/1763', active:false}",
+        "];",
+        "const picked = pickWriteTab(tabs, '1763');",
+        "if (picked.id !== 2) throw new Error('expected url match, got ' + JSON.stringify(picked));",
+        "const fallback = pickWriteTab([{id:3, url:'https://ascendtms.com/', active:true}], '1763');",
+        "if (fallback.id !== 3) throw new Error('expected active fallback');",
     ])
     completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
     assert completed.returncode == 0, completed.stderr or completed.stdout

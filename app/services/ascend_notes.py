@@ -39,6 +39,10 @@ class WriteCompleteBody(Model):
     error_code: str | None = Field(default=None, max_length=64)
     live_validated: bool = False
     production_writes: bool = False
+    stage: str | None = Field(default=None, max_length=64)
+    opener_strategy: str | None = Field(default=None, max_length=64)
+    note_label: str | None = Field(default=None, max_length=80)
+    commit_kind: str | None = Field(default=None, max_length=64)
 
 
 def normalize_note_text(value: str) -> str:
@@ -54,6 +58,13 @@ def require_load_id(load_id: str) -> str:
     if not LOAD_ID.fullmatch(load_id or ""):
         raise ValueError("load_id_invalid")
     return load_id
+
+
+def _diag(value: str | None, max_len: int = 64) -> str | None:
+    if not value:
+        return None
+    text = " ".join(str(value).split())[:max_len]
+    return text or None
 
 
 class AscendNoteService:
@@ -174,7 +185,9 @@ class AscendNoteService:
         }
 
     def complete(self, token: str, write_id: str, verified: bool, note_present: bool,
-                 error_code: str | None, live_validated: bool, production_writes: bool) -> dict:
+                 error_code: str | None, live_validated: bool, production_writes: bool,
+                 stage: str | None = None, opener_strategy: str | None = None,
+                 note_label: str | None = None, commit_kind: str | None = None) -> dict:
         self._require_demo()
         principal = self.portable._require_principal(token)
         if live_validated or production_writes:
@@ -188,11 +201,15 @@ class AscendNoteService:
                 raise PermissionError("write_not_owned")
             status, code = self._verify_outcome(verified, note_present, error_code)
             record.update(status=status, verified=status == "VERIFIED", note_present=note_present,
-                          error_code=code, completed_at=now.isoformat(), completed_by=principal["id"])
+                          error_code=code, completed_at=now.isoformat(), completed_by=principal["id"],
+                          stage=_diag(stage), opener_strategy=_diag(opener_strategy),
+                          note_label=_diag(note_label, 80), commit_kind=_diag(commit_kind))
             self.store.put(self.tenant, "ascend_note_write", record["id"], record)
             self._audit("ASCEND_NOTE_" + status, "Private-note write completed with verify-after-write.",
                         {"write_id": record["id"], "load_id": record["load_id"], "note_present": note_present,
-                         "error_code": code}, principal["id"])
+                         "error_code": code, "stage": record.get("stage"),
+                         "opener_strategy": record.get("opener_strategy"),
+                         "commit_kind": record.get("commit_kind")}, principal["id"])
         return self._public(record)
 
     def _finish_dispatched(self, receipt: dict, text: str) -> tuple[int, dict]:
@@ -211,7 +228,11 @@ class AscendNoteService:
             record = self.store.get(self.tenant, "ascend_note_write", receipt["write_id"])
             record.update(status=status, verified=status == "VERIFIED",
                           note_present=bool(result.get("note_present")), error_code=code,
-                          completed_at=now.isoformat(), completed_by="fixture-executor")
+                          completed_at=now.isoformat(), completed_by="fixture-executor",
+                          stage=_diag(result.get("stage")),
+                          opener_strategy=_diag(result.get("opener_strategy")),
+                          note_label=_diag(result.get("note_label"), 80),
+                          commit_kind=_diag(result.get("commit_kind")))
             self.store.put(self.tenant, "ascend_note_write", record["id"], record)
             self._audit("ASCEND_NOTE_" + status, "Fixture executor finished verify-after-write.",
                         {"write_id": record["id"], "load_id": record["load_id"],
@@ -269,6 +290,10 @@ class AscendNoteService:
             "completed_at": None,
             "claimed_at": None,
             "claimed_by": None,
+            "stage": None,
+            "opener_strategy": None,
+            "note_label": None,
+            "commit_kind": None,
         }
 
     def _persist_write(self, receipt: dict, text: str | None, actor_id: str, event: str):
@@ -290,7 +315,8 @@ class AscendNoteService:
             "receipt_id", "write_id", "action", "note_kind", "load_id", "status",
             "evidence_class", "live_validated", "production_writes", "policy", "verified",
             "note_present", "text_digest", "error_code", "approval_id", "created_at",
-            "dispatched_at", "completed_at")}
+            "dispatched_at", "completed_at", "stage", "opener_strategy", "note_label",
+            "commit_kind")}
 
     def _verify_outcome(self, verified: bool, note_present: bool, error_code: str | None) -> tuple[str, str | None]:
         if verified and note_present:

@@ -2,10 +2,15 @@
   'use strict';
   const ORIGIN = 'https://ascendtms.com';
   const ACTION = 'ADD_INTERNAL_NOTE';
-  const PRIVATE_LABELS = Object.freeze(['private notes', 'internal notes']);
+  const PRIVATE_LABELS = Object.freeze([
+    'private notes', 'internal notes', 'private load note', 'private load notes',
+    'internal load note', 'internal load notes'
+  ]);
   const PUBLIC_LABELS = Object.freeze(['notes', 'load posting notes', 'public load notes', 'public notes']);
-  const NOTE_COMMIT = Object.freeze(['add note', 'save note', 'add internal note', 'save internal note',
-    'add private note', 'save private note']);
+  const NOTE_COMMIT = Object.freeze([
+    'add note', 'save note', 'add internal note', 'save internal note',
+    'add private note', 'save private note', 'add private load note', 'save private load note'
+  ]);
   const FORBIDDEN_COMMIT = Object.freeze([
     'save load', 'save', 'submit', 'book it', 'new load', 'create load', 'assign', 'assign carrier',
     'update status', 'change status', 'rates', 'upload', 'send', 'delete', 'cancel load'
@@ -14,6 +19,8 @@
     'ASCEND_SAVE', 'ASCEND_SAVE_LOAD', 'ASCEND_SET_DRIVER', 'ASCEND_ASSIGN', 'ASCEND_UPDATE_STATUS',
     'ASCEND_UPDATE_RATES', 'ASCEND_NEW_LOAD', 'ASCEND_UPLOAD', 'ASCEND_SEND', 'ADD_PUBLIC_NOTE'
   ]);
+  const OPEN_NAMES = Object.freeze(['view', 'details', 'open']);
+  const IDENTITY_LABELS = Object.freeze(['load number', 'load id', 'load #', 'load no', 'load no.']);
 
   function fail(code) {
     const error = new Error(code);
@@ -22,7 +29,7 @@
   }
 
   function norm(value) {
-    return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase().replace(/[:*]+$/, '');
   }
 
   function visible(el) {
@@ -32,7 +39,7 @@
 
   function controlLabel(el) {
     const labeled = el.labels && el.labels.length === 1 ? el.labels[0].textContent : '';
-    return norm(el.getAttribute('aria-label') || labeled || el.textContent);
+    return norm(el.getAttribute('aria-label') || labeled || el.placeholder || el.textContent);
   }
 
   function isPrivateNoteLabel(label) {
@@ -48,10 +55,62 @@
     return NOTE_COMMIT.includes(norm(label));
   }
 
+  function isOwnerPathCommit(label) {
+    const key = norm(label);
+    if (isNoteCommitLabel(key)) return false;
+    if (key === 'save load' || key === 'save') return true;
+    return /^save\s*(&|and)\s*exit\b/.test(key);
+  }
+
   function isForbiddenCommitLabel(label) {
     const key = norm(label);
     if (isNoteCommitLabel(key)) return false;
+    if (isOwnerPathCommit(key)) return true;
     return FORBIDDEN_COMMIT.includes(key) || /\b(assign|book it|new load|upload|send|rate|status)\b/.test(key);
+  }
+
+  function isLoadIdentityLabel(label) {
+    return IDENTITY_LABELS.includes(norm(label));
+  }
+
+  function report(partial) {
+    return {
+      ok: false,
+      verified: false,
+      note_present: false,
+      error_code: null,
+      live_validated: false,
+      production_writes: false,
+      stage: null,
+      opener_strategy: null,
+      note_label: null,
+      commit_kind: null,
+      ...partial
+    };
+  }
+
+  function planCommit(scan) {
+    const commits = (scan.buttons || []).filter((item) => item.visible && isNoteCommitLabel(item.label));
+    const ownerPath = (scan.buttons || []).filter((item) => item.visible && isOwnerPathCommit(item.label));
+    const forbidden = (scan.buttons || []).filter((item) => item.visible && isForbiddenCommitLabel(item.label));
+    if (commits.length === 1) {
+      return { ok: true, commit: commits[0], commit_kind: 'NOTE_SPECIFIC', forbidden_visible: forbidden.length };
+    }
+    if (commits.length > 1) {
+      return { ok: false, code: 'NOTE_SAVE_CONTROL_UNVERIFIED', commit_kind: 'AMBIGUOUS',
+        forbidden_visible: forbidden.length };
+    }
+    if (ownerPath.length) {
+      return {
+        ok: false,
+        code: 'NOTE_COMMIT_REQUIRES_OWNER_PATH',
+        commit_kind: 'WHOLE_FORM_SAVE',
+        owner_path_label: ownerPath[0].label,
+        forbidden_visible: forbidden.length
+      };
+    }
+    return { ok: false, code: 'NOTE_SAVE_CONTROL_UNVERIFIED', commit_kind: 'MISSING',
+      forbidden_visible: forbidden.length };
   }
 
   function inspect(scan, command) {
@@ -72,53 +131,198 @@
     if (privateNotes.length !== 1) {
       return { ok: false, code: privateNotes.length ? 'PRIVATE_NOTE_AMBIGUOUS' : 'PRIVATE_NOTE_NOT_FOUND' };
     }
-    const commits = (scan.buttons || []).filter((item) => item.visible && isNoteCommitLabel(item.label));
-    const forbidden = (scan.buttons || []).filter((item) => item.visible && isForbiddenCommitLabel(item.label));
-    if (commits.length !== 1) {
-      return { ok: false, code: 'NOTE_SAVE_CONTROL_UNVERIFIED', forbidden_visible: forbidden.length };
+    const commit = planCommit(scan);
+    if (!commit.ok) {
+      return {
+        ok: false,
+        code: commit.code,
+        commit_kind: commit.commit_kind,
+        note_label: privateNotes[0].label,
+        forbidden_visible: commit.forbidden_visible
+      };
     }
-    return { ok: true, target: privateNotes[0], commit: commits[0] };
+    return {
+      ok: true,
+      target: privateNotes[0],
+      commit: commit.commit,
+      commit_kind: commit.commit_kind,
+      note_label: privateNotes[0].label
+    };
+  }
+
+  function mapControl(el) {
+    return {
+      el,
+      label: controlLabel(el),
+      visible: visible(el),
+      value: el.value || el.textContent || '',
+      text: norm(el.textContent),
+      tag: String(el.tagName || '').toLowerCase(),
+      role: el.getAttribute?.('role') || '',
+      href: el.getAttribute?.('href') || ''
+    };
   }
 
   function scan(doc) {
-    const textareas = [...doc.querySelectorAll('textarea,[role="textbox"]')].map((el) => ({
-      el, label: controlLabel(el), visible: visible(el), value: el.value || el.textContent || ''
-    }));
+    const textareas = [...doc.querySelectorAll('textarea,[role="textbox"]')].map(mapControl);
     const buttons = [...doc.querySelectorAll('button,input[type="submit"],input[type="button"],[role="button"]')]
-      .map((el) => ({ el, label: controlLabel(el), visible: visible(el) }));
-    return { textareas, buttons };
+      .map(mapControl);
+    const headings = [...doc.querySelectorAll('h1,h2,h3,[role="heading"]')].map((el) => ({
+      el, text: norm(el.textContent), visible: visible(el)
+    }));
+    const inputs = [...doc.querySelectorAll('input,select')].map(mapControl);
+    const labeled = [...doc.querySelectorAll('label')].map((el) => {
+      const forId = el.getAttribute('for');
+      const control = (forId && doc.getElementById) ? doc.getElementById(forId) : el.querySelector?.('input,span,strong');
+      return {
+        el,
+        label: norm(el.textContent),
+        visible: visible(el),
+        value: control ? String(control.value || control.textContent || '').trim() : ''
+      };
+    });
+    const searchboxes = [...doc.querySelectorAll('input[type="search"],[role="searchbox"]')]
+      .filter((el) => visible(el) && String(el.tagName || '').toUpperCase() !== 'TEXTAREA')
+      .map(mapControl);
+    if (!searchboxes.length) {
+      const labeledSearch = inputs.filter((item) => item.visible && /\bsearch\b/.test(item.label) &&
+        !/submit|button|hidden/.test(item.role));
+      if (labeledSearch.length === 1) searchboxes.push(labeledSearch[0]);
+    }
+    const rows = [...doc.querySelectorAll('tbody > tr,[role="row"]')].filter(visible).map((row) => ({
+      el: row,
+      cells: [...row.querySelectorAll('td,[role="cell"],[role="gridcell"],a,button,[role="link"],[role="button"]')]
+        .map(mapControl)
+    }));
+    const links = [...doc.querySelectorAll('a,[role="link"]')].map(mapControl);
+    return {
+      textareas,
+      buttons,
+      headings,
+      inputs,
+      labeled,
+      searchboxes,
+      rows,
+      links,
+      href: String(doc.defaultView?.location?.href || ''),
+      title: norm(doc.title || '')
+    };
+  }
+
+  function identityProven(scanResult, loadId) {
+    const id = String(loadId);
+    const heading = (scanResult.headings || []).some((item) => item.visible &&
+      (norm(item.text) === id || new RegExp('\\b' + id + '\\b').test(item.text)));
+    const input = (scanResult.inputs || []).some((item) => item.visible &&
+      String(item.value || '').trim() === id && isLoadIdentityLabel(item.label));
+    const labeled = (scanResult.labeled || []).some((item) => item.visible &&
+      isLoadIdentityLabel(item.label) && String(item.value || '').trim() === id);
+    let urlHas = false;
+    try {
+      urlHas = String(scanResult.href || '').startsWith(ORIGIN) && String(scanResult.href || '').includes(id);
+    } catch {
+      urlHas = false;
+    }
+    const titled = String(scanResult.title || '').includes(id);
+    return heading || input || labeled || urlHas || titled;
+  }
+
+  function planWorkspace(scanResult, loadId) {
+    const notes = (scanResult.textareas || []).filter((item) => item.visible && isPrivateNoteLabel(item.label));
+    if (notes.length > 1) return { ready: false, code: 'PRIVATE_NOTE_AMBIGUOUS' };
+    if (notes.length !== 1) return { ready: false };
+    const noteLabel = notes[0].label;
+    if (identityProven(scanResult, loadId)) {
+      return { ready: true, strategy: 'already_open', note: notes[0], note_label: noteLabel };
+    }
+    const labeledOthers = [...(scanResult.inputs || []), ...(scanResult.labeled || [])].filter((item) => {
+      const value = String(item.value || '').trim();
+      return item.visible && isLoadIdentityLabel(item.label) && value && value !== String(loadId);
+    });
+    if (labeledOthers.length) {
+      return { ready: false, code: 'LOAD_IDENTITY_UNVERIFIED', note_label: noteLabel };
+    }
+    return {
+      ready: true,
+      strategy: 'already_open',
+      note: notes[0],
+      note_label: noteLabel,
+      identity: 'private_note_workspace'
+    };
+  }
+
+  function isActivateable(cell) {
+    const tag = String(cell.tag || '').toLowerCase();
+    const role = String(cell.role || '').toLowerCase();
+    return tag === 'a' || tag === 'button' || role === 'link' || role === 'button' || !!cell.href;
+  }
+
+  function forbiddenOpenLabel(label) {
+    return /\b(save|submit|assign|book|status|rate|send|upload|delete|new load|create)\b/.test(norm(label));
+  }
+
+  function planOpener(scanResult, loadId) {
+    const id = String(loadId);
+    const matches = [];
+    let ambiguous = false;
+    for (const row of scanResult.rows || []) {
+      const identityCells = (row.cells || []).filter((cell) => cell.visible && norm(cell.text) === id);
+      if (!identityCells.length) continue;
+      const named = (row.cells || []).filter((cell) => {
+        const label = norm(cell.label || cell.text);
+        return cell.visible && (OPEN_NAMES.includes(label) || label === id) && !forbiddenOpenLabel(label);
+      });
+      let chosen = null;
+      if (named.length === 1) chosen = named[0];
+      else if (named.length > 1) {
+        const preferred = named.filter((cell) => OPEN_NAMES.includes(norm(cell.label || cell.text)));
+        if (preferred.length === 1) chosen = preferred[0];
+        else ambiguous = true;
+      } else if (identityCells.length === 1 && isActivateable(identityCells[0])) {
+        chosen = identityCells[0];
+      }
+      if (chosen) matches.push(chosen);
+    }
+    const standalone = [...(scanResult.buttons || []), ...(scanResult.links || [])].filter((item) =>
+      item.visible && norm(item.label || item.text) === id && !forbiddenOpenLabel(item.label || item.text));
+    if (ambiguous || matches.length > 1) return { error: 'LOAD_OPENER_AMBIGUOUS' };
+    if (matches.length === 1) return { strategy: 'unique_row_opener', target: matches[0] };
+    if (standalone.length === 1) return { strategy: 'unique_id_control', target: standalone[0] };
+    if (standalone.length > 1) return { error: 'LOAD_OPENER_AMBIGUOUS' };
+    const boxes = (scanResult.searchboxes || []).filter((item) => item.visible);
+    if (boxes.length === 1) return { strategy: 'unique_searchbox', target: boxes[0] };
+    return { error: 'LOAD_OPENER_UNVERIFIED' };
   }
 
   function activate(el) {
     el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
   }
 
-  function findLoadOpener(doc, loadId) {
-    const rows = [...doc.querySelectorAll('tbody > tr,[role="row"]')].filter(visible);
-    const matches = [];
-    for (const row of rows) {
-      const cells = [...row.querySelectorAll('td,[role="cell"],[role="gridcell"],a,button')];
-      const identity = cells.find((cell) => norm(cell.textContent) === String(loadId));
-      if (!identity) continue;
-      matches.push(identity);
-    }
-    if (matches.length !== 1) return null;
-    return matches[0];
+  function fillNoSubmit(el, text) {
+    if (!el) fail('LOAD_OPENER_UNVERIFIED');
+    if (typeof el.focus === 'function') el.focus();
+    el.value = String(text);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  function detailIdentityVisible(doc, loadId) {
-    const headings = [...doc.querySelectorAll('h1,h2,h3,[role="heading"]')]
-      .some((el) => visible(el) && norm(el.textContent).includes(String(loadId)));
-    const notes = scan(doc).textareas.some((item) => item.visible && isPrivateNoteLabel(item.label));
-    return headings && notes;
-  }
-
-  async function settleDetail(doc, loadId) {
+  async function settleWorkspace(doc, loadId) {
     for (let attempt = 0; attempt < 20; attempt += 1) {
-      if (detailIdentityVisible(doc, loadId)) return true;
+      if (planWorkspace(scan(doc), loadId).ready) return true;
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
-    return detailIdentityVisible(doc, loadId);
+    return planWorkspace(scan(doc), loadId).ready;
+  }
+
+  async function settleOpener(doc, loadId) {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const scanned = scan(doc);
+      if (planWorkspace(scanned, loadId).ready) return scanned;
+      const opener = planOpener(scanned, loadId);
+      if (opener.strategy === 'unique_row_opener' || opener.strategy === 'unique_id_control') return scanned;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    return scan(doc);
   }
 
   function verifyPresence(doc, text) {
@@ -131,22 +335,70 @@
     return listed;
   }
 
+  async function openWorkspace(doc, loadId) {
+    const first = scan(doc);
+    const workspace = planWorkspace(first, loadId);
+    if (workspace.ready) {
+      return { ok: true, opener_strategy: workspace.strategy, note_label: workspace.note_label, stage: 'workspace' };
+    }
+    if (workspace.code === 'LOAD_IDENTITY_UNVERIFIED' || workspace.code === 'PRIVATE_NOTE_AMBIGUOUS') {
+      return { ok: false, error_code: workspace.code, opener_strategy: 'none', note_label: workspace.note_label,
+        stage: 'workspace' };
+    }
+    const planned = planOpener(first, loadId);
+    if (planned.error && planned.strategy !== 'unique_searchbox') {
+      return { ok: false, error_code: planned.error, opener_strategy: 'none', stage: 'opener' };
+    }
+    if (planned.strategy === 'unique_searchbox') {
+      fillNoSubmit(planned.target.el, loadId);
+      const afterSearch = await settleOpener(doc, loadId);
+      const afterWorkspace = planWorkspace(afterSearch, loadId);
+      if (afterWorkspace.ready) {
+        return { ok: true, opener_strategy: 'unique_searchbox', note_label: afterWorkspace.note_label, stage: 'search' };
+      }
+      const afterOpen = planOpener(afterSearch, loadId);
+      if (afterOpen.strategy === 'unique_row_opener' || afterOpen.strategy === 'unique_id_control') {
+        activate(afterOpen.target.el);
+        if (!await settleWorkspace(doc, loadId)) {
+          return { ok: false, error_code: 'LOAD_DETAIL_UNVERIFIED', opener_strategy: 'unique_searchbox', stage: 'detail' };
+        }
+        return { ok: true, opener_strategy: 'unique_searchbox', stage: 'detail' };
+      }
+      return { ok: false, error_code: 'LOAD_OPENER_UNVERIFIED', opener_strategy: 'unique_searchbox', stage: 'search' };
+    }
+    if (planned.strategy === 'unique_row_opener' || planned.strategy === 'unique_id_control') {
+      activate(planned.target.el);
+      if (!await settleWorkspace(doc, loadId)) {
+        return { ok: false, error_code: 'LOAD_DETAIL_UNVERIFIED', opener_strategy: planned.strategy, stage: 'detail' };
+      }
+      return { ok: true, opener_strategy: planned.strategy, stage: 'detail' };
+    }
+    return { ok: false, error_code: 'LOAD_OPENER_UNVERIFIED', opener_strategy: 'none', stage: 'opener' };
+  }
+
   async function execute(doc, command) {
     if (doc.defaultView?.location?.origin !== ORIGIN && command?.origin !== ORIGIN) {
-      return { ok: false, verified: false, note_present: false, error_code: 'ORIGIN_NOT_ALLOWLISTED' };
+      return report({ error_code: 'ORIGIN_NOT_ALLOWLISTED', stage: 'origin' });
     }
     try {
-      if (!detailIdentityVisible(doc, command.load_id)) {
-        const opener = findLoadOpener(doc, command.load_id);
-        if (!opener) return { ok: false, verified: false, note_present: false, error_code: 'LOAD_OPENER_UNVERIFIED' };
-        activate(opener);
-        if (!await settleDetail(doc, command.load_id)) {
-          return { ok: false, verified: false, note_present: false, error_code: 'LOAD_DETAIL_UNVERIFIED' };
-        }
+      const opened = await openWorkspace(doc, command.load_id);
+      if (!opened.ok) {
+        return report({
+          error_code: opened.error_code,
+          stage: opened.stage,
+          opener_strategy: opened.opener_strategy,
+          note_label: opened.note_label || null
+        });
       }
       const planned = inspect(scan(doc), command);
       if (!planned.ok) {
-        return { ok: false, verified: false, note_present: false, error_code: planned.code };
+        return report({
+          error_code: planned.code,
+          stage: 'inspect',
+          opener_strategy: opened.opener_strategy,
+          note_label: planned.note_label || opened.note_label || null,
+          commit_kind: planned.commit_kind || null
+        });
       }
       const box = planned.target.el;
       box.focus();
@@ -155,23 +407,21 @@
       box.dispatchEvent(new Event('change', { bubbles: true }));
       activate(planned.commit.el);
       const notePresent = verifyPresence(doc, command.text);
-      return {
+      return report({
         ok: notePresent,
         verified: notePresent,
         note_present: notePresent,
         error_code: notePresent ? null : 'note_not_present',
-        live_validated: false,
-        production_writes: false
-      };
+        stage: 'verify',
+        opener_strategy: opened.opener_strategy,
+        note_label: planned.note_label,
+        commit_kind: planned.commit_kind
+      });
     } catch (error) {
-      return {
-        ok: false,
-        verified: false,
-        note_present: false,
+      return report({
         error_code: error?.code || error?.message || 'NOTE_WRITE_FAILED',
-        live_validated: false,
-        production_writes: false
-      };
+        stage: 'execute'
+      });
     }
   }
 
@@ -180,10 +430,15 @@
     inspect,
     scan,
     execute,
+    planWorkspace,
+    planOpener,
+    planCommit,
     isPrivateNoteLabel,
     isPublicNoteLabel,
     isNoteCommitLabel,
     isForbiddenCommitLabel,
+    isOwnerPathCommit,
+    isLoadIdentityLabel,
     origin: ORIGIN
   });
 })();

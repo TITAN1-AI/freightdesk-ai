@@ -1,13 +1,28 @@
 # Current state — 2026-09-20
 
+## Ascend write note v0.1.3 — field-fail opener and owner-path commit
+
+Avery field report on load 1763 (PR #8 / 0.1.2): `403` without approval passed; mint+POST
+went `DISPATCHED` then `FAILED` `LOAD_OPENER_UNVERIFIED`; note never appeared; Avery did
+not click Save Load. Bridge popup showed harvest `ACTIVE_VIEW_UNVERIFIED`. Live label is
+**Private Load Note**; the only commit seen was **Save & Exit to Load Board**.
+
+Portable Bridge **0.1.3** opens a load without a verified Active Loads view (already-open
+Private Load Note workspace, unique row View/Details/Open, or unique searchbox fill with
+no submit). Whole-form **Save Load** / **Save & Exit** is `NOTE_COMMIT_REQUIRES_OWNER_PATH`
+and is not clicked. Receipts add `stage` / `opener_strategy` / `note_label` / `commit_kind`.
+Popup Last write is separate from harvest. X1 untouched. Harvest and agent Bearer unchanged.
+**Not LIVE_VALIDATED.** Handoff: [ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
+
 ## Ascend write note v0 — private internal note, APPROVAL_REQUIRED
 
 First write on the portable/agent facade: `POST /v1/ascend/loads/{load_id}/notes` after a
 one-use demo approval (`POST /v1/ascend/approvals` or the dashboard mint button). Default
 ActionPolicy `ASCEND_ADD_INTERNAL_NOTE` is APPROVAL_REQUIRED. Receipts are CANDIDATE with
 `PENDING_APPROVAL` | `DISPATCHED` | `VERIFIED` | `FAILED` — no silent success. Verify-after-write
-requires note presence. Portable Bridge 0.1.2 can open a load and type Private/Internal Notes
-only; Save Load, assign, status, money, New Load and public notes stay blocked. Harvest and
+requires note presence. Portable Bridge 0.1.3 can open a load without a verified Active Loads
+view and type Private Load Note / Private/Internal Notes only; Save Load, Save & Exit, assign,
+status, money, New Load and public notes stay blocked. Harvest and
 agent Bearer reads are unchanged. X1 untouched. **Not LIVE_VALIDATED.** Handoff:
 [ASCEND_WRITE_NOTE_V0.md](docs/ASCEND_WRITE_NOTE_V0.md).
 

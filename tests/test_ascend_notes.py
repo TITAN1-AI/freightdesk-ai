@@ -209,3 +209,33 @@ def test_note_text_is_not_audited(client):
     assert secret not in dumped
     assert "ASCEND_NOTE_VERIFIED" in dumped or any(
         item.get("event") == "ASCEND_NOTE_VERIFIED" for item in timeline)
+
+
+def test_bridge_complete_keeps_opener_and_commit_diagnostics(client):
+    token = mint_agent(client)
+    minted = mint_approval(client, token, "1763")
+    posted = client.post("/v1/ascend/loads/1763/notes",
+                         json={"text": "field fail receipt", "approval_token": minted["approval_token"]},
+                         headers=agent_headers(token)).json()
+    claimed = client.get("/v1/portable/writes/pending", headers=agent_headers(token))
+    assert claimed.json()["pending"] is True
+    completed = client.post(f"/v1/portable/writes/{posted['write_id']}/complete",
+                            json={"verified": False, "note_present": False,
+                                  "error_code": "NOTE_COMMIT_REQUIRES_OWNER_PATH",
+                                  "live_validated": False, "production_writes": False,
+                                  "stage": "inspect", "opener_strategy": "already_open",
+                                  "note_label": "Private Load Note", "commit_kind": "WHOLE_FORM_SAVE"},
+                            headers=agent_headers(token))
+    assert completed.status_code == 200
+    receipt = completed.json()
+    assert receipt["status"] == "FAILED"
+    assert receipt["error_code"] == "NOTE_COMMIT_REQUIRES_OWNER_PATH"
+    assert receipt["stage"] == "inspect"
+    assert receipt["opener_strategy"] == "already_open"
+    assert receipt["note_label"] == "Private Load Note"
+    assert receipt["commit_kind"] == "WHOLE_FORM_SAVE"
+    assert receipt["verified"] is False
+    assert "field fail receipt" not in str(receipt)
+    fetched = client.get(f"/v1/ascend/writes/{posted['write_id']}", headers=agent_headers(token))
+    assert fetched.json()["error_code"] == "NOTE_COMMIT_REQUIRES_OWNER_PATH"
+    assert fetched.json()["opener_strategy"] == "already_open"
