@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "FreightDesk Bridge",
-  "version": "0.1.12",
-  "description": "Portable Ascend board harvest plus approved private-note and load-status writes. No native host. Assign and money stay blocked.",
+  "version": "0.1.13",
+  "description": "Portable Ascend board harvest, note read-back, and approved private-note and load-status writes. No native host. Assign and money stay blocked.",
   "permissions": ["storage", "alarms", "scripting"],
   "host_permissions": [
     "https://ascendtms.com/*",
@@ -13,7 +13,7 @@
   "action": {"default_popup": "popup.html", "default_title": "FreightDesk Bridge"},
   "content_scripts": [{
     "matches": ["https://ascendtms.com/*"],
-    "js": ["build.js", "board-view.js", "harvest.js", "write-note.js", "write-status.js", "content.js"],
+    "js": ["build.js", "board-view.js", "harvest.js", "write-note.js", "write-status.js", "read-notes.js", "content.js"],
     "run_at": "document_idle",
     "all_frames": false,
     "world": "ISOLATED"

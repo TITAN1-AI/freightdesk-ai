@@ -58,6 +58,7 @@ def atlas_summary() -> dict:
         "public_note_selector": PUBLIC_NOTE_SELECTOR,
         "commit_kind": WHOLE_FORM_SAVE,
         "field_names": list(fields),
+        "harvest_board_fields": [name for name, spec in fields.items() if spec.get("harvest_board")],
         "status_catalog": list(status_catalog()),
         "path": str(ATLAS_PATH.relative_to(ROOT)).replace("\\", "/"),
     }
@@ -100,6 +101,10 @@ def require_atlas_bindings() -> None:
         raise ValueError("atlas_whole_form_save_unbound")
     if public.get("selector") != PUBLIC_NOTE_SELECTOR or public.get("policy") != "FORBIDDEN":
         raise ValueError("atlas_public_note_not_forbidden")
+    if public.get("read_policy") != "ALLOW" or public.get("id") != "notes":
+        raise ValueError("atlas_public_note_read_unbound")
+    if private.get("read_policy") != "ALLOW" or private.get("read_route") != "GET /v1/ascend/loads/{id}/notes":
+        raise ValueError("atlas_private_note_read_unbound")
     if atlas.get("section") != "Load Basics":
         raise ValueError("atlas_section_not_load_basics")
     if atlas.get("live_validated") or atlas.get("production_writes"):
@@ -118,3 +123,11 @@ def require_atlas_bindings() -> None:
         raise ValueError("capability_status_catalog_mismatch")
     if write_status.get("policy") != "APPROVAL_REQUIRED":
         raise ValueError("capability_status_policy_unbound")
+    read_notes = (capabilities.get("capabilities") or {}).get("read_load_notes") or {}
+    capture = (capabilities.get("capabilities") or {}).get("capture_load_notes") or {}
+    if read_notes.get("policy") != "ALLOW" or read_notes.get("implementation") != "IMPLEMENTED":
+        raise ValueError("capability_note_read_unbound")
+    if capture.get("policy") != "ALLOW" or capture.get("implementation") != "IMPLEMENTED":
+        raise ValueError("capability_note_capture_unbound")
+    if capture.get("commit_kind") != "READ_ONLY":
+        raise ValueError("capability_note_capture_not_read_only")

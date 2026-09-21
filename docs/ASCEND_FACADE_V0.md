@@ -13,7 +13,7 @@ Capability matrix: [ASCEND_CAPABILITY_MAP_V0.md](ASCEND_CAPABILITY_MAP_V0.md).
 | Coverage | VISIBLE_BOARD_ONLY |
 | Evidence | CANDIDATE / CANDIDATE_ONLY |
 | LIVE_VALIDATED | **false** |
-| Production writes | **false** — Save, assign, status, money, New Load stay blocked. Private note is a separate CANDIDATE write |
+| Production writes | **false** — Save, assign, money, New Load stay blocked. Private-note and status writes are separate APPROVAL_REQUIRED receipts. Note capture is ALLOW READ_ONLY |
 | Empty harvest | `loads: []` and `harvest_available: false` (HTTP 200, never 500) |
 | Revoked lease | Last snapshot remains readable; new harvest posts are rejected |
 
@@ -23,11 +23,17 @@ Capability matrix: [ASCEND_CAPABILITY_MAP_V0.md](ASCEND_CAPABILITY_MAP_V0.md).
 last harvest time, extension last seen (last accepted post), row count.
 
 `GET /v1/ascend/loads` — stable board shape: `load_id`, `pick_date`, `drop_date`, plus raw
-candidate fields under `fields` (currently sanitized `load_status`).
+candidate fields under `fields` (`load_status` and harvested ops columns from the 33-header grid).
 
 `GET /v1/ascend/loads/{id}` — last known CANDIDATE fields for one harvested load. Missing harvest
 or unknown ID is HTTP 200 with `found: false` and `fields: {}` (never 500). Atlas Load Basics
-names are listed without inventing values.
+names are listed without inventing values. `notes` is the last VERIFIED `#scratch`/`#notes`
+capture when present.
+
+`GET /v1/ascend/loads/{id}/notes` — last VERIFIED private/public note capture. Empty-safe.
+
+`POST /v1/ascend/loads/{id}/notes/capture` — ALLOW note read-back job. Same claim / complete /
+verify queue as writes. Never Save. See [ASCEND_READ_NOTES_V0.md](ASCEND_READ_NOTES_V0.md).
 
 `GET /v1/ascend/capabilities` — READ / WRITE / AUTOMATION map. Writes are not LIVE.
 

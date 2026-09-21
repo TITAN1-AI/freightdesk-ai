@@ -1,3 +1,15 @@
+# Known issues - Ascend note read-back v0 2026-09-21
+
+Note capture and board ops harvest are **IMPLEMENTED / TESTED**, not
+LIVE_VALIDATED. Default `ASCEND_READ_LOAD_NOTES` is ALLOW (no approval, no
+Save). Empty `#scratch` with the control found is VERIFIED. Board **Picks** /
+**Drops** are city summaries, not appointments. Last Contact/Tracking is cell
+text, not a GPS API. Documents, appointment/stop-time, and POD-received writes
+stay deferred: portable atlas has no Edit Stops / docs selectors. Public-note
+write, assign, and money stay FORBIDDEN. Receipts remain CANDIDATE
+(`live_validated=false`). Do not merge until Avery VERIFIED on 0.1.13. See
+docs/ASCEND_READ_NOTES_V0.md.
+
 # Known issues - Ascend write status v0 2026-09-21
 
 Load-status write is **FIELD LIVE_VALIDATED** for Avery 0.1.12 smoke on load

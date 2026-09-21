@@ -26,6 +26,23 @@ MAX_LEASE_TTL_SECONDS = 28800
 MIN_LEASE_TTL_SECONDS = 60
 DEVICE_TTL = timedelta(hours=8)
 LOAD_STATUSES = harvest_load_statuses()
+MAX_BOARD_TEXT = 2000
+BOARD_TEXT_FIELDS = (
+    "last_contact_tracking",
+    "customer",
+    "picks",
+    "drops",
+    "carrier",
+    "driver",
+    "equipment",
+    "power_unit",
+    "trailer",
+    "weight",
+    "reference",
+    "truck_status",
+    "load_posting_notes",
+    "public_notes",
+)
 
 
 class HarvestRow(Model):
@@ -33,6 +50,20 @@ class HarvestRow(Model):
     pick_date: str | None = None
     drop_date: str | None = None
     load_status: str = "UNKNOWN"
+    last_contact_tracking: str | None = None
+    customer: str | None = None
+    picks: str | None = None
+    drops: str | None = None
+    carrier: str | None = None
+    driver: str | None = None
+    equipment: str | None = None
+    power_unit: str | None = None
+    trailer: str | None = None
+    weight: str | None = None
+    reference: str | None = None
+    truck_status: str | None = None
+    load_posting_notes: str | None = None
+    public_notes: str | None = None
 
 
 class HarvestSnapshot(Model):
@@ -89,12 +120,24 @@ def validate_harvest_snapshot(payload: object) -> HarvestSnapshot:
                 raise ValueError("row_date_invalid")
         if row.load_status not in LOAD_STATUSES:
             raise ValueError("row_status_invalid")
+        for name in BOARD_TEXT_FIELDS:
+            value = getattr(row, name)
+            if _invalid_board_text(value):
+                raise ValueError("row_text_invalid")
         ids.append(row.load_id)
     if len(set(ids)) != len(ids):
         raise ValueError("duplicate_load_id")
     if not snapshot.captured_at or len(snapshot.captured_at) > 64:
         raise ValueError("captured_at_invalid")
     return snapshot
+
+
+def _invalid_board_text(value: str | None) -> bool:
+    if value is None:
+        return False
+    if not isinstance(value, str) or "\x00" in value:
+        return True
+    return len(value) > MAX_BOARD_TEXT
 
 
 def _invalid_board_date(value: str) -> bool:
@@ -362,6 +405,14 @@ class PortableLeaseService:
         status = row.get("load_status")
         if status is not None:
             fields["load_status"] = {"value": status, "evidence_class": EVIDENCE_CLASS}
+        for name in BOARD_TEXT_FIELDS:
+            value = row.get(name)
+            if value is not None:
+                fields[name] = {
+                    "value": value,
+                    "evidence_class": EVIDENCE_CLASS,
+                    "source": HARVEST_SCOPE,
+                }
         return {
             "load_id": row["load_id"],
             "pick_date": row.get("pick_date"),

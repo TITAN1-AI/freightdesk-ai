@@ -63,6 +63,10 @@ class WriteCompleteBody(Model):
     allow_whole_form_save: bool = False
     status_matched: bool = False
     observed_status: str | None = Field(default=None, max_length=32)
+    private_note: str | None = Field(default=None, max_length=MAX_NOTE_CHARS, repr=False)
+    public_note: str | None = Field(default=None, max_length=MAX_NOTE_CHARS, repr=False)
+    private_note_present: bool = False
+    public_note_present: bool = False
 
     @field_validator("error_code", mode="before")
     @classmethod

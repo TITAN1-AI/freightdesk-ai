@@ -15,10 +15,11 @@ from app.services.portable_leases import LOAD_STATUSES, PortableLeaseService
 
 
 class AscendCapabilityService:
-    def __init__(self, store, tenant: str, portable: PortableLeaseService):
+    def __init__(self, store, tenant: str, portable: PortableLeaseService, note_reads=None):
         self.store = store
         self.tenant = tenant
         self.portable = portable
+        self.note_reads = note_reads
         require_atlas_bindings()
         self._catalog = load_capabilities()
 
@@ -40,6 +41,9 @@ class AscendCapabilityService:
         harvest_available = bool(board.get("load_count"))
         match = next((row for row in board.get("loads") or [] if row.get("load_id") == identity), None)
         atlas = atlas_summary()
+        notes = None
+        if self.note_reads is not None:
+            notes = self.note_reads.latest(identity)
         return {
             "facade": "ascend",
             "source": "portable_harvest",
@@ -58,6 +62,7 @@ class AscendCapabilityService:
             "pick_date": None if match is None else match.get("pick_date"),
             "drop_date": None if match is None else match.get("drop_date"),
             "fields": {} if match is None else dict(match.get("fields") or {}),
+            "notes": notes,
             "atlas": atlas,
             "atlas_fields": atlas["field_names"],
         }

@@ -6,6 +6,7 @@
   "production_writes": false,
   "not_a_retail_api": true,
   "next_live_field_after_note_verified": "write_status",
+  "next_write_after_status": "deferred_until_edit_stops_atlas",
   "capabilities": {
     "read_active_loads_board": {
       "kind": "READ",
@@ -23,7 +24,29 @@
       "implementation": "IMPLEMENTED",
       "tested": true,
       "evidence_class": "CANDIDATE",
-      "note": "Last harvested/cached board fields only. Empty-safe when missing."
+      "note": "Last harvested/cached board fields, including ops columns from the observed 33-column Active Loads grid. Empty-safe when missing. Private #scratch is not a board column."
+    },
+    "read_load_notes": {
+      "kind": "READ",
+      "route": "GET /v1/ascend/loads/{id}/notes",
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED",
+      "tested": true,
+      "live_validated": false,
+      "atlas": "textarea#scratch and #notes",
+      "commit_kind": "READ_ONLY",
+      "note": "Last VERIFIED note capture. Empty-safe when missing. Public notes are readable; writes stay FORBIDDEN."
+    },
+    "capture_load_notes": {
+      "kind": "READ",
+      "route": "POST /v1/ascend/loads/{id}/notes/capture",
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED",
+      "tested": true,
+      "live_validated": false,
+      "atlas": "textarea#scratch and #notes",
+      "commit_kind": "READ_ONLY",
+      "note": "Queues a Bridge claim/complete/verify read of Load Basics notes. Never types, never Save. live_validated=false until Avery."
     },
     "read_status_facade": {
       "kind": "READ",
@@ -65,7 +88,7 @@
         "Active", "Available", "Assigned", "Booked", "Dispatched",
         "In Transit", "Delivered", "Completed", "To Be Billed", "Driver Assigned"
       ],
-      "note": "Atlas status_catalog (harvest + field evidence) except UNKNOWN. Includes To Be Billed. No from→to graph. Not LIVE_VALIDATED until Avery VERIFIED."
+      "note": "Atlas status_catalog (harvest + field evidence) except UNKNOWN. Includes To Be Billed. No from→to graph. FIELD LIVE_VALIDATED for Avery 1777 SAVE_STAY In Transit↔Dispatched only. Wire receipts stay live_validated=false."
     },
     "assign_carrier": {
       "kind": "WRITE",
@@ -126,7 +149,7 @@
       "implementation": "IMPLEMENTED",
       "tested": true,
       "live_validated": false,
-      "note": "Note and status receipts require read-back. Status is not LIVE_VALIDATED."
+      "note": "Note, status, and note-read receipts require read-back. Status FIELD LIVE_VALIDATED for 1777 SAVE_STAY In Transit↔Dispatched only. Note capture is not LIVE."
     }
   }
 }

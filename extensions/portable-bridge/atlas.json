@@ -66,32 +66,50 @@
       "policy": "ALLOW",
       "implementation": "IMPLEMENTED"
     },
+    "last_contact_tracking": {
+      "canonical": "last_contact_tracking",
+      "section": "Load Basics",
+      "kind": "board",
+      "labels": ["Last Contact/Tracking"],
+      "board_header": "Last Contact/Tracking",
+      "read": "text",
+      "harvest_board": true,
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED",
+      "note": "Active Loads 33-column header. CANDIDATE last-contact/tracking cell text. Not GPS proof."
+    },
     "reference": {
       "canonical": "reference",
       "section": "Load Basics",
       "kind": "label",
       "labels": ["Reference", "Reference Number", "Customer Reference"],
-      "read": "input",
+      "read": "text",
+      "harvest_board": true,
+      "board_header": "Reference",
       "policy": "ALLOW",
-      "implementation": "NOT_STARTED"
+      "implementation": "IMPLEMENTED"
     },
     "customer": {
       "canonical": "customer",
       "section": "Load Basics",
       "kind": "label",
       "labels": ["Customer", "Customer Name"],
-      "read": "input",
+      "read": "text",
+      "harvest_board": true,
+      "board_header": "Customer",
       "policy": "ALLOW",
-      "implementation": "NOT_STARTED"
+      "implementation": "IMPLEMENTED"
     },
     "equipment": {
       "canonical": "equipment",
       "section": "Load Basics",
       "kind": "label",
       "labels": ["Equipment"],
-      "read": "input",
+      "read": "text",
+      "harvest_board": true,
+      "board_header": "Equipment",
       "policy": "ALLOW",
-      "implementation": "NOT_STARTED"
+      "implementation": "IMPLEMENTED"
     },
     "commodity": {
       "canonical": "commodity",
@@ -107,19 +125,105 @@
       "section": "Load Basics",
       "kind": "label",
       "labels": ["Weight"],
-      "read": "input",
+      "read": "text",
+      "harvest_board": true,
+      "board_header": "Weight",
       "policy": "ALLOW",
-      "implementation": "NOT_STARTED"
+      "implementation": "IMPLEMENTED"
+    },
+    "picks": {
+      "canonical": "picks",
+      "section": "Load Basics",
+      "kind": "board",
+      "labels": ["Picks"],
+      "board_header": "Picks",
+      "read": "text",
+      "harvest_board": true,
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED",
+      "note": "Board city/stop summary only. Not Edit Stops appointments."
+    },
+    "drops": {
+      "canonical": "drops",
+      "section": "Load Basics",
+      "kind": "board",
+      "labels": ["Drops"],
+      "board_header": "Drops",
+      "read": "text",
+      "harvest_board": true,
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED",
+      "note": "Board city/stop summary only. Not Edit Stops appointments."
+    },
+    "driver": {
+      "canonical": "driver",
+      "section": "Load Basics",
+      "kind": "board",
+      "labels": ["Driver"],
+      "board_header": "Driver",
+      "read": "text",
+      "harvest_board": true,
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED"
+    },
+    "power_unit": {
+      "canonical": "power_unit",
+      "section": "Load Basics",
+      "kind": "board",
+      "labels": ["Power Unit"],
+      "board_header": "Power Unit",
+      "read": "text",
+      "harvest_board": true,
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED"
+    },
+    "trailer": {
+      "canonical": "trailer",
+      "section": "Load Basics",
+      "kind": "board",
+      "labels": ["Trailer"],
+      "board_header": "Trailer",
+      "read": "text",
+      "harvest_board": true,
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED"
+    },
+    "truck_status": {
+      "canonical": "truck_status",
+      "section": "Load Basics",
+      "kind": "board",
+      "labels": ["Truck Status"],
+      "board_header": "Truck Status",
+      "read": "text",
+      "harvest_board": true,
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED"
+    },
+    "load_posting_notes": {
+      "canonical": "load_posting_notes",
+      "section": "Load Basics",
+      "kind": "board",
+      "labels": ["Load Posting Notes"],
+      "board_header": "Load Posting Notes",
+      "read": "text",
+      "harvest_board": true,
+      "policy": "ALLOW",
+      "implementation": "IMPLEMENTED",
+      "note": "Board column. Distinct from Public Load Note #notes and private #scratch."
     },
     "carrier": {
       "canonical": "carrier",
       "section": "Load Basics",
       "kind": "label",
       "labels": ["Carrier"],
-      "read": "input",
+      "read": "text",
+      "harvest_board": true,
+      "board_header": "Carrier",
+      "read_policy": "ALLOW",
       "policy": "FORBIDDEN",
       "implementation": "FORBIDDEN",
-      "write_route": "POST /v1/ascend/loads/{id}/assign"
+      "write_route": "POST /v1/ascend/loads/{id}/assign",
+      "note": "Board carrier cell is readable. Assign stays FORBIDDEN."
     },
     "private_notes": {
       "canonical": "private_notes",
@@ -132,7 +236,10 @@
       "write_method": "WHOLE_FORM_SAVE",
       "policy": "APPROVAL_REQUIRED",
       "implementation": "IMPLEMENTED",
-      "note": "Booking Logistics atlas: private Load Note is textarea#scratch. No per-field save. FIELD LIVE_VALIDATED for 1763 SAVE_STAY already_open only."
+      "read_policy": "ALLOW",
+      "read_route": "GET /v1/ascend/loads/{id}/notes",
+      "capture_route": "POST /v1/ascend/loads/{id}/notes/capture",
+      "note": "Booking Logistics atlas: private Load Note is textarea#scratch. Write FIELD LIVE_VALIDATED for 1763 SAVE_STAY already_open only. Read-back is a separate ALLOW capture; live_validated=false until Avery."
     },
     "public_notes": {
       "canonical": "public_notes",
@@ -141,10 +248,15 @@
       "selector": "#notes",
       "id": "notes",
       "labels": ["Public Load Notes", "Public Notes"],
-      "access": "FORBIDDEN",
+      "access": "OBSERVE",
+      "harvest_board": true,
+      "board_header": "Public Load Notes",
+      "read_policy": "ALLOW",
       "policy": "FORBIDDEN",
       "implementation": "FORBIDDEN",
-      "note": "Public Load Note is never typed by Bridge."
+      "read_route": "GET /v1/ascend/loads/{id}/notes",
+      "capture_route": "POST /v1/ascend/loads/{id}/notes/capture",
+      "note": "Public Load Note is never typed by Bridge. Board column and #notes are readable."
     }
   }
 }

@@ -14,11 +14,14 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
   `GET /v1/ascend/status` over stored harvest. Capability map:
   [ASCEND_CAPABILITY_MAP_V0.md](ASCEND_CAPABILITY_MAP_V0.md).
   See [ASCEND_FACADE_V0.md](ASCEND_FACADE_V0.md).
+- Note **read-back** `GET /v1/ascend/loads/{id}/notes` and
+  `POST /v1/ascend/loads/{id}/notes/capture` (ALLOW, not LIVE).
+  See [ASCEND_READ_NOTES_V0.md](ASCEND_READ_NOTES_V0.md).
 - First write: APPROVAL_REQUIRED private internal note
   (`POST /v1/ascend/loads/{id}/notes`). See [ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md).
 - Second write: APPROVAL_REQUIRED load-status change
   (`POST /v1/ascend/loads/{id}/status`). See [ASCEND_WRITE_STATUS_V0.md](ASCEND_WRITE_STATUS_V0.md).
-  **Not LIVE_VALIDATED.**
+  FIELD LIVE_VALIDATED for Avery 1777 SAVE_STAY In Transit↔Dispatched only.
 - Atlas bindings in [extensions/portable-bridge/atlas.json](../extensions/portable-bridge/atlas.json)
   (`textarea#scratch`, `#notes`, Load Basics labels) for read/write paths.
 - VISIBLE_BOARD_ONLY Active Loads harvest, stored as **CANDIDATE** evidence.
@@ -31,10 +34,12 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
 
 - Not LIVE_VALIDATED Ascend.
 - Not cloud OAuth / tenant billing / store listing.
-- Not a general write path. Status is IMPLEMENTED (APPROVAL_REQUIRED, not LIVE). Assign,
-  expenses, public notes, uploads and New Load remain FORBIDDEN or out of the capture.
-  Private-note write is FIELD LIVE_VALIDATED for Avery 0.1.10 / load 1763 / SAVE_STAY /
-  already_open only. See [ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md) and
+- Not a general write path. Status is FIELD LIVE_VALIDATED for Avery 1777 SAVE_STAY
+  In Transit↔Dispatched only. Assign, expenses, public-note writes, uploads and New Load
+  remain FORBIDDEN or out of the capture. Private-note write is FIELD LIVE_VALIDATED for
+  Avery 0.1.10 / load 1763 / SAVE_STAY / already_open only. Note read-back and board ops
+  harvest are IMPLEMENTED, not LIVE. See [ASCEND_READ_NOTES_V0.md](ASCEND_READ_NOTES_V0.md),
+  [ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md) and
   [ASCEND_WRITE_STATUS_V0.md](ASCEND_WRITE_STATUS_V0.md).
 - Not a cutover of BL operations onto portable leases.
 
@@ -44,7 +49,7 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
 | --- | --- | --- |
 | Token theft from `chrome.storage` | Localhost-only API, hashed tokens at rest, short TTL, revoke | Real cloud tokens need device-bound storage and rotation |
 | Malicious page | Isolated world, origin allowlist, content script never holds the lease token | Store listing must keep host permissions narrow |
-| Lease overreach | Scope is VISIBLE_BOARD_ONLY; writes flags rejected; identity columns only | Cloud policy engine must remain the source of capability |
+| Lease overreach | Scope is VISIBLE_BOARD_ONLY; writes flags rejected; named ops board cells only (no income/expenses, no #scratch) | Cloud policy engine must remain the source of capability |
 | Provider origin calling the API | `https://ascendtms.com` is denied as a CORS origin | Cloud must keep the same deny |
 | Demo session minting | Local process + `X-FreightDesk-Portable: 1` | Replace with OAuth / device code |
 | Agent API auth | Demo Bearer (`DEMO_AGENT`) or bootstrap file | Cloud OAuth, multi-tenant, rotation |

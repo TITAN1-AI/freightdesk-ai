@@ -66,8 +66,8 @@ function claimBanner(write) {
 function writeBanner(write) {
   const code = safeCode(write.error_code) || 'NOTE_WRITE_FAILED';
   return ({
-    LOAD_OPENER_UNVERIFIED: 'Could not reopen the load after Save & Exit. Reload unpacked 0.1.12 and restart the demo API. Bridge force-reinjects, waits seconds, then unique row / search+Enter /loads/{id}.',
-    typed_but_not_saved: 'Private Load Note already has the text, but Save / Save & Exit was not clicked. Reload unpacked 0.1.12 and retry with whole-form approval.',
+    LOAD_OPENER_UNVERIFIED: 'Could not reopen the load after Save & Exit. Reload unpacked 0.1.13 and restart the demo API. Bridge force-reinjects, waits seconds, then unique row / search+Enter /loads/{id}.',
+    typed_but_not_saved: 'Private Load Note already has the text, but Save / Save & Exit was not clicked. Reload unpacked 0.1.13 and retry with whole-form approval.',
     LOAD_IDENTITY_UNVERIFIED: 'A private note control is visible, but this tab is not proven as the requested load.',
     LOAD_DETAIL_UNVERIFIED: 'Opened a load control, but the load workspace did not settle.',
     NOTE_COMMIT_REQUIRES_OWNER_PATH: 'Private Load Note (#scratch) needs a whole-form Save approval (allow_whole_form_save). Without it, Bridge will not click Save / Save & Exit.',
@@ -76,9 +76,10 @@ function writeBanner(write) {
     STATUS_SAVE_CONTROL_UNVERIFIED: 'No stay-on-load Save or unique Save & Exit was found for the status change.',
     STATUS_CONTROL_NOT_FOUND: 'Load Status / Status was not found on Load Basics.',
     STATUS_OPTION_NOT_FOUND: 'The requested status is not an option on the Load Status control.',
-    BRIDGE_CLAIM_TIMEOUT: 'Bridge did not claim the write in time. Reload unpacked 0.1.12, keep the popup open, and retry.',
+    BRIDGE_CLAIM_TIMEOUT: 'Bridge did not claim the write in time. Reload unpacked 0.1.13, keep the popup open, and retry.',
     ASCEND_TAB_MISSING: 'Open an authenticated Ascend tab, then retry the write.',
     PRIVATE_NOTE_NOT_FOUND: 'Private Load Note / Private Notes was not found on the load workspace.',
+    NOTE_CONTROLS_NOT_FOUND: 'Private #scratch and public #notes were not found. Sit on Load Basics and retry capture.',
     CONTENT_UNAVAILABLE: 'Reload the Ascend tab (F5) so the Bridge can attach, then retry the write.'
   })[code] || ('Write failed (' + code + '). Receipt is FAILED, not success.');
 }

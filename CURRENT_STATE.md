@@ -1,5 +1,41 @@
 # Current state — 2026-09-21
 
+## Ascend note read-back + board ops harvest v0.1.13 — IMPLEMENTED / TESTED (not LIVE)
+
+Portable Bridge **0.1.13** adds ALLOW note read-back and harvests already-named
+Active Loads ops columns. Avery calls HTTP; the Bridge remains the hands on an
+authenticated tab. X1 / native host is unchanged.
+
+- `POST /v1/ascend/loads/{id}/notes/capture` queues `ASCEND_READ_LOAD_NOTES`
+  (ALLOW, no approval). Same mint/claim/complete/verify queue as notes/status.
+  `commit_kind=READ_ONLY`, `save_variant=NONE`. Never types, never Save.
+- `GET /v1/ascend/loads/{id}/notes` returns the last VERIFIED `#scratch` /
+  `#notes` capture (empty-safe; empty `#scratch` with the control found is
+  VERIFIED). Receipts include `tab_hint`, `bridge_version`, `verify_reason`.
+- Board harvest now posts CANDIDATE ops cells: last-contact/tracking, customer,
+  picks/drops, carrier, driver, equipment, power unit, trailer, weight,
+  reference, truck status, load posting notes, public notes. Income/expenses
+  and private `#scratch` stay off harvest (`extra=forbid`).
+- Public-note **write**, assign, money, New Load, appointment/stop/POD writes
+  stay FORBIDDEN or deferred (no Edit Stops atlas selector).
+- Wire `live_validated=false`. Do **not** merge until Avery VERIFIED.
+
+Handoff: [ASCEND_READ_NOTES_V0.md](docs/ASCEND_READ_NOTES_V0.md).
+Capability map: [ASCEND_CAPABILITY_MAP_V0.md](docs/ASCEND_CAPABILITY_MAP_V0.md).
+
+Verification: 130 focused tests passed (`tests/test_ascend_note_reads.py`,
+`tests/test_ascend_capabilities.py`, `tests/test_portable_leases.py`,
+`tests/test_portable_bridge_extension.py`, `tests/test_ascend_notes.py`,
+`tests/test_ascend_status.py`, `tests/test_ascend_facade.py`,
+`tests/test_agent_sessions.py`, `tests/test_api.py`,
+`tests/test_control_plane.py`). Scoped Ruff passed. Node `--check` passed on
+portable-bridge JS and `app/dashboard/portable-note-reads.js`. Two existing
+Starlette/AnyIO deprecation warnings remain.
+
+Private-note write (0.1.10 / 1763 SAVE_STAY) and status write (0.1.12 / 1777
+SAVE_STAY In Transit↔Dispatched) remain FIELD LIVE_VALIDATED for those exact
+paths only.
+
 ## Ascend write status v0.1.12 — FIELD LIVE_VALIDATED (Avery 1777 SAVE_STAY In Transit↔Dispatched)
 
 Avery Bridge **0.1.12** on load **1777** (owner-approved; did not touch 1778–1780 or 1763):

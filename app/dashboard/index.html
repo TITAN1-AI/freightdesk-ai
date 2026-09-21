@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FreightDesk AI · Avery operations</title><link rel="stylesheet" href="/assets/styles.css">
-<script src="/assets/app.js" defer></script><script src="/assets/live.js" defer></script><script src="/assets/mail.js" defer></script><script src="/assets/ascend.js" defer></script><script src="/assets/ascend-runtime.js" defer></script><script src="/assets/ascend-mapping.js" defer></script><script src="/assets/portable-facade.js" defer></script><script src="/assets/portable-notes.js" defer></script><script src="/assets/portable-status.js" defer></script></head>
+<script src="/assets/app.js" defer></script><script src="/assets/live.js" defer></script><script src="/assets/mail.js" defer></script><script src="/assets/ascend.js" defer></script><script src="/assets/ascend-runtime.js" defer></script><script src="/assets/ascend-mapping.js" defer></script><script src="/assets/portable-facade.js" defer></script><script src="/assets/portable-notes.js" defer></script><script src="/assets/portable-status.js" defer></script><script src="/assets/portable-note-reads.js" defer></script></head>
 <body>
 <header><a class="brand" href="/">FD<span>FreightDesk <b>AI</b><small>BOOKING LOGISTICS</small></span></a>
 <nav><a href="#operations">Operations</a><a href="#approvals">Approvals <span id="approval-count">0</span></a><a href="#connections">Connections</a><a href="#policies">Policies</a></nav>
@@ -61,6 +61,14 @@
     <button type="submit" id="mint-status-approval">Mint demo status approval</button>
   </form>
   <p id="status-approval-status" class="muted" role="status">No demo status approval minted in this page.</p>
+</div>
+<div id="note-capture-box" class="note-approval">
+  <p class="muted">Demo Load Basics note read-back (ALLOW). Reads <code>#scratch</code> and <code>#notes</code>. Never Save. Not LIVE_VALIDATED.</p>
+  <form id="note-capture-form">
+    <label for="note-capture-load-id">Load ID <input id="note-capture-load-id" name="load_id" inputmode="numeric" maxlength="20" autocomplete="off" placeholder="1763"></label>
+    <button type="submit" id="capture-load-notes">Queue note read-back</button>
+  </form>
+  <p id="note-capture-status" class="muted" role="status">No note capture queued in this page. Dashboard does not render note text.</p>
 </div>
 <div id="ascend-content"></div></section>
 <section id="operations"><div class="section-title"><h2>Operations overview</h2><span class="muted">Demo data · Updates every 30 seconds</span></div><div id="summary" class="summary"></div>
