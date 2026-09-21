@@ -3,6 +3,7 @@
   "read_tms": "ALLOW",
   "read_ascend": "ALLOW",
   "ASCEND_ADD_INTERNAL_NOTE": "APPROVAL_REQUIRED",
+  "ASCEND_CHANGE_LOAD_STATUS": "APPROVAL_REQUIRED",
   "assign_carrier": "APPROVAL_REQUIRED",
   "update_status": "APPROVAL_REQUIRED",
   "update_rates": "APPROVAL_REQUIRED",

@@ -16,6 +16,9 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
   See [ASCEND_FACADE_V0.md](ASCEND_FACADE_V0.md).
 - First write: APPROVAL_REQUIRED private internal note
   (`POST /v1/ascend/loads/{id}/notes`). See [ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md).
+- Second write: APPROVAL_REQUIRED load-status change
+  (`POST /v1/ascend/loads/{id}/status`). See [ASCEND_WRITE_STATUS_V0.md](ASCEND_WRITE_STATUS_V0.md).
+  **Not LIVE_VALIDATED.**
 - Atlas bindings in [extensions/portable-bridge/atlas.json](../extensions/portable-bridge/atlas.json)
   (`textarea#scratch`, `#notes`, Load Basics labels) for read/write paths.
 - VISIBLE_BOARD_ONLY Active Loads harvest, stored as **CANDIDATE** evidence.
@@ -28,11 +31,11 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
 
 - Not LIVE_VALIDATED Ascend.
 - Not cloud OAuth / tenant billing / store listing.
-- Not a general write path. Status is a 501 stub (APPROVAL_REQUIRED when implemented). Assign,
+- Not a general write path. Status is IMPLEMENTED (APPROVAL_REQUIRED, not LIVE). Assign,
   expenses, public notes, uploads and New Load remain FORBIDDEN or out of the capture.
-  The only implemented write is an APPROVAL_REQUIRED private internal note; see
-  [ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md). FIELD LIVE_VALIDATED for Avery
-  0.1.10 / load 1763 / SAVE_STAY / already_open only.
+  Private-note write is FIELD LIVE_VALIDATED for Avery 0.1.10 / load 1763 / SAVE_STAY /
+  already_open only. See [ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md) and
+  [ASCEND_WRITE_STATUS_V0.md](ASCEND_WRITE_STATUS_V0.md).
 - Not a cutover of BL operations onto portable leases.
 
 ## Threat model (v0)

@@ -99,6 +99,26 @@ def test_lease_create_harvest_and_revoke(client):
 def test_harvest_payload_validation_rejects_writes_and_private_fields():
     valid = snapshot("lease-id-value")
     validate_harvest_snapshot(valid)
+    billed = snapshot("lease-id-value", rows=[{
+        "load_id": "1763", "pick_date": "09/15/2026", "drop_date": "09/16/2026",
+        "load_status": "To Be Billed",
+    }])
+    assert validate_harvest_snapshot(billed).rows[0].load_status == "To Be Billed"
+    assigned = snapshot("lease-id-value", rows=[{
+        "load_id": "1763", "pick_date": "09/15/2026", "drop_date": "09/16/2026",
+        "load_status": "Driver Assigned",
+    }])
+    assert validate_harvest_snapshot(assigned).rows[0].load_status == "Driver Assigned"
+    unknown = snapshot("lease-id-value", rows=[{
+        "load_id": "1763", "pick_date": "09/15/2026", "drop_date": "09/16/2026",
+        "load_status": "UNKNOWN",
+    }])
+    assert validate_harvest_snapshot(unknown).rows[0].load_status == "UNKNOWN"
+    with pytest.raises(ValueError, match="row_status_invalid"):
+        validate_harvest_snapshot(snapshot("lease-id-value", rows=[{
+            "load_id": "1763", "pick_date": "09/15/2026", "drop_date": "09/16/2026",
+            "load_status": "Yeeted",
+        }]))
     with pytest.raises(ValueError, match="production_writes_forbidden"):
         validate_harvest_snapshot({**valid, "production_writes": True})
     with pytest.raises(ValueError, match="live_validated_forbidden"):

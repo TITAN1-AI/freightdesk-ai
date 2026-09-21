@@ -1,3 +1,14 @@
+# Known issues - Ascend write status v0 2026-09-21
+
+Load-status write is **FIELD LIVE_VALIDATED** for Avery 0.1.12 smoke on load
+1777 only (`198e600d` In Transit→Dispatched SAVE_STAY; restore `97ad44f2`
+Dispatched→In Transit SAVE_STAY; A 403 PENDING_APPROVAL PASS). Default policy
+is APPROVAL_REQUIRED. Whole-form Save can still submit unrelated dirty fields.
+No from→to transition graph — Ascend may reject some UI options. Catalog is
+atlas `status_catalog` (includes **To Be Billed**); UNKNOWN remains harvest-only
+for unlisted UI values. 1763 To Be Billed was not part of this field. Assign /
+money stay FORBIDDEN. Receipts remain CANDIDATE. See docs/ASCEND_WRITE_STATUS_V0.md.
+
 # Known issues - Ascend write note v0 2026-09-20
 
 Private-internal-note write is **FIELD LIVE_VALIDATED** for Avery 0.1.10 smoke on
@@ -12,12 +23,10 @@ blocked. See docs/ASCEND_WRITE_NOTE_V0.md.
 
 The capability matrix is a foundation, not a complete LIVE Ascend API. `GET /v1/ascend/loads/{id}`
 returns only last harvested board fields (ID / pick / drop / load_status). Load Basics atlas
-labels other than those board columns have no cached values. Status write is a 501 stub
-(APPROVAL_REQUIRED when implemented). Assign, expenses, public notes, documents, and
+labels other than those board columns have no cached values. Status write is IMPLEMENTED (APPROVAL_REQUIRED, not LIVE_VALIDATED). Assign, expenses, public notes, documents, and
 communications stay FORBIDDEN or NOT_STARTED. Private-note `#scratch` / WHOLE_FORM_SAVE
-landed with PR #8 and is FIELD LIVE_VALIDATED for the 1763 SAVE_STAY already_open path
-only. No scheduled server board sync and no verify-after-write on this slice. Next LIVE
-field after note VERIFIED: status change.
+is FIELD LIVE_VALIDATED for the 1763 SAVE_STAY already_open path
+only. Verify-after-write exists for notes and status. Do not treat status as LIVE.
 
 # Known issues - portable bridge v0 2026-09-19
 

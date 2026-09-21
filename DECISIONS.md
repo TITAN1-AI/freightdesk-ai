@@ -1,5 +1,32 @@
 # Decisions - 2026-09-20
 
+## Avery 0.1.12 SAVE_STAY on 1777 In Transit↔Dispatched is FIELD LIVE_VALIDATED
+
+Owner-reported Avery smoke on load 1777: A 403 PENDING_APPROVAL PASS; B
+`198e600d` VERIFIED In Transit→Dispatched SAVE_STAY; restore `97ad44f2`
+VERIFIED Dispatched→In Transit SAVE_STAY; `bridge_version=0.1.12`. 1778–1780
+and 1763 were not touched. Scope is that exact status path only. See
+docs/ASCEND_WRITE_STATUS_V0.md.
+
+## Load status catalog is atlas-derived; To Be Billed is a write target
+
+Field 1763 is **To Be Billed**. The short Active/Available/… list was harvest
+collapse, not the Ascend UI set. Atlas `status_catalog` is the source of truth
+(board labels + historical export + field evidence). Harvest preserves catalog
+values instead of mapping them to UNKNOWN. UNKNOWN stays harvest-only.
+`ASCEND_CHANGE_LOAD_STATUS` remains APPROVAL_REQUIRED. No from→to graph.
+VERIFIED is read-back. Bridge 0.1.12. See docs/ASCEND_WRITE_STATUS_V0.md.
+
+## Load status change is APPROVAL_REQUIRED with catalog gate, not ALLOW
+
+Status write reuses the note mint/claim/complete/verify queue. Default
+`ASCEND_CHANGE_LOAD_STATUS` is APPROVAL_REQUIRED. Allowed targets are the atlas
+catalog minus UNKNOWN. FreightDesk does not invent a from→to graph; VERIFIED is
+read-back of the requested status after stay-on-load Save when the approval
+acknowledges WHOLE_FORM_SAVE. Bridge 0.1.12 force-reinjects write scripts.
+**FIELD LIVE_VALIDATED** for Avery 1777 SAVE_STAY In Transit↔Dispatched only.
+See docs/ASCEND_WRITE_STATUS_V0.md.
+
 ## Avery 0.1.10 SAVE_STAY on 1763 is FIELD LIVE_VALIDATED
 
 Owner-reported Avery smoke on `04e0617`: 403 without approval PASS; A `d5c8a6cd`

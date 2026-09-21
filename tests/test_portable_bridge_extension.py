@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EXT = ROOT / "extensions" / "portable-bridge"
 FORBIDDEN = ("nativeMessaging", "connectNative", "eval(", "new Function", "document.cookie",
              "WebSocket(", ".click(", ".submit(", "ASCEND_SAVE", "ASCEND_SET_DRIVER")
-CONTENT_FILES = ["build.js", "board-view.js", "harvest.js", "write-note.js", "content.js"]
+CONTENT_FILES = ["build.js", "board-view.js", "harvest.js", "write-note.js", "write-status.js", "content.js"]
 READ_ONLY_JS = ("background.js", "board-view.js", "harvest.js", "popup.js", "build.js")
 
 
@@ -16,7 +16,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     manifest = json.loads((EXT / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["manifest_version"] == 3
     assert manifest["name"] == "FreightDesk Bridge"
-    assert manifest["version"] == "0.1.10"
+    assert manifest["version"] == "0.1.12"
     assert "nativeMessaging" not in manifest["permissions"]
     assert manifest["permissions"] == ["storage", "alarms", "scripting"]
     assert manifest["host_permissions"][0] == "https://ascendtms.com/*"
@@ -28,7 +28,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     assert "externally_connectable" not in manifest
     assert "web_accessible_resources" not in manifest
     identity = (EXT / "build.js").read_text(encoding="utf-8")
-    assert "extension_version: '0.1.10'" in identity
+    assert "extension_version: '0.1.12'" in identity
     assert "native_messaging: false" in identity
     assert "live_validated: false" in identity
     assert "production_writes: false" in identity
@@ -42,11 +42,20 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     assert "ADD_INTERNAL_NOTE" in write_note
     assert "WRITE_ACTION_FORBIDDEN" in write_note
     assert "FORBIDDEN_ACTIONS" in write_note
+    write_status = (EXT / "write-status.js").read_text(encoding="utf-8")
+    for token in ("nativeMessaging", "connectNative", "eval(", "new Function", "document.cookie",
+                  "WebSocket(", ".click(", ".submit("):
+        assert token not in write_status
+    assert "CHANGE_LOAD_STATUS" in write_status
+    assert "STATUS_COMMIT_REQUIRES_OWNER_PATH" in write_status
     content = (EXT / "content.js").read_text(encoding="utf-8")
     assert "ADD_INTERNAL_NOTE" in content
+    assert "CHANGE_LOAD_STATUS" in content
     assert "PROBE_NOTE_WORKSPACE" in content
+    assert "PROBE_STATUS_WORKSPACE" in content
     assert "REOPEN_AND_VERIFY" in content
     assert "VERIFY_NOTE" in content
+    assert "VERIFY_STATUS" in content
     assert "HARVEST_BOARD" in content
     assert "chrome.runtime.connectNative" not in "\n".join(path.read_text(encoding="utf-8") for path in EXT.glob("*.js"))
     assert "FreightDeskAscendHost" not in sources
@@ -66,7 +75,7 @@ def test_portable_reinjects_content_and_keeps_manual_reload_copy():
     popup_js = (EXT / "popup.js").read_text(encoding="utf-8")
     popup_html = (EXT / "popup.html").read_text(encoding="utf-8")
     readme = (EXT / "README.md").read_text(encoding="utf-8")
-    assert "CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'write-note.js', 'content.js'])" in background
+    assert "CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'write-note.js', 'write-status.js', 'content.js'])" in background
     assert "chrome.scripting.executeScript" in background
     inject = background.split("async function injectIsolatedContent", 1)[1].split("async function ensureAscendContent", 1)[0]
     assert "world: 'ISOLATED'" in inject
@@ -97,6 +106,9 @@ def test_portable_reinjects_content_and_keeps_manual_reload_copy():
     assert "recoverNoteOnAnyTab" in background
     assert "reopenFromBackground" in background
     assert "ensureWriteContent" in background
+    assert "CHANGE_LOAD_STATUS" in background
+    assert "PROBE_STATUS_WORKSPACE" in background
+    assert "reopenStatusFromBackground" in background
     assert "allFrames: true" in background
     assert "scratch_tab_required" in (EXT / "write-note.js").read_text(encoding="utf-8")
     assert "allow_search_submit" in (EXT / "write-note.js").read_text(encoding="utf-8")
@@ -169,7 +181,7 @@ def test_portable_harvest_start_injects_without_reloading():
     background = (EXT / "background.js").read_text(encoding="utf-8")
     script = "\n".join([
         "const ASCEND_ORIGIN = 'https://ascendtms.com';",
-        "const CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'write-note.js', 'content.js']);",
+        "const CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'write-note.js', 'write-status.js', 'content.js']);",
         "let injected = false;",
         "const calls = [];",
         "const chrome = {",
@@ -195,7 +207,7 @@ def test_portable_harvest_start_injects_without_reloading():
         "  if (calls.some((item) => item[0] === 'reload')) throw new Error('harvest must not reload');",
         "  const inject = calls.find((item) => item[0] === 'inject')[1];",
         "  if (inject.world !== 'ISOLATED' || inject.target.frameIds[0] !== 0) throw new Error('bad target');",
-        "  if (inject.files.join(',') !== 'build.js,board-view.js,harvest.js,write-note.js,content.js') throw new Error('bad files');",
+        "  if (inject.files.join(',') !== 'build.js,board-view.js,harvest.js,write-note.js,write-status.js,content.js') throw new Error('bad files');",
         "  injected = true;",
         "  const ready = await ensureAscendContent(tab, { allowReload: true });",
         "  if (ready !== 'ready') throw new Error('expected ready, got ' + ready);",
@@ -1124,6 +1136,136 @@ def test_popup_and_request_stringify_error_objects():
         "const claiming = formatLastWrite({status:'DISPATCHED', stage:'claim_wait'});",
         "if (!claiming.includes('claiming')) throw new Error('claim progress missing: ' + claiming);",
         "if (formatLastWrite({status:'FAILED', error_code:[{msg:'BRIDGE_CLAIM_TIMEOUT'}]}).includes('[object Object]')) throw new Error('timeout object leaked');",
+    ])
+    completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+def test_harvest_and_write_status_catalogs_match_atlas():
+    atlas = json.loads((EXT / "atlas.json").read_text(encoding="utf-8"))
+    catalog = atlas["status_catalog"]
+    assert "To Be Billed" in catalog
+    assert "UNKNOWN" not in catalog
+    script = "\n".join([
+        "const fs = require('fs');",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "harvest.js")) + ", 'utf8'));",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-note.js")) + ", 'utf8'));",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-status.js")) + ", 'utf8'));",
+        "const H = globalThis.FreightDeskPortableHarvest;",
+        "const S = globalThis.FreightDeskPortableWriteStatus;",
+        "const expected = " + json.dumps(catalog) + ";",
+        "if (JSON.stringify(H.STATUSES) !== JSON.stringify(expected)) throw new Error('harvest ' + H.STATUSES);",
+        "if (JSON.stringify(S.WRITE_STATUSES) !== JSON.stringify(expected)) throw new Error('write ' + S.WRITE_STATUSES);",
+        "if (H.statusOf('To Be Billed') !== 'To Be Billed') throw new Error('harvest billed');",
+        "if (H.statusOf('to be billed') !== 'To Be Billed') throw new Error('harvest billed case');",
+        "if (H.statusOf('Yeeted') !== 'UNKNOWN') throw new Error('harvest unknown');",
+        "if (S.catalogStatus('Driver Assigned') !== 'Driver Assigned') throw new Error('driver assigned');",
+    ])
+    completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+def test_portable_write_status_inspect_and_save_preference():
+    script = "\n".join([
+        "const fs = require('fs');",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-note.js")) + ", 'utf8'));",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-status.js")) + ", 'utf8'));",
+        "const S = globalThis.FreightDeskPortableWriteStatus;",
+        "if (!S || S.action !== 'CHANGE_LOAD_STATUS') throw new Error('status module missing');",
+        "if (S.version !== '0.1.12') throw new Error('status version ' + S.version);",
+        "if (!S.isStatusLabel('Load Status') || S.isStatusLabel('Truck Status')) throw new Error('label helper');",
+        "if (S.catalogStatus('in transit') !== 'In Transit') throw new Error('catalog');",
+        "if (S.catalogStatus('to be billed') !== 'To Be Billed') throw new Error('to be billed');",
+        "if (S.catalogStatus('UNKNOWN') || S.catalogStatus('Yeeted')) throw new Error('unknown leaked');",
+        "const scan = {",
+        "  inputs: [{label:'Load Status', tag:'select', visible:true, value:'Dispatched', el:{tagName:'SELECT', value:'Dispatched', options:[{text:'Dispatched', value:'Dispatched'},{text:'Delivered', value:'Delivered'}], selectedIndex:0}}],",
+        "  labeled: [],",
+        "  buttons: [{label:'Save', visible:true}, {label:'Save & Exit to Load Board', visible:true}],",
+        "  links: []",
+        "};",
+        "const denied = S.inspect(scan, {action:'CHANGE_LOAD_STATUS', status:'Delivered'});",
+        "if (denied.ok || denied.code !== 'STATUS_COMMIT_REQUIRES_OWNER_PATH') throw new Error('owner path: ' + JSON.stringify(denied));",
+        "if (denied.save_variant !== 'SAVE_STAY') throw new Error('prefer stay without flag');",
+        "const allowed = S.inspect(scan, {action:'CHANGE_LOAD_STATUS', status:'Delivered', allow_whole_form_save:true});",
+        "if (!allowed.ok || allowed.save_variant !== 'SAVE_STAY') throw new Error('stay save: ' + JSON.stringify(allowed));",
+        "const forbidden = S.inspect(scan, {action:'ADD_INTERNAL_NOTE', status:'Delivered'});",
+        "if (forbidden.ok || forbidden.code !== 'WRITE_ACTION_FORBIDDEN') throw new Error('note action leaked');",
+        "const bad = S.inspect(scan, {action:'CHANGE_LOAD_STATUS', status:'UNKNOWN'});",
+        "if (bad.ok || bad.code !== 'STATUS_NOT_ALLOWED') throw new Error('UNKNOWN leaked');",
+    ])
+    completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+def test_portable_write_status_execute_sets_select_and_prefers_save():
+    script = "\n".join([
+        "const fs = require('fs');",
+        "globalThis.getComputedStyle = () => ({ visibility: 'visible' });",
+        "globalThis.MouseEvent = class { constructor(type, init) { this.type = type; Object.assign(this, init || {}); } };",
+        "globalThis.Event = class { constructor(type, init) { this.type = type; Object.assign(this, init || {}); } };",
+        "function el(tag, attrs) {",
+        "  attrs = attrs || {};",
+        "  const node = {",
+        "    tagName: String(tag).toUpperCase(),",
+        "    textContent: attrs.text || attrs.label || '',",
+        "    value: attrs.value || '',",
+        "    options: attrs.options || [],",
+        "    selectedIndex: attrs.selectedIndex == null ? 0 : attrs.selectedIndex,",
+        "    labels: attrs.label ? [{ textContent: attrs.label }] : [],",
+        "    events: [],",
+        "    children: attrs.children || [],",
+        "    getClientRects: () => (attrs.hidden ? [] : [{}]),",
+        "    getAttribute: (name) => (attrs.attrs || {})[name] || null,",
+        "    closest: () => null,",
+        "    focus() { node.focused = true; },",
+        "    dispatchEvent(ev) { node.events.push(ev.type); return true; }",
+        "  };",
+        "  if (node.options.length && node.selectedIndex >= 0) {",
+        "    node.options[node.selectedIndex].selected = true;",
+        "  }",
+        "  return node;",
+        "}",
+        "const options = [",
+        "  {text:'Dispatched', value:'Dispatched', selected:true},",
+        "  {text:'Delivered', value:'Delivered', selected:false}",
+        "];",
+        "const select = el('select', {label:'Load Status', value:'Dispatched', options, selectedIndex:0});",
+        "const save = el('button', {label:'Save', text:'Save'});",
+        "const exit = el('button', {label:'Save & Exit to Load Board', text:'Save & Exit to Load Board'});",
+        "const heading = el('h2', {text:'Load Basics'});",
+        "const doc = {",
+        "  title: 'AscendTMS 1763',",
+        "  defaultView: { location: { origin: 'https://ascendtms.com', href: 'https://ascendtms.com/loads/1763' } },",
+        "  getElementById: (id) => id === 'scratch' ? el('textarea', {label:'Private Load Note'}) : null,",
+        "  querySelectorAll(sel) {",
+        "    if (sel.includes('iframe')) return [];",
+        "    if (sel.includes('textarea')) return [];",
+        "    if (sel.includes('button,input[type=\"submit\"]')) return [save, exit];",
+        "    if (sel.includes('h1,h2')) return [heading];",
+        "    if (sel.includes('input,select')) return [select];",
+        "    if (sel === 'label') return [];",
+        "    if (sel.includes('a,[role=\"link\"]')) return [];",
+        "    return [];",
+        "  }",
+        "};",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-note.js")) + ", 'utf8'));",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-status.js")) + ", 'utf8'));",
+        "const S = globalThis.FreightDeskPortableWriteStatus;",
+        "(async () => {",
+        "  const denied = await S.execute(doc, { action: 'CHANGE_LOAD_STATUS', load_id: '1763', status: 'Delivered', origin: 'https://ascendtms.com' });",
+        "  if (denied.ok || denied.error_code !== 'STATUS_COMMIT_REQUIRES_OWNER_PATH') throw new Error('denied: ' + JSON.stringify(denied));",
+        "  if (denied.opener_strategy !== 'already_open') throw new Error('opener: ' + JSON.stringify(denied));",
+        "  if (select.value !== 'Dispatched') throw new Error('must not change without flag');",
+        "  if (save.events.includes('click') || exit.events.includes('click')) throw new Error('must not click save');",
+        "  const allowed = await S.execute(doc, { action: 'CHANGE_LOAD_STATUS', load_id: '1763', status: 'Delivered', origin: 'https://ascendtms.com', allow_whole_form_save: true, tab_hint: 'scratch:9' });",
+        "  if (!allowed.ok || !allowed.status_matched) throw new Error('allowed: ' + JSON.stringify(allowed));",
+        "  if (allowed.save_variant !== 'SAVE_STAY') throw new Error('save variant: ' + JSON.stringify(allowed));",
+        "  if (allowed.observed_status !== 'Delivered') throw new Error('observed: ' + JSON.stringify(allowed));",
+        "  if (allowed.bridge_version !== '0.1.12') throw new Error('version');",
+        "  if (select.value !== 'Delivered') throw new Error('select not set');",
+        "  if (!save.events.includes('click')) throw new Error('Save not clicked');",
+        "  if (exit.events.includes('click')) throw new Error('Save & Exit clicked');",
+        "})().catch((error) => { console.error(error); process.exit(1); });",
     ])
     completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
     assert completed.returncode == 0, completed.stderr or completed.stdout

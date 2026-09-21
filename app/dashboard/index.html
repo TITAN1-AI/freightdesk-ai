@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FreightDesk AI · Avery operations</title><link rel="stylesheet" href="/assets/styles.css">
-<script src="/assets/app.js" defer></script><script src="/assets/live.js" defer></script><script src="/assets/mail.js" defer></script><script src="/assets/ascend.js" defer></script><script src="/assets/ascend-runtime.js" defer></script><script src="/assets/ascend-mapping.js" defer></script><script src="/assets/portable-facade.js" defer></script><script src="/assets/portable-notes.js" defer></script></head>
+<script src="/assets/app.js" defer></script><script src="/assets/live.js" defer></script><script src="/assets/mail.js" defer></script><script src="/assets/ascend.js" defer></script><script src="/assets/ascend-runtime.js" defer></script><script src="/assets/ascend-mapping.js" defer></script><script src="/assets/portable-facade.js" defer></script><script src="/assets/portable-notes.js" defer></script><script src="/assets/portable-status.js" defer></script></head>
 <body>
 <header><a class="brand" href="/">FD<span>FreightDesk <b>AI</b><small>BOOKING LOGISTICS</small></span></a>
 <nav><a href="#operations">Operations</a><a href="#approvals">Approvals <span id="approval-count">0</span></a><a href="#connections">Connections</a><a href="#policies">Policies</a></nav>
@@ -38,6 +38,29 @@
     <button type="submit" id="mint-note-approval">Mint demo note approval</button>
   </form>
   <p id="note-approval-status" class="muted" role="status">No demo note approval minted in this page.</p>
+</div>
+<div id="status-approval-box" class="note-approval">
+  <p class="muted">Demo load-status approval (APPROVAL_REQUIRED). Not LIVE_VALIDATED. Assign and money stay blocked.</p>
+  <form id="status-approval-form">
+    <label for="status-load-id">Load ID <input id="status-load-id" name="load_id" inputmode="numeric" maxlength="20" autocomplete="off" placeholder="1763"></label>
+    <label for="status-value">Status
+      <select id="status-value" name="status">
+        <option value="Active">Active</option>
+        <option value="Available">Available</option>
+        <option value="Assigned">Assigned</option>
+        <option value="Booked">Booked</option>
+        <option value="Dispatched" selected>Dispatched</option>
+        <option value="In Transit">In Transit</option>
+        <option value="Delivered">Delivered</option>
+        <option value="Completed">Completed</option>
+        <option value="To Be Billed">To Be Billed</option>
+        <option value="Driver Assigned">Driver Assigned</option>
+      </select>
+    </label>
+    <label for="status-allow-whole-form-save"><input type="checkbox" id="status-allow-whole-form-save" name="allow_whole_form_save"> Allow whole-form Save / Save &amp; Exit for Load Status</label>
+    <button type="submit" id="mint-status-approval">Mint demo status approval</button>
+  </form>
+  <p id="status-approval-status" class="muted" role="status">No demo status approval minted in this page.</p>
 </div>
 <div id="ascend-content"></div></section>
 <section id="operations"><div class="section-title"><h2>Operations overview</h2><span class="muted">Demo data · Updates every 30 seconds</span></div><div id="summary" class="summary"></div>

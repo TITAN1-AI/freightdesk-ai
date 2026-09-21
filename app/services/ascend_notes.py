@@ -34,6 +34,7 @@ class ApprovalMintBody(Model):
     action: str = Field(min_length=8, max_length=64)
     load_id: str = Field(min_length=1, max_length=20)
     text: str | None = Field(default=None, max_length=MAX_NOTE_CHARS, repr=False)
+    status: str | None = Field(default=None, max_length=32)
     allow_whole_form_save: bool = False
 
 
@@ -60,6 +61,8 @@ class WriteCompleteBody(Model):
     verify_reason: str | None = Field(default=None, max_length=64)
     bridge_version: str | None = Field(default=None, max_length=16)
     allow_whole_form_save: bool = False
+    status_matched: bool = False
+    observed_status: str | None = Field(default=None, max_length=32)
 
     @field_validator("error_code", mode="before")
     @classmethod
@@ -220,51 +223,73 @@ class AscendNoteService:
             self.store.put(self.tenant, "ascend_note_approval", approval["id"], approval)
         return self._finish_dispatched(receipt, text)
 
+    def has_write(self, write_id: str) -> bool:
+        try:
+            self.store.get(self.tenant, "ascend_note_write", write_id)
+            return True
+        except KeyError:
+            return False
+
     def get_write(self, write_id: str) -> dict:
         self._require_demo()
         self._expire_stale_writes(utcnow())
         return self._public(self.store.get(self.tenant, "ascend_note_write", write_id))
+
+    def claimable(self, principal_id: str) -> list[dict]:
+        return [item for item in self.store.all(self.tenant, "ascend_note_write")
+                if item["status"] == "DISPATCHED" and (
+                    not item.get("claimed_at") or item.get("claimed_by") == principal_id)]
+
+    def expire_stale(self, now=None) -> list[dict]:
+        return self._expire_stale_writes(now or utcnow())
+
+    def claim_record(self, record: dict, principal: dict, now=None) -> dict:
+        self._require_demo()
+        now = now or utcnow()
+        with self.store.transaction():
+            current = self.store.get(self.tenant, "ascend_note_write", record["id"])
+            if current["status"] != "DISPATCHED":
+                raise ValueError("write_not_claimable")
+            if current.get("claimed_by") and current["claimed_by"] != principal["id"]:
+                raise PermissionError("write_not_owned")
+            current["claimed_at"] = current.get("claimed_at") or now.isoformat()
+            current["claimed_by"] = principal["id"]
+            current["stage"] = "claimed"
+            self.store.put(self.tenant, "ascend_note_write", current["id"], current)
+            secret = self.store.get(self.tenant, "ascend_note_secret", current["id"])
+            self._audit("ASCEND_NOTE_CLAIMED", "Portable bridge claimed a private-note write.",
+                        {"write_id": current["id"], "load_id": current["load_id"]},
+                        principal["id"])
+        return {
+            "pending": True,
+            "write_id": current["id"],
+            "action": "ADD_INTERNAL_NOTE",
+            "policy_action": NOTE_ACTION,
+            "note_kind": NOTE_KIND,
+            "load_id": current["load_id"],
+            "text": secret["text"],
+            "text_digest": current["text_digest"],
+            "allow_whole_form_save": bool(current.get("allow_whole_form_save")),
+            "commit_kind": "WHOLE_FORM_SAVE" if current.get("allow_whole_form_save") else None,
+            "live_validated": False,
+            "production_writes": False,
+        }
 
     def claim_pending(self, token: str) -> dict:
         self._require_demo()
         principal = self.portable._require_principal(token)
         now = utcnow()
         expired = self._expire_stale_writes(now)
-        with self.store.transaction():
-            pending = [item for item in self.store.all(self.tenant, "ascend_note_write")
-                       if item["status"] == "DISPATCHED" and (
-                           not item.get("claimed_at") or item.get("claimed_by") == principal["id"])]
-            if not pending:
-                timed_out = expired[0] if expired else None
-                empty = {"pending": False, "action": NOTE_ACTION, "live_validated": False,
-                         "stage": "claim_wait"}
-                if timed_out:
-                    empty.update(write_id=timed_out["id"], error_code="BRIDGE_CLAIM_TIMEOUT",
-                                 stage="claim", status="FAILED")
-                return empty
-            record = sorted(pending, key=lambda item: item["created_at"])[0]
-            record["claimed_at"] = record.get("claimed_at") or now.isoformat()
-            record["claimed_by"] = principal["id"]
-            record["stage"] = "claimed"
-            self.store.put(self.tenant, "ascend_note_write", record["id"], record)
-            secret = self.store.get(self.tenant, "ascend_note_secret", record["id"])
-            self._audit("ASCEND_NOTE_CLAIMED", "Portable bridge claimed a private-note write.",
-                        {"write_id": record["id"], "load_id": record["load_id"]},
-                        principal["id"])
-        return {
-            "pending": True,
-            "write_id": record["id"],
-            "action": "ADD_INTERNAL_NOTE",
-            "policy_action": NOTE_ACTION,
-            "note_kind": NOTE_KIND,
-            "load_id": record["load_id"],
-            "text": secret["text"],
-            "text_digest": record["text_digest"],
-            "allow_whole_form_save": bool(record.get("allow_whole_form_save")),
-            "commit_kind": "WHOLE_FORM_SAVE" if record.get("allow_whole_form_save") else None,
-            "live_validated": False,
-            "production_writes": False,
-        }
+        pending = self.claimable(principal["id"])
+        if not pending:
+            timed_out = expired[0] if expired else None
+            empty = {"pending": False, "action": NOTE_ACTION, "live_validated": False,
+                     "stage": "claim_wait"}
+            if timed_out:
+                empty.update(write_id=timed_out["id"], error_code="BRIDGE_CLAIM_TIMEOUT",
+                             stage="claim", status="FAILED")
+            return empty
+        return self.claim_record(sorted(pending, key=lambda item: item["created_at"])[0], principal, now)
 
     def complete(self, token: str, write_id: str, verified: bool, note_present: bool,
                  error_code: str | None, live_validated: bool, production_writes: bool,

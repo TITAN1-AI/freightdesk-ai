@@ -14,7 +14,7 @@ skips UI for **API auth**. Harvest still requires Bridge on Active Loads.
 | Reads | `GET /v1/ascend/status`, `GET /v1/ascend/loads`, `GET /v1/ascend/loads/{id}`, `GET /v1/ascend/capabilities` |
 | Optional | `POST /v1/portable/leases` and revoke, with the same Bearer |
 | Harvest | Still `POST /v1/portable/harvest` with a **lease token**, from the Bridge |
-| Writes | Private internal note — `POST /v1/ascend/loads/{id}/notes` after approval. See [ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md). Status 501 / APPROVAL_REQUIRED intended; assign and expenses FORBIDDEN. Save, money, New Load stay blocked. |
+| Writes | Private internal note and load-status change after approval. See [ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md) and [ASCEND_WRITE_STATUS_V0.md](ASCEND_WRITE_STATUS_V0.md). Assign and expenses FORBIDDEN. Save, money, New Load stay blocked. |
 | LIVE_VALIDATED | **false** |
 
 ## Get a token

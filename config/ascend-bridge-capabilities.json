@@ -37,11 +37,12 @@
       "kind": "WRITE",
       "route": "POST /v1/ascend/loads/{id}/notes",
       "policy": "APPROVAL_REQUIRED",
-      "implementation": "IN_FLIGHT",
-      "tested": false,
+      "implementation": "IMPLEMENTED",
+      "tested": true,
+      "live_validated": false,
       "atlas": "textarea#scratch",
       "commit_kind": "WHOLE_FORM_SAVE",
-      "in_flight_pr": 8
+      "note": "FIELD LIVE_VALIDATED for Avery 0.1.10 / 1763 / SAVE_STAY / already_open only."
     },
     "write_public_note": {
       "kind": "WRITE",
@@ -55,9 +56,16 @@
       "kind": "WRITE",
       "route": "POST /v1/ascend/loads/{id}/status",
       "policy": "APPROVAL_REQUIRED",
-      "implementation": "NOT_STARTED",
+      "implementation": "IMPLEMENTED",
       "tested": true,
-      "http_stub": 501
+      "live_validated": false,
+      "atlas": "Load Status select/input on Load Basics",
+      "commit_kind": "WHOLE_FORM_SAVE",
+      "allowed_statuses": [
+        "Active", "Available", "Assigned", "Booked", "Dispatched",
+        "In Transit", "Delivered", "Completed", "To Be Billed", "Driver Assigned"
+      ],
+      "note": "Atlas status_catalog (harvest + field evidence) except UNKNOWN. Includes To Be Billed. No from→to graph. Not LIVE_VALIDATED until Avery VERIFIED."
     },
     "assign_carrier": {
       "kind": "WRITE",
@@ -113,11 +121,12 @@
     },
     "verify_after_write": {
       "kind": "AUTOMATION",
-      "route": null,
+      "route": "GET /v1/ascend/writes/{id}",
       "policy": "APPROVAL_REQUIRED",
-      "implementation": "NOT_STARTED",
-      "tested": false,
-      "note": "Required before any write is VERIFIED. Next after private-note VERIFIED is status."
+      "implementation": "IMPLEMENTED",
+      "tested": true,
+      "live_validated": false,
+      "note": "Note and status receipts require read-back. Status is not LIVE_VALIDATED."
     }
   }
 }

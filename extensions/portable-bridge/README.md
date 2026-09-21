@@ -16,7 +16,7 @@ Engineering handoff: [docs/PORTABLE_BRIDGE.md](../../docs/PORTABLE_BRIDGE.md).
 | Auth | DPAPI enrollment / pairing | Demo placeholder device session (cloud OAuth later) |
 | Lease | Host-owned Windows read lease | Cloud/demo capability lease, revocable |
 | Harvest | Host-leased identity/map jobs | VISIBLE_BOARD_ONLY board snapshot, **CANDIDATE** |
-| Writes | Blocked | Harvest blocked; approved **private internal note** only ([write note v0](../../docs/ASCEND_WRITE_NOTE_V0.md)) |
+| Writes | Blocked | Harvest blocked; approved **private internal note** and **load-status change** only ([write note v0](../../docs/ASCEND_WRITE_NOTE_V0.md), [write status v0](../../docs/ASCEND_WRITE_STATUS_V0.md)) |
 | LIVE_VALIDATED | Narrow historical X1 reads only | **No** — this track is not live-validated |
 
 v0 harvest never clicks Save, assign, notes, uploads, or wizard New Load. Maps/harvest are
@@ -66,7 +66,7 @@ blocks programmatic injection (policy, discarded tab, or a path the extension wi
 The popup shows distinct states for not signed in, missing lease, allowlist/origin failures,
 and an unreachable API. **Last write** is separate from harvest: a harvest
 `ACTIVE_VIEW_UNVERIFIED` banner does not describe a note-write failure. Keep the
-popup open during a note write so 0.1.10 can claim within seconds (`claimed_at`);
+popup open during a write so 0.1.12 can claim within seconds (`claimed_at`);
 leave the board tab open and sit on 1763 Load Basics with `#scratch` visible.
 Bridge must pick the scratch tab (`already_open`, `tab_hint`), not the board
 `unique_searchbox`. Prefer stay-on-load Save. After Save & Exit the Bridge waits
@@ -112,7 +112,7 @@ See [ASCEND_WRITE_NOTE_V0.md](../../docs/ASCEND_WRITE_NOTE_V0.md) for approval, 
 
 Atlas selectors (`textarea#scratch`, `#notes`, Load Basics) are in `atlas.json`.
 Capability matrix: [docs/ASCEND_CAPABILITY_MAP_V0.md](../../docs/ASCEND_CAPABILITY_MAP_V0.md).
-Status / assign / expenses HTTP writes are stubs only (501 / 403). No silent Save Load.
+Status write is APPROVAL_REQUIRED (not LIVE). Assign / expenses stay 403. No silent Save Load.
 
 Extension/device path (popup Demo sign-in) is unchanged: `POST /v1/portable/session` with
 `X-FreightDesk-Portable: 1`, then the same lease/harvest/facade routes using the device token.

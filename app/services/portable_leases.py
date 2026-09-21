@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from app.core.config import Settings
 from app.models.domain import AuditEvent, Model, utcnow
 from app.services.agent_sessions import AgentSessionService
+from app.services.ascend_atlas import harvest_load_statuses
 from app.services.auth_tokens import token_digest
 
 ALLOWED_ORIGIN = "https://ascendtms.com"
@@ -24,10 +25,7 @@ DEFAULT_LEASE_TTL_SECONDS = 900
 MAX_LEASE_TTL_SECONDS = 28800
 MIN_LEASE_TTL_SECONDS = 60
 DEVICE_TTL = timedelta(hours=8)
-LOAD_STATUSES = frozenset({
-    "Active", "Available", "Assigned", "Booked", "Dispatched",
-    "In Transit", "Delivered", "Completed", "UNKNOWN",
-})
+LOAD_STATUSES = harvest_load_statuses()
 
 
 class HarvestRow(Model):

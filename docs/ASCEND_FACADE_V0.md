@@ -1,10 +1,11 @@
 # Ascend facade v0
 
 Read endpoints for product/Avery over **portable UI harvest**, not the X1 native host and not an
-Ascend retail API. Demo-gated (`FREIGHTDESK_MODE=demo`). The only implemented write on this
-facade is an APPROVAL_REQUIRED private internal note; see
-[ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md). Status / assign / expenses are **stubs**
-with receipts. Capability matrix: [ASCEND_CAPABILITY_MAP_V0.md](ASCEND_CAPABILITY_MAP_V0.md).
+Ascend retail API. Demo-gated (`FREIGHTDESK_MODE=demo`). Implemented writes on this facade are the APPROVAL_REQUIRED private internal note
+and the APPROVAL_REQUIRED load-status change; see
+[ASCEND_WRITE_NOTE_V0.md](ASCEND_WRITE_NOTE_V0.md) and
+[ASCEND_WRITE_STATUS_V0.md](ASCEND_WRITE_STATUS_V0.md). Assign / expenses are **FORBIDDEN stubs**.
+Capability matrix: [ASCEND_CAPABILITY_MAP_V0.md](ASCEND_CAPABILITY_MAP_V0.md).
 
 | Claim | v0 |
 | --- | --- |
@@ -30,8 +31,9 @@ names are listed without inventing values.
 
 `GET /v1/ascend/capabilities` — READ / WRITE / AUTOMATION map. Writes are not LIVE.
 
-`POST /v1/ascend/loads/{id}/status` — stub. HTTP 501 `NOT_IMPLEMENTED`, intended policy
-**APPROVAL_REQUIRED**. No Save Load.
+`POST /v1/ascend/loads/{id}/status` — APPROVAL_REQUIRED load-status write. Same mint /
+claim / complete / verify shape as notes. Not LIVE_VALIDATED. See
+[ASCEND_WRITE_STATUS_V0.md](ASCEND_WRITE_STATUS_V0.md).
 
 `POST /v1/ascend/loads/{id}/assign` and `.../expenses` — HTTP 403 **FORBIDDEN** stubs.
 

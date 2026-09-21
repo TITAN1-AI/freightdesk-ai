@@ -3,7 +3,7 @@
   const ORIGIN = 'https://ascendtms.com';
   const MAX_ROWS = 100;
   const MAX_TABLES = 30;
-  const STATUSES = ['Active', 'Available', 'Assigned', 'Booked', 'Dispatched', 'In Transit', 'Delivered', 'Completed'];
+  const STATUSES = ['Active', 'Available', 'Assigned', 'Booked', 'Dispatched', 'In Transit', 'Delivered', 'Completed', 'To Be Billed', 'Driver Assigned'];
   const HEADERS = ['Load ID', 'Load Status', 'Last Contact/Tracking', 'Customer', 'Picks', 'Pick Date', 'Drops', 'Drop Date',
     'Users & Roles', 'Carrier', 'Driver', 'Equipment', 'Power Unit', 'Trailer', 'Distance', 'Weight', 'Income', 'Expenses',
     'Gross Profit/Loss', null, 'Reference', 'Truck Status', 'Branch', null, 'Smart Capacity', 'TruckSmarter', 'Asset Group',
@@ -13,7 +13,10 @@
   const norm = (value) => (value || '').replace(/\s+/g, ' ').trim();
   const loadId = (value) => /^[0-9]{1,20}$/.test(value) ? value : null;
   const boardDate = (value) => value.match(/^\d{2}\/\d{2}\/\d{4}(?=$|\s)/)?.[0] || null;
-  const statusOf = (value) => STATUSES.includes(value) ? value : 'UNKNOWN';
+  const statusOf = (value) => {
+    const key = norm(value).toLowerCase();
+    return STATUSES.find((item) => item.toLowerCase() === key) || 'UNKNOWN';
+  };
   const key = (value) => norm(value).toLowerCase();
   const hex = (buffer) => [...new Uint8Array(buffer)].map((n) => n.toString(16).padStart(2, '0')).join('');
 
@@ -88,5 +91,7 @@
     };
   }
 
-  globalThis.FreightDeskPortableHarvest = Object.freeze({ capture, origin: ORIGIN });
+  globalThis.FreightDeskPortableHarvest = Object.freeze({
+    capture, origin: ORIGIN, STATUSES, statusOf
+  });
 })();

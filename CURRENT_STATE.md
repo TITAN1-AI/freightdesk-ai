@@ -1,4 +1,23 @@
-# Current state — 2026-09-20
+# Current state — 2026-09-21
+
+## Ascend write status v0.1.12 — FIELD LIVE_VALIDATED (Avery 1777 SAVE_STAY In Transit↔Dispatched)
+
+Avery Bridge **0.1.12** on load **1777** (owner-approved; did not touch 1778–1780 or 1763):
+- A: 403 `PENDING_APPROVAL` PASS
+- B write `198e600d…` **VERIFIED** In Transit→Dispatched `SAVE_STAY` `status_matched` `bridge_version=0.1.12`
+- Restore write `97ad44f2…` **VERIFIED** Dispatched→In Transit `SAVE_STAY`
+
+Atlas `status_catalog` is the source of truth (includes **To Be Billed**; 1763 To Be Billed round-trip is still later). Policy stays **APPROVAL_REQUIRED**. Whole-form Save still needs `allow_whole_form_save`. No from→to graph. `VERIFIED` still requires read-back. Portable Bridge **0.1.12** force-reinjects write scripts. Note write, harvest lease semantics, and agent Bearer are unchanged. X1 untouched. **FIELD LIVE_VALIDATED** for this exact 1777 / SAVE_STAY / In Transit↔Dispatched path only. Receipts remain CANDIDATE (`live_validated=false`). Handoff: [ASCEND_WRITE_STATUS_V0.md](docs/ASCEND_WRITE_STATUS_V0.md).
+
+Verification: 117 focused tests passed (`tests/test_ascend_status.py`,
+`tests/test_ascend_notes.py`, `tests/test_ascend_capabilities.py`,
+`tests/test_portable_bridge_extension.py`, `tests/test_ascend_facade.py`,
+`tests/test_agent_sessions.py`, `tests/test_portable_leases.py`,
+`tests/test_api.py`, `tests/test_control_plane.py`). Windows CI on the
+0.1.11 commit failed `test_real_playwright_offline_dom_and_session_reuse`
+because `#ascend` is now multi-line; the extractor uses `re.S` and a
+newline-safe unit check. Ruff + Node `--check` passed on the touched
+modules. Two existing Starlette/AnyIO deprecation warnings remain.
 
 ## Ascend write note v0.1.10 — FIELD LIVE_VALIDATED (Avery 1763 SAVE_STAY)
 
@@ -145,11 +164,11 @@ Delivered:
 - Atlas JSON `extensions/portable-bridge/atlas.json` (`textarea#scratch`, `#notes`, Load Basics)
 - `GET /v1/ascend/loads/{id}` last-known CANDIDATE fields, empty-safe
 - `GET /v1/ascend/capabilities`
-- `POST /v1/ascend/loads/{id}/status` → 501 NOT_IMPLEMENTED, intended **APPROVAL_REQUIRED**
+- `POST /v1/ascend/loads/{id}/status` → IMPLEMENTED, **APPROVAL_REQUIRED**, not LIVE_VALIDATED
 - Assign / expenses → 403 FORBIDDEN stubs
 
-Demo-gated. No X1 changes. No Playwright secret path. No silent Save Load. Next LIVE field
-**after private-note VERIFIED** is status change. Not LIVE_VALIDATED.
+Demo-gated. No X1 changes. No Playwright secret path. No silent Save Load. Status write
+is IMPLEMENTED offline; not LIVE_VALIDATED until Avery VERIFIED.
 
 Verification: 45 focused tests passed (`tests/test_ascend_capabilities.py`,
 `tests/test_ascend_facade.py`, `tests/test_agent_sessions.py`, `tests/test_portable_leases.py`,

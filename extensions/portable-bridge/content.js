@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const ORIGIN = 'https://ascendtms.com';
-  const CONTENT_REV = '0.1.10';
+  const CONTENT_REV = '0.1.12';
   if (globalThis.FreightDeskPortableContentListener) {
     try { chrome.runtime.onMessage.removeListener(globalThis.FreightDeskPortableContentListener); } catch { /* keep going */ }
   }
@@ -15,6 +15,24 @@
       const probe = FreightDeskPortableWriteNote.probeWorkspace(document, message.load_id, message.text);
       sendResponse({ ok: true, rev: CONTENT_REV, ...probe });
       return;
+    }
+    if (message.action === 'PROBE_STATUS_WORKSPACE') {
+      const probe = FreightDeskPortableWriteStatus.probeWorkspace(
+        document, message.load_id, message.status || message.requested_status);
+      sendResponse({ ok: true, rev: CONTENT_REV, ...probe });
+      return;
+    }
+    if (message.action === 'CHANGE_LOAD_STATUS' || message.action === 'REOPEN_AND_VERIFY_STATUS' ||
+        message.action === 'VERIFY_STATUS') {
+      Promise.resolve().then(async () => {
+        if (location.origin !== ORIGIN) {
+          return { ok: false, verified: false, status_matched: false, error_code: 'ORIGIN_NOT_ALLOWLISTED' };
+        }
+        const mode = message.action === 'VERIFY_STATUS' ? 'verify'
+          : (message.action === 'REOPEN_AND_VERIFY_STATUS' ? 'reopen' : message.mode);
+        return FreightDeskPortableWriteStatus.execute(document, { ...message, origin: ORIGIN, mode });
+      }).then(sendResponse);
+      return true;
     }
     if (message.action === 'ADD_INTERNAL_NOTE' || message.action === 'REOPEN_AND_VERIFY' ||
         message.action === 'VERIFY_NOTE') {
