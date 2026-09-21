@@ -145,8 +145,11 @@ Field smoke (owner-manual, after Load unpacked on an already-open Active Loads t
 
 ## Remaining gaps (not in v0)
 
-- Real FreightDesk Cloud auth (OAuth / device code) and tenant billing
-- Chrome Web Store / Edge Add-ons listing, icons, privacy disclosure, review
+- Real FreightDesk Cloud auth (OAuth / device code) and tenant billing —
+  contract rehearsal in [docs/CLOUD_LEASE_OAUTH_V0.md](../../docs/CLOUD_LEASE_OAUTH_V0.md);
+  Cloud IdP is `NOT_CONFIGURED` and does not mint sessions
+- Chrome Web Store / Edge Add-ons listing, icons, privacy URL, review —
+  checklist in [docs/STORE_PACKAGING_V0.md](../../docs/STORE_PACKAGING_V0.md); not submitted
 - HTTPS cloud API origin in `host_permissions` (replace localhost stub)
 - Firefox
 - Operational field values, AUTO_MAP, general writes, and any LIVE_VALIDATED claim

@@ -1,0 +1,107 @@
+{
+  "version": "0",
+  "product": "FreightDesk Bridge",
+  "track": "B",
+  "sellable_product": "AscendTMS back-ops agent (harness + Avery + portable Chromium Bridge under policy)",
+  "status": "DOCUMENTED_NOT_SUBMITTED",
+  "live_validated": false,
+  "production_writes": false,
+  "native_messaging": false,
+  "titan_01_required": false,
+  "windows_native_host_required": false,
+  "unpacked_extension_dir": "extensions/portable-bridge",
+  "unpacked_manifest": "extensions/portable-bridge/manifest.json",
+  "asset_dir": "extensions/portable-bridge/store",
+  "cloud_api_origin": "UNSET",
+  "cloud_api_origin_note": "Owner/Manuel must pin the live HTTPS FreightDesk Cloud origin before any store zip. Do not invent or submit api.freightdesk.example.",
+  "privacy_policy_url": "UNSET",
+  "support_url": "UNSET",
+  "homepage_url": "UNSET",
+  "stores": {
+    "chrome_web_store": {
+      "package": "MV3 zip of portable-bridge after localhost is stripped",
+      "developer_console": "Chrome Web Store Developer Dashboard",
+      "submission": "NOT_STARTED"
+    },
+    "edge_addons": {
+      "package": "same MV3 codebase as Chrome",
+      "developer_console": "Microsoft Partner Center Edge Add-ons",
+      "submission": "NOT_STARTED"
+    }
+  },
+  "required_permissions": ["storage", "alarms", "scripting"],
+  "forbidden_permissions": [
+    "nativeMessaging",
+    "<all_urls>",
+    "debugger",
+    "webRequest",
+    "webRequestBlocking",
+    "cookies",
+    "history",
+    "tabs",
+    "identity",
+    "proxy",
+    "management"
+  ],
+  "required_host_permission": "https://ascendtms.com/*",
+  "demo_only_host_permissions": ["http://127.0.0.1/*", "http://localhost/*"],
+  "content_script_world": "ISOLATED",
+  "content_script_all_frames": false,
+  "icons_required_px": [16, 32, 48, 128],
+  "screenshots": {
+    "chrome": ["1280x800 or 640x400, at least one"],
+    "edge": ["1280x800 or 640x400, at least one"],
+    "must_not_include": [
+      "customer names",
+      "driver/carrier phones",
+      "finance",
+      "raw notes",
+      "tokens",
+      "localhost API URL as the customer story"
+    ]
+  },
+  "product_map": {
+    "demo_only": [
+      "Load unpacked",
+      "localhost host_permissions and CSP connect-src",
+      "PLACEHOLDER popup Demo sign-in",
+      "DEMO_AGENT Bearer / Tokens/demo-agent-token.txt",
+      "TrustedHost localhost and Local access only middleware",
+      "FREIGHTDESK_MODE=demo gate"
+    ],
+    "store_path": [
+      "Chrome Web Store + Edge Add-ons MV3 package with no nativeMessaging",
+      "OAuth / device-code to FreightDesk Cloud",
+      "Cloud-issued VISIBLE_BOARD_ONLY capability lease",
+      "HTTPS Cloud API origin in host_permissions and CSP connect-src",
+      "Privacy policy URL, icons, screenshots, host-permission justifications"
+    ],
+    "same_in_both": [
+      "Isolated content script on https://ascendtms.com/* only",
+      "Harvest CANDIDATE / VISIBLE_BOARD_ONLY",
+      "Assign and money FORBIDDEN",
+      "Writes APPROVAL_REQUIRED or FORBIDDEN; no silent Save Load",
+      "X1 / FreightDeskAscendHost.exe is not the install vehicle"
+    ],
+    "not_this_slice": [
+      "Live Ascend UI automation invented here",
+      "TITAN-01 packaging",
+      "Store submission",
+      "Cloud identity provider",
+      "Billing",
+      "Firefox"
+    ]
+  },
+  "merge_conflict_risk": {
+    "open_pr": 11,
+    "branch": "cursor/ascend-note-readback-ops-harvest-1fb7",
+    "do_not_rewrite_here": [
+      "extensions/portable-bridge/harvest.js",
+      "extensions/portable-bridge/write-note.js",
+      "extensions/portable-bridge/content.js",
+      "extensions/portable-bridge/atlas.json",
+      "extensions/portable-bridge/background.js",
+      "app/services/portable_leases.py harvest validation"
+    ]
+  }
+}

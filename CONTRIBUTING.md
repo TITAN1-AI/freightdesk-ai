@@ -11,6 +11,8 @@ The first write (private internal note, APPROVAL_REQUIRED) is
 Load status change (APPROVAL_REQUIRED, not LIVE) is
 [Ascend write status v0](docs/ASCEND_WRITE_STATUS_V0.md).
 The portable capability matrix is [Ascend capability map v0](docs/ASCEND_CAPABILITY_MAP_V0.md).
+Store packaging (Chrome Web Store / Edge Add-ons) is [Store packaging v0](docs/STORE_PACKAGING_V0.md).
+Cloud lease OAuth / device-code is [Cloud lease OAuth v0](docs/CLOUD_LEASE_OAUTH_V0.md).
 
 ## Branches and handoffs
 

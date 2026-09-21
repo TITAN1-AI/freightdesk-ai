@@ -8,6 +8,9 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
 
 - MV3 extension `extensions/portable-bridge/` named **FreightDesk Bridge**. No `nativeMessaging`.
 - Demo lease API under `/v1/portable/*` (session, leases, revoke, harvest, status).
+- Cloud OAuth / device-code **rehearsal** under `/v1/portable/oauth/*` (does not mint).
+  See [CLOUD_LEASE_OAUTH_V0.md](CLOUD_LEASE_OAUTH_V0.md). Store packaging checklist:
+  [STORE_PACKAGING_V0.md](STORE_PACKAGING_V0.md).
 - Demo **agent** Bearer under `/v1/agent/session` for Avery/API callers (no popup).
   See [AGENT_ASCEND_API_V0.md](AGENT_ASCEND_API_V0.md).
 - Ascend **facade** `GET /v1/ascend/loads`, `GET /v1/ascend/loads/{id}`, and
@@ -30,7 +33,9 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
 ## What this is not
 
 - Not LIVE_VALIDATED Ascend.
-- Not cloud OAuth / tenant billing / store listing.
+- Not a submitted Chrome/Edge listing or a configured Cloud IdP. Packaging + OAuth
+  contracts: [STORE_PACKAGING_V0.md](STORE_PACKAGING_V0.md),
+  [CLOUD_LEASE_OAUTH_V0.md](CLOUD_LEASE_OAUTH_V0.md).
 - Not a general write path. Status is IMPLEMENTED (APPROVAL_REQUIRED, not LIVE). Assign,
   expenses, public notes, uploads and New Load remain FORBIDDEN or out of the capture.
   Private-note write is FIELD LIVE_VALIDATED for Avery 0.1.10 / load 1763 / SAVE_STAY /
@@ -50,3 +55,12 @@ Load and test steps: [extensions/portable-bridge/README.md](../extensions/portab
 | Agent API auth | Demo Bearer (`DEMO_AGENT`) or bootstrap file | Cloud OAuth, multi-tenant, rotation |
 
 X1 (`extensions/ascend-x1/` + `FreightDeskAscendHost.exe`) is unchanged Track A.
+
+## Store packaging and cloud lease (v0 docs)
+
+Chrome/Edge listing path: [STORE_PACKAGING_V0.md](STORE_PACKAGING_V0.md).
+OAuth / device-code trust model: [CLOUD_LEASE_OAUTH_V0.md](CLOUD_LEASE_OAUTH_V0.md).
+Unpacked Demo sign-in (`POST /v1/portable/session`) is unchanged. Cloud IdP is
+`NOT_CONFIGURED`; `/v1/portable/oauth/*` is a rehearsal that never mints a session.
+The unpacked manifest is **not** a store zip (localhost host permissions remain for demo).
+Parallel to PR #11 note-capture — this slice does not rewrite harvest/write JS.

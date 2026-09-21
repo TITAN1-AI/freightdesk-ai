@@ -59,9 +59,9 @@ Non-goals for v0: multi-TMS writes, BrokerCarrier booking, Outlook send, autonom
 | **B · Portable product** | New extension + cloud lease API; store-ready packaging. |
 
 ## Immediate engineering slices
-1. **Lease API sketch** — `POST /v1/leases` (scope, origin, TTL, revoke).
+1. **Lease API sketch** — `POST /v1/leases` (scope, origin, TTL, revoke). **Demo leases exist**; Cloud OAuth is a rehearsal ([CLOUD_LEASE_OAUTH_V0.md](CLOUD_LEASE_OAUTH_V0.md)).
 2. **Extension shell** — MV3, no `nativeMessaging`; cloud auth; Ascend board reader ported from X1 content scripts.
-3. **Packaging** — single repo folder `extensions/portable-bridge/` + store listing draft.
+3. **Packaging** — `extensions/portable-bridge/` + store listing draft + [STORE_PACKAGING_V0.md](STORE_PACKAGING_V0.md). **Not submitted.**
 4. **Threat model one-pager** — token theft, malicious page, lease overreach.
 
 ## Success metrics (product)

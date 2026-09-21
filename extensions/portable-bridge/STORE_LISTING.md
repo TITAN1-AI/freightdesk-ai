@@ -19,3 +19,8 @@ customer names, finance and driver/carrier strings are not collected. Evidence i
 separate validation program. Single purpose: sync the visible board the user is looking at.
 
 Do not claim LIVE_VALIDATED Ascend or Booking Logistics production cutover in store copy.
+
+Full Chrome Web Store + Edge Add-ons checklist, privacy draft, and demo-vs-store product
+map: [docs/STORE_PACKAGING_V0.md](../../docs/STORE_PACKAGING_V0.md). Cloud lease trust
+model: [docs/CLOUD_LEASE_OAUTH_V0.md](../../docs/CLOUD_LEASE_OAUTH_V0.md). This listing
+draft is still **not submitted**.
