@@ -3,8 +3,8 @@ const DEFAULT_API = 'http://127.0.0.1:8787';
 const ASCEND_ORIGIN = 'https://ascendtms.com';
 const ALARM = 'portable-harvest';
 const PORTABLE_HEADER = { 'X-FreightDesk-Portable': '1' };
-const CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'write-note.js', 'write-status.js', 'content.js']);
-const BRIDGE_VERSION = '0.1.12';
+const CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'write-note.js', 'write-status.js', 'read-notes.js', 'content.js']);
+const BRIDGE_VERSION = '0.1.13';
 const WRITE_ALARM = 'portable-writes';
 const WRITE_SOON = 'portable-writes-soon';
 const CONTENT_RELOAD_MESSAGE = 'Reload the Ascend Active Loads tab now (F5), then press Start harvest.';
@@ -257,6 +257,8 @@ async function pollWritesOnce() {
   for (const candidate of tabs) {
     await ensureWriteContent(candidate);
   }
+  const isRead = pending.action === 'READ_LOAD_NOTES' ||
+    pending.policy_action === 'ASCEND_READ_LOAD_NOTES';
   const isStatus = pending.action === 'CHANGE_LOAD_STATUS' ||
     pending.policy_action === 'ASCEND_CHANGE_LOAD_STATUS';
   const choice = await pickWriteTab(tabs, pending.load_id, pending.status || pending.requested_status);
@@ -268,28 +270,79 @@ async function pollWritesOnce() {
   await ensureWriteContent(tab);
   let result;
   try {
-    result = await chrome.tabs.sendMessage(tab.id, isStatus ? {
-      action: 'CHANGE_LOAD_STATUS',
-      write_id: pending.write_id,
-      load_id: pending.load_id,
-      status: pending.status || pending.requested_status,
-      requested_status: pending.requested_status || pending.status,
-      allow_whole_form_save: !!pending.allow_whole_form_save,
-      forbid_searchbox: !!(choice.scratch_present || choice.status_present),
-      tab_hint: tabHint
-    } : {
-      action: 'ADD_INTERNAL_NOTE',
-      write_id: pending.write_id,
-      load_id: pending.load_id,
-      text: pending.text,
-      note_kind: pending.note_kind || 'PRIVATE_INTERNAL',
-      allow_whole_form_save: !!pending.allow_whole_form_save,
-      forbid_searchbox: !!choice.scratch_present,
-      tab_hint: tabHint
-    });
+    if (isRead) {
+      result = await chrome.tabs.sendMessage(tab.id, {
+        action: 'READ_LOAD_NOTES',
+        write_id: pending.write_id,
+        load_id: pending.load_id,
+        forbid_searchbox: !!choice.scratch_present,
+        allow_search_submit: !choice.scratch_present,
+        allow_load_url: true,
+        tab_hint: tabHint
+      });
+    } else if (isStatus) {
+      result = await chrome.tabs.sendMessage(tab.id, {
+        action: 'CHANGE_LOAD_STATUS',
+        write_id: pending.write_id,
+        load_id: pending.load_id,
+        status: pending.status || pending.requested_status,
+        requested_status: pending.requested_status || pending.status,
+        allow_whole_form_save: !!pending.allow_whole_form_save,
+        forbid_searchbox: !!(choice.scratch_present || choice.status_present),
+        tab_hint: tabHint
+      });
+    } else {
+      result = await chrome.tabs.sendMessage(tab.id, {
+        action: 'ADD_INTERNAL_NOTE',
+        write_id: pending.write_id,
+        load_id: pending.load_id,
+        text: pending.text,
+        note_kind: pending.note_kind || 'PRIVATE_INTERNAL',
+        allow_whole_form_save: !!pending.allow_whole_form_save,
+        forbid_searchbox: !!choice.scratch_present,
+        tab_hint: tabHint
+      });
+    }
   } catch {
     result = { verified: false, note_present: false, status_matched: false,
       error_code: 'CONTENT_UNAVAILABLE', stage: 'content' };
+  }
+  if (isRead) {
+    if (!result?.verified && (!result?.private_note_present && !result?.public_note_present)) {
+      const recovered = await recoverNoteReadOnAnyTab(tabs, pending.load_id);
+      if (recovered.verified || recovered.private_note_present || recovered.public_note_present) {
+        result = {
+          ...(result || {}),
+          ...recovered,
+          verified: true,
+          error_code: null,
+          stage: 'verify',
+          opener_strategy: result?.opener_strategy || 'already_open',
+          tab_hint: recovered.tab_hint || tabHint
+        };
+      }
+    }
+    await completeWrite(state.device_token, pending.write_id, {
+      verified: !!result?.verified,
+      note_present: !!result?.private_note_present,
+      private_note_present: !!result?.private_note_present,
+      public_note_present: !!result?.public_note_present,
+      private_note: result?.private_note ?? null,
+      public_note: result?.public_note ?? null,
+      error_code: safeCode(result?.error_code),
+      live_validated: false,
+      production_writes: false,
+      stage: result?.stage || 'execute',
+      opener_strategy: result?.opener_strategy || null,
+      note_label: result?.note_label || null,
+      commit_kind: 'READ_ONLY',
+      save_variant: 'NONE',
+      tab_hint: tabHint,
+      reopen_attempts: result?.reopen_attempts || 0,
+      verify_reason: result?.verify_reason || null,
+      bridge_version: BRIDGE_VERSION
+    });
+    return;
   }
   if (isStatus) {
     const shouldReopen = result?.save_variant === 'SAVE_AND_EXIT'
@@ -691,6 +744,29 @@ async function recoverNoteOnAnyTab(tabs, loadId, text) {
   return { note_present: false };
 }
 
+async function recoverNoteReadOnAnyTab(tabs, loadId) {
+  for (const tab of tabs || []) {
+    await ensureWriteContent(tab);
+    try {
+      const reply = await chrome.tabs.sendMessage(tab.id, {
+        action: 'READ_LOAD_NOTES',
+        load_id: loadId,
+        mode: 'verify',
+        forbid_searchbox: true,
+        tab_hint: tab?.id ? ('tab:' + tab.id) : 'missing'
+      });
+      if (reply?.verified || reply?.private_note_present || reply?.public_note_present) {
+        return {
+          ...reply,
+          verified: true,
+          tab_hint: tab?.id ? ('scratch:' + tab.id) : (reply?.tab_hint || 'missing')
+        };
+      }
+    } catch { /* try next tab */ }
+  }
+  return { verified: false, private_note_present: false, public_note_present: false };
+}
+
 async function probeTabScratchDom(tab, expectedText) {
   if (!tab?.id || typeof chrome === 'undefined' || !chrome.scripting?.executeScript) {
     return { scratch: false, note_present: false };
@@ -841,9 +917,14 @@ async function completeWrite(token, writeId, body) {
     verify_reason: body?.verify_reason || null,
     bridge_version: body?.bridge_version || BRIDGE_VERSION,
     status_matched: !!body?.status_matched,
-    observed_status: body?.observed_status || null
+    observed_status: body?.observed_status || null,
+    private_note_present: !!body?.private_note_present,
+    public_note_present: !!body?.public_note_present,
+    private_note: body?.private_note == null ? null : String(body.private_note).slice(0, 4000),
+    public_note: body?.public_note == null ? null : String(body.public_note).slice(0, 4000)
   };
-  const verifiedOk = payload.verified && (payload.note_present || payload.status_matched);
+  const verifiedOk = payload.verified && (payload.note_present || payload.status_matched ||
+    payload.private_note_present || payload.public_note_present);
   const local = {
     write_id: writeId,
     status: verifiedOk ? 'VERIFIED' : 'FAILED',

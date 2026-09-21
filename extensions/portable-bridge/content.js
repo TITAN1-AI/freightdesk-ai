@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const ORIGIN = 'https://ascendtms.com';
-  const CONTENT_REV = '0.1.12';
+  const CONTENT_REV = '0.1.13';
   if (globalThis.FreightDeskPortableContentListener) {
     try { chrome.runtime.onMessage.removeListener(globalThis.FreightDeskPortableContentListener); } catch { /* keep going */ }
   }
@@ -43,6 +43,15 @@
         const mode = message.action === 'VERIFY_NOTE' ? 'verify'
           : (message.action === 'REOPEN_AND_VERIFY' ? 'reopen' : message.mode);
         return FreightDeskPortableWriteNote.execute(document, { ...message, origin: ORIGIN, mode });
+      }).then(sendResponse);
+      return true;
+    }
+    if (message.action === 'READ_LOAD_NOTES') {
+      Promise.resolve().then(async () => {
+        if (location.origin !== ORIGIN) {
+          return { ok: false, verified: false, error_code: 'ORIGIN_NOT_ALLOWLISTED' };
+        }
+        return FreightDeskPortableReadNotes.execute(document, { ...message, origin: ORIGIN });
       }).then(sendResponse);
       return true;
     }

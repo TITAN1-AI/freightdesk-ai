@@ -8,6 +8,23 @@
     'Users & Roles', 'Carrier', 'Driver', 'Equipment', 'Power Unit', 'Trailer', 'Distance', 'Weight', 'Income', 'Expenses',
     'Gross Profit/Loss', null, 'Reference', 'Truck Status', 'Branch', null, 'Smart Capacity', 'TruckSmarter', 'Asset Group',
     'Container', 'Last Free Day', 'Created', 'Load Posting Notes', 'Public Load Notes', 'Temperature'];
+  const OPS_FIELDS = Object.freeze({
+    last_contact_tracking: 'Last Contact/Tracking',
+    customer: 'Customer',
+    picks: 'Picks',
+    drops: 'Drops',
+    carrier: 'Carrier',
+    driver: 'Driver',
+    equipment: 'Equipment',
+    power_unit: 'Power Unit',
+    trailer: 'Trailer',
+    weight: 'Weight',
+    reference: 'Reference',
+    truck_status: 'Truck Status',
+    load_posting_notes: 'Load Posting Notes',
+    public_notes: 'Public Load Notes'
+  });
+  const MAX_CELL = 2000;
   const visible = (el) => !!el?.getClientRects().length && getComputedStyle(el).visibility !== 'hidden' &&
     !el.closest('[hidden],[aria-hidden="true"]');
   const norm = (value) => (value || '').replace(/\s+/g, ' ').trim();
@@ -19,6 +36,45 @@
   };
   const key = (value) => norm(value).toLowerCase();
   const hex = (buffer) => [...new Uint8Array(buffer)].map((n) => n.toString(16).padStart(2, '0')).join('');
+
+  function cellText(cell) {
+    if (!cell) return null;
+    let text = '';
+    try {
+      if (typeof cell.cloneNode === 'function') {
+        const copy = cell.cloneNode(true);
+        if (copy.querySelectorAll) {
+          copy.querySelectorAll('script,style,input,textarea,[hidden],.tooltip,.popover').forEach((el) => el.remove());
+        }
+        text = copy.textContent || '';
+      } else {
+        text = cell.textContent || '';
+      }
+    } catch {
+      text = cell.textContent || '';
+    }
+    const value = norm(text);
+    if (!value) return null;
+    return value.length > MAX_CELL ? value.slice(0, MAX_CELL) : value;
+  }
+
+  function rowFromCells(cells, indexes) {
+    const number = loadId(norm(cells[indexes['Load ID']].textContent));
+    if (!number) fail('ROW_IDENTITY_INVALID');
+    const row = {
+      load_id: number,
+      pick_date: boardDate(norm(cells[indexes['Pick Date']].textContent)),
+      drop_date: boardDate(norm(cells[indexes['Drop Date']].textContent)),
+      load_status: statusOf(norm(cells[indexes['Load Status']].textContent))
+    };
+    for (const [field, header] of Object.entries(OPS_FIELDS)) {
+      const index = indexes[header];
+      if (index == null || !cells[index]) continue;
+      const value = cellText(cells[index]);
+      if (value) row[field] = value;
+    }
+    return row;
+  }
 
   function fail(code) {
     const error = new Error(code);
@@ -58,22 +114,9 @@
     if (eligible.length !== 1) fail(eligible.length ? 'BOARD_SCHEMA_INVALID' : 'NO_VISIBLE_GRID');
     const selected = eligible[0];
     if (selected.data.length > MAX_ROWS) fail('ROW_COUNT_BOUND');
-    const rows = selected.data.map(({ cells, indexes }) => {
-      const number = loadId(norm(cells[indexes['Load ID']].textContent));
-      if (!number) fail('ROW_IDENTITY_INVALID');
-      return {
-        load_id: number,
-        pick_date: boardDate(norm(cells[indexes['Pick Date']].textContent)),
-        drop_date: boardDate(norm(cells[indexes['Drop Date']].textContent)),
-        load_status: statusOf(norm(cells[indexes['Load Status']].textContent))
-      };
-    });
+    const rows = selected.data.map(({ cells, indexes }) => rowFromCells(cells, indexes));
     if (new Set(rows.map((row) => row.load_id)).size !== rows.length) fail('DUPLICATE_LOAD_ID');
-    const facts = rows.map((row) => ({
-      drop_date: row.drop_date,
-      load_id: row.load_id,
-      pick_date: row.pick_date
-    })).sort((a, b) => Number(a.load_id) - Number(b.load_id));
+    const facts = rows.map((row) => ({ ...row })).sort((a, b) => Number(a.load_id) - Number(b.load_id));
     const revision = hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(facts))));
     return {
       origin: ORIGIN,
@@ -92,6 +135,6 @@
   }
 
   globalThis.FreightDeskPortableHarvest = Object.freeze({
-    capture, origin: ORIGIN, STATUSES, statusOf
+    capture, origin: ORIGIN, STATUSES, statusOf, OPS_FIELDS, cellText, rowFromCells
   });
 })();

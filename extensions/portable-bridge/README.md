@@ -16,7 +16,7 @@ Engineering handoff: [docs/PORTABLE_BRIDGE.md](../../docs/PORTABLE_BRIDGE.md).
 | Auth | DPAPI enrollment / pairing | Demo placeholder device session (cloud OAuth later) |
 | Lease | Host-owned Windows read lease | Cloud/demo capability lease, revocable |
 | Harvest | Host-leased identity/map jobs | VISIBLE_BOARD_ONLY board snapshot, **CANDIDATE** |
-| Writes | Blocked | Harvest blocked; approved **private internal note** and **load-status change** only ([write note v0](../../docs/ASCEND_WRITE_NOTE_V0.md), [write status v0](../../docs/ASCEND_WRITE_STATUS_V0.md)) |
+| Writes | Blocked except approved notes/status | Harvest never writes. Approved **private internal note** and **load-status change** only ([write note v0](../../docs/ASCEND_WRITE_NOTE_V0.md), [write status v0](../../docs/ASCEND_WRITE_STATUS_V0.md)). Note **read-back** is ALLOW ([read notes v0](../../docs/ASCEND_READ_NOTES_V0.md)). |
 | LIVE_VALIDATED | Narrow historical X1 reads only | **No** — this track is not live-validated |
 
 v0 harvest never clicks Save, assign, notes, uploads, or wizard New Load. Maps/harvest are
@@ -66,7 +66,7 @@ blocks programmatic injection (policy, discarded tab, or a path the extension wi
 The popup shows distinct states for not signed in, missing lease, allowlist/origin failures,
 and an unreachable API. **Last write** is separate from harvest: a harvest
 `ACTIVE_VIEW_UNVERIFIED` banner does not describe a note-write failure. Keep the
-popup open during a write so 0.1.12 can claim within seconds (`claimed_at`);
+popup open during a write so 0.1.13 can claim within seconds (`claimed_at`);
 leave the board tab open and sit on 1763 Load Basics with `#scratch` visible.
 Bridge must pick the scratch tab (`already_open`, `tab_hint`), not the board
 `unique_searchbox`. Prefer stay-on-load Save. After Save & Exit the Bridge waits
@@ -98,6 +98,11 @@ curl -sS http://127.0.0.1:8787/v1/ascend/status -H "Authorization: Bearer $AGENT
 curl -sS http://127.0.0.1:8787/v1/ascend/loads -H "Authorization: Bearer $AGENT"
 curl -sS http://127.0.0.1:8787/v1/ascend/loads/1763 -H "Authorization: Bearer $AGENT"
 curl -sS http://127.0.0.1:8787/v1/ascend/capabilities -H "Authorization: Bearer $AGENT"
+
+# Note read-back (ALLOW). Sit on Load Basics with #scratch visible.
+# curl -sS -X POST http://127.0.0.1:8787/v1/ascend/loads/1763/notes/capture \
+#   -H "Authorization: Bearer $AGENT"
+# curl -sS http://127.0.0.1:8787/v1/ascend/loads/1763/notes -H "Authorization: Bearer $AGENT"
 
 # Optional: approved private internal note (FIELD LIVE_VALIDATED on 1763 SAVE_STAY only)
 # APPROVAL=$(curl -sS -X POST http://127.0.0.1:8787/v1/ascend/approvals \
@@ -149,7 +154,8 @@ Field smoke (owner-manual, after Load unpacked on an already-open Active Loads t
 - Chrome Web Store / Edge Add-ons listing, icons, privacy disclosure, review
 - HTTPS cloud API origin in `host_permissions` (replace localhost stub)
 - Firefox
-- Operational field values, AUTO_MAP, general writes, and any LIVE_VALIDATED claim
-  (private-note write is CANDIDATE / not field-passed)
+- Operational field values, AUTO_MAP, general writes, appointment/stop writes, and any
+  LIVE_VALIDATED harvest or note-read claim (board ops harvest and note capture are
+  IMPLEMENTED, `live_validated=false` until Avery)
 - Dashboard shipment list / freshness UI bound to portable harvest
 - Token storage stronger than `chrome.storage.local`

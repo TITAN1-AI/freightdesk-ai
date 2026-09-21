@@ -125,8 +125,11 @@ def test_harvest_payload_validation_rejects_writes_and_private_fields():
         validate_harvest_snapshot({**valid, "live_validated": True})
     with pytest.raises(ValueError, match="origin_not_allowlisted"):
         validate_harvest_snapshot({**valid, "origin": "https://evil.example"})
+    assert validate_harvest_snapshot({**valid, "rows": [{**valid["rows"][0], "customer": "Acme"}]}).rows[0].customer == "Acme"
     with pytest.raises(ValueError, match="harvest_payload_invalid"):
-        validate_harvest_snapshot({**valid, "rows": [{**valid["rows"][0], "customer": "PRIVATE"}]})
+        validate_harvest_snapshot({**valid, "rows": [{**valid["rows"][0], "income": "12.00"}]})
+    with pytest.raises(ValueError, match="harvest_payload_invalid"):
+        validate_harvest_snapshot({**valid, "rows": [{**valid["rows"][0], "private_notes": "secret"}]})
     with pytest.raises(ValueError, match="duplicate_load_id"):
         validate_harvest_snapshot({**valid, "row_count": 2, "rows": valid["rows"] * 2})
     with pytest.raises(ValueError, match="row_count_bound"):

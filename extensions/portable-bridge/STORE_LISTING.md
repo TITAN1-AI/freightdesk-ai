@@ -14,8 +14,10 @@ Permission justification (draft):
 - Localhost host permissions exist only for the developer lease stub and must be removed or replaced
   with the FreightDesk Cloud origin before store submission.
 
-Privacy (draft): harvest is identity metadata (load id, pick/drop dates, sanitized status). Notes,
-customer names, finance and driver/carrier strings are not collected. Evidence is CANDIDATE until a
-separate validation program. Single purpose: sync the visible board the user is looking at.
+Privacy (draft): harvest is CANDIDATE board cells the operator already has on Active Loads:
+load id, pick/drop dates, sanitized status, last-contact/tracking, customer, assignment
+names, public/posting notes, and other named ops columns. Private `#scratch` is collected
+only by an explicit note-capture job, not by board harvest. Finance columns are not
+harvested. Evidence is CANDIDATE until a separate validation program.
 
 Do not claim LIVE_VALIDATED Ascend or Booking Logistics production cutover in store copy.

@@ -115,7 +115,7 @@
       tab_hint: null,
       reopen_attempts: 0,
       verify_reason: null,
-      bridge_version: '0.1.12',
+      bridge_version: '0.1.13',
       ...partial
     };
   }
@@ -292,6 +292,25 @@
       }
       const notes = collect(root, 'textarea,[role="textbox"]').map(mapControl)
         .filter((item) => isPrivateNoteControl(item));
+      if (notes.length === 1) {
+        notes[0].visible = true;
+        return notes[0];
+      }
+    }
+    return null;
+  }
+
+  function findPublicNote(doc) {
+    for (const root of frameDocuments(doc)) {
+      let el = null;
+      try { el = root.getElementById ? root.getElementById(PUBLIC_NOTE_ID) : null; } catch { el = null; }
+      if (el) {
+        const item = mapControl(el);
+        item.visible = true;
+        return item;
+      }
+      const notes = collect(root, 'textarea,[role="textbox"]').map(mapControl)
+        .filter((item) => isPublicNoteControl(item));
       if (notes.length === 1) {
         notes[0].visible = true;
         return notes[0];
@@ -899,6 +918,7 @@
     scan,
     execute,
     findScratch,
+    findPublicNote,
     probeWorkspace,
     reopenAfterSave,
     waitForBoard,
@@ -908,6 +928,7 @@
     planWorkspace,
     planOpener,
     planCommit,
+    openWorkspace,
     isPrivateNoteLabel,
     isPublicNoteLabel,
     isNoteCommitLabel,

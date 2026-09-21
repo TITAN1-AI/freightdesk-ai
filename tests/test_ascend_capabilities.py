@@ -41,9 +41,13 @@ def test_atlas_wires_scratch_and_load_basics():
     public = atlas_field("public_notes")
     assert public["selector"] == PUBLIC_NOTE_SELECTOR
     assert public["policy"] == "FORBIDDEN"
+    assert public["read_policy"] == "ALLOW"
+    assert atlas_field("private_notes")["read_route"] == "GET /v1/ascend/loads/{id}/notes"
+    catalog = load_capabilities()
+    assert catalog["capabilities"]["read_load_notes"]["policy"] == "ALLOW"
+    assert catalog["capabilities"]["capture_load_notes"]["implementation"] == "IMPLEMENTED"
     for name in ("load_id", "load_status", "pick_date", "drop_date"):
         assert atlas_field(name)["section"] == "Load Basics"
-    catalog = load_capabilities()
     assert catalog["next_live_field_after_note_verified"] == "write_status"
     assert catalog["capabilities"]["write_status"]["policy"] == "APPROVAL_REQUIRED"
     assert catalog["capabilities"]["write_status"]["implementation"] == "IMPLEMENTED"
@@ -83,6 +87,8 @@ def test_capability_catalog_is_demo_gated_and_not_live(client):
     assert body["capabilities"]["write_private_note"]["implementation"] == "IMPLEMENTED"
     assert body["capabilities"]["write_status"]["implementation"] == "IMPLEMENTED"
     assert body["capabilities"]["write_status"]["live_validated"] is False
+    assert body["capabilities"]["read_load_notes"]["policy"] == "ALLOW"
+    assert body["capabilities"]["capture_load_notes"]["commit_kind"] == "READ_ONLY"
     assert body["next_live_field_after_note_verified"] == "write_status"
 
 
@@ -108,6 +114,7 @@ def test_load_by_id_returns_harvested_candidate_fields(client):
     assert found["pick_date"] == "09/15/2026"
     assert found["drop_date"] == "09/16/2026"
     assert found["fields"]["load_status"] == {"value": "Dispatched", "evidence_class": "CANDIDATE"}
+    assert found["notes"]["found"] is False
     assert found["evidence_class"] == "CANDIDATE"
     unknown = client.get("/v1/ascend/loads/1755")
     assert unknown.status_code == 200

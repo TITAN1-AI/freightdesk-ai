@@ -2,7 +2,7 @@
   'use strict';
   const ORIGIN = 'https://ascendtms.com';
   const ACTION = 'CHANGE_LOAD_STATUS';
-  const BRIDGE_VERSION = '0.1.12';
+  const BRIDGE_VERSION = '0.1.13';
   const STATUS_LABELS = Object.freeze(['load status', 'status']);
   const WRITE_STATUSES = Object.freeze([
     'Active', 'Available', 'Assigned', 'Booked', 'Dispatched',

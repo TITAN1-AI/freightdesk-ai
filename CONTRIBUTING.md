@@ -8,8 +8,10 @@ The Avery/product harvest read is [Ascend facade v0](docs/ASCEND_FACADE_V0.md).
 Agent Bearer (no popup) is [Agent Ascend API v0](docs/AGENT_ASCEND_API_V0.md).
 The first write (private internal note, APPROVAL_REQUIRED) is
 [Ascend write note v0](docs/ASCEND_WRITE_NOTE_V0.md).
-Load status change (APPROVAL_REQUIRED, not LIVE) is
+Load status change (APPROVAL_REQUIRED, FIELD LIVE_VALIDATED for 1777 SAVE_STAY only) is
 [Ascend write status v0](docs/ASCEND_WRITE_STATUS_V0.md).
+Note read-back and board ops harvest (ALLOW, not LIVE) is
+[Ascend read notes v0](docs/ASCEND_READ_NOTES_V0.md).
 The portable capability matrix is [Ascend capability map v0](docs/ASCEND_CAPABILITY_MAP_V0.md).
 
 ## Branches and handoffs

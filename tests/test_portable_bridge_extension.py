@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EXT = ROOT / "extensions" / "portable-bridge"
 FORBIDDEN = ("nativeMessaging", "connectNative", "eval(", "new Function", "document.cookie",
              "WebSocket(", ".click(", ".submit(", "ASCEND_SAVE", "ASCEND_SET_DRIVER")
-CONTENT_FILES = ["build.js", "board-view.js", "harvest.js", "write-note.js", "write-status.js", "content.js"]
+CONTENT_FILES = ["build.js", "board-view.js", "harvest.js", "write-note.js", "write-status.js", "read-notes.js", "content.js"]
 READ_ONLY_JS = ("background.js", "board-view.js", "harvest.js", "popup.js", "build.js")
 
 
@@ -16,7 +16,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     manifest = json.loads((EXT / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["manifest_version"] == 3
     assert manifest["name"] == "FreightDesk Bridge"
-    assert manifest["version"] == "0.1.12"
+    assert manifest["version"] == "0.1.13"
     assert "nativeMessaging" not in manifest["permissions"]
     assert manifest["permissions"] == ["storage", "alarms", "scripting"]
     assert manifest["host_permissions"][0] == "https://ascendtms.com/*"
@@ -28,7 +28,7 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
     assert "externally_connectable" not in manifest
     assert "web_accessible_resources" not in manifest
     identity = (EXT / "build.js").read_text(encoding="utf-8")
-    assert "extension_version: '0.1.12'" in identity
+    assert "extension_version: '0.1.13'" in identity
     assert "native_messaging: false" in identity
     assert "live_validated: false" in identity
     assert "production_writes: false" in identity
@@ -48,9 +48,17 @@ def test_portable_manifest_has_no_native_host_and_keeps_write_block():
         assert token not in write_status
     assert "CHANGE_LOAD_STATUS" in write_status
     assert "STATUS_COMMIT_REQUIRES_OWNER_PATH" in write_status
+    read_notes = (EXT / "read-notes.js").read_text(encoding="utf-8")
+    for token in ("nativeMessaging", "connectNative", "eval(", "new Function", "document.cookie",
+                  "WebSocket(", ".click(", ".submit("):
+        assert token not in read_notes
+    assert "READ_LOAD_NOTES" in read_notes
+    assert "READ_ONLY" in read_notes
+    assert "typeNote" not in read_notes
     content = (EXT / "content.js").read_text(encoding="utf-8")
     assert "ADD_INTERNAL_NOTE" in content
     assert "CHANGE_LOAD_STATUS" in content
+    assert "READ_LOAD_NOTES" in content
     assert "PROBE_NOTE_WORKSPACE" in content
     assert "PROBE_STATUS_WORKSPACE" in content
     assert "REOPEN_AND_VERIFY" in content
@@ -75,7 +83,7 @@ def test_portable_reinjects_content_and_keeps_manual_reload_copy():
     popup_js = (EXT / "popup.js").read_text(encoding="utf-8")
     popup_html = (EXT / "popup.html").read_text(encoding="utf-8")
     readme = (EXT / "README.md").read_text(encoding="utf-8")
-    assert "CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'write-note.js', 'write-status.js', 'content.js'])" in background
+    assert "CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'write-note.js', 'write-status.js', 'read-notes.js', 'content.js'])" in background
     assert "chrome.scripting.executeScript" in background
     inject = background.split("async function injectIsolatedContent", 1)[1].split("async function ensureAscendContent", 1)[0]
     assert "world: 'ISOLATED'" in inject
@@ -107,6 +115,8 @@ def test_portable_reinjects_content_and_keeps_manual_reload_copy():
     assert "reopenFromBackground" in background
     assert "ensureWriteContent" in background
     assert "CHANGE_LOAD_STATUS" in background
+    assert "READ_LOAD_NOTES" in background
+    assert "recoverNoteReadOnAnyTab" in background
     assert "PROBE_STATUS_WORKSPACE" in background
     assert "reopenStatusFromBackground" in background
     assert "allFrames: true" in background
@@ -181,7 +191,7 @@ def test_portable_harvest_start_injects_without_reloading():
     background = (EXT / "background.js").read_text(encoding="utf-8")
     script = "\n".join([
         "const ASCEND_ORIGIN = 'https://ascendtms.com';",
-        "const CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'write-note.js', 'write-status.js', 'content.js']);",
+        "const CONTENT_FILES = Object.freeze(['build.js', 'board-view.js', 'harvest.js', 'write-note.js', 'write-status.js', 'read-notes.js', 'content.js']);",
         "let injected = false;",
         "const calls = [];",
         "const chrome = {",
@@ -207,7 +217,7 @@ def test_portable_harvest_start_injects_without_reloading():
         "  if (calls.some((item) => item[0] === 'reload')) throw new Error('harvest must not reload');",
         "  const inject = calls.find((item) => item[0] === 'inject')[1];",
         "  if (inject.world !== 'ISOLATED' || inject.target.frameIds[0] !== 0) throw new Error('bad target');",
-        "  if (inject.files.join(',') !== 'build.js,board-view.js,harvest.js,write-note.js,write-status.js,content.js') throw new Error('bad files');",
+        "  if (inject.files.join(',') !== 'build.js,board-view.js,harvest.js,write-note.js,write-status.js,read-notes.js,content.js') throw new Error('bad files');",
         "  injected = true;",
         "  const ready = await ensureAscendContent(tab, { allowReload: true });",
         "  if (ready !== 'ready') throw new Error('expected ready, got ' + ready);",
@@ -1172,7 +1182,7 @@ def test_portable_write_status_inspect_and_save_preference():
         "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-status.js")) + ", 'utf8'));",
         "const S = globalThis.FreightDeskPortableWriteStatus;",
         "if (!S || S.action !== 'CHANGE_LOAD_STATUS') throw new Error('status module missing');",
-        "if (S.version !== '0.1.12') throw new Error('status version ' + S.version);",
+        "if (S.version !== '0.1.13') throw new Error('status version ' + S.version);",
         "if (!S.isStatusLabel('Load Status') || S.isStatusLabel('Truck Status')) throw new Error('label helper');",
         "if (S.catalogStatus('in transit') !== 'In Transit') throw new Error('catalog');",
         "if (S.catalogStatus('to be billed') !== 'To Be Billed') throw new Error('to be billed');",
@@ -1261,10 +1271,98 @@ def test_portable_write_status_execute_sets_select_and_prefers_save():
         "  if (!allowed.ok || !allowed.status_matched) throw new Error('allowed: ' + JSON.stringify(allowed));",
         "  if (allowed.save_variant !== 'SAVE_STAY') throw new Error('save variant: ' + JSON.stringify(allowed));",
         "  if (allowed.observed_status !== 'Delivered') throw new Error('observed: ' + JSON.stringify(allowed));",
-        "  if (allowed.bridge_version !== '0.1.12') throw new Error('version');",
+        "  if (allowed.bridge_version !== '0.1.13') throw new Error('version');",
         "  if (select.value !== 'Delivered') throw new Error('select not set');",
         "  if (!save.events.includes('click')) throw new Error('Save not clicked');",
         "  if (exit.events.includes('click')) throw new Error('Save & Exit clicked');",
+        "})().catch((error) => { console.error(error); process.exit(1); });",
+    ])
+    completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+def test_harvest_row_from_cells_extracts_ops_board_fields():
+    script = "\n".join([
+        "const fs = require('fs');",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "harvest.js")) + ", 'utf8'));",
+        "const H = globalThis.FreightDeskPortableHarvest;",
+        "if (!H.OPS_FIELDS.public_notes) throw new Error('ops fields missing');",
+        "if (H.cellText({textContent: '  GPS 12 min  '}) !== 'GPS 12 min') throw new Error('cellText');",
+        "const headers = ['Load ID','Load Status','Last Contact/Tracking','Customer','Picks','Pick Date','Drops','Drop Date',"
+        "'Users & Roles','Carrier','Driver','Equipment','Power Unit','Trailer','Distance','Weight','Income','Expenses',"
+        "'Gross Profit/Loss','x','Reference','Truck Status','Branch','y','Smart Capacity','TruckSmarter','Asset Group',"
+        "'Container','Last Free Day','Created','Load Posting Notes','Public Load Notes','Temperature'];",
+        "const indexes = Object.fromEntries(headers.map((name, index) => [name, index]));",
+        "const values = headers.map((name) => {",
+        "  if (name === 'Load ID') return '1763';",
+        "  if (name === 'Load Status') return 'Dispatched';",
+        "  if (name === 'Pick Date') return '09/15/2026 08:00';",
+        "  if (name === 'Drop Date') return '09/16/2026';",
+        "  if (name === 'Last Contact/Tracking') return 'GPS 12 min';",
+        "  if (name === 'Customer') return 'Acme';",
+        "  if (name === 'Public Load Notes') return 'dock 4';",
+        "  if (name === 'Income') return '999.00';",
+        "  return '';",
+        "});",
+        "const cells = values.map((textContent) => ({textContent}));",
+        "const row = H.rowFromCells(cells, indexes);",
+        "if (row.load_id !== '1763') throw new Error('id');",
+        "if (row.last_contact_tracking !== 'GPS 12 min') throw new Error('tracking');",
+        "if (row.customer !== 'Acme') throw new Error('customer');",
+        "if (row.public_notes !== 'dock 4') throw new Error('public');",
+        "if (row.income) throw new Error('money leaked');",
+    ])
+    completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+def test_read_notes_capture_does_not_click_save():
+    script = "\n".join([
+        "const fs = require('fs');",
+        "globalThis.getComputedStyle = () => ({ visibility: 'visible' });",
+        "function el(tag, attrs) {",
+        "  attrs = attrs || {};",
+        "  const node = {",
+        "    tagName: String(tag).toUpperCase(),",
+        "    id: attrs.id || '',",
+        "    value: attrs.value || '',",
+        "    textContent: attrs.text || attrs.value || '',",
+        "    events: [],",
+        "    getClientRects: () => [{x:0}],",
+        "    closest: () => null,",
+        "    getAttribute: (name) => attrs[name] || '',",
+        "    focus: () => {},",
+        "    click: function() { this.events.push('click'); },",
+        "    dispatchEvent: function(ev) { this.events.push(ev.type || 'event'); }",
+        "  };",
+        "  return node;",
+        "}",
+        "const scratch = el('textarea', {id:'scratch', value:'private desk'});",
+        "const publicEl = el('textarea', {id:'notes', value:'public desk'});",
+        "const save = el('button', {text:'Save'});",
+        "const doc = {",
+        "  location: { origin: 'https://ascendtms.com' },",
+        "  title: 'Load Basics',",
+        "  getElementById: (id) => id === 'scratch' ? scratch : (id === 'notes' ? publicEl : null),",
+        "  querySelectorAll: (sel) => {",
+        "    if (sel.indexOf('textarea') >= 0) return [scratch, publicEl];",
+        "    if (sel.indexOf('button') >= 0) return [save];",
+        "    return [];",
+        "  }",
+        "};",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "write-note.js")) + ", 'utf8'));",
+        "eval(fs.readFileSync(" + json.dumps(str(EXT / "read-notes.js")) + ", 'utf8'));",
+        "const R = globalThis.FreightDeskPortableReadNotes;",
+        "if (!R || R.action !== 'READ_LOAD_NOTES') throw new Error('module');",
+        "if (R.version !== '0.1.13') throw new Error('version ' + R.version);",
+        "(async () => {",
+        "  const result = await R.execute(doc, { action: 'READ_LOAD_NOTES', load_id: '1763', origin: 'https://ascendtms.com', tab_hint: 'scratch:9' });",
+        "  if (!result.verified) throw new Error('verified: ' + JSON.stringify(result));",
+        "  if (result.private_note !== 'private desk') throw new Error('private');",
+        "  if (result.public_note !== 'public desk') throw new Error('public');",
+        "  if (result.commit_kind !== 'READ_ONLY' || result.save_variant !== 'NONE') throw new Error('commit');",
+        "  if (save.events.includes('click')) throw new Error('clicked save');",
+        "  if (result.bridge_version !== '0.1.13') throw new Error('bridge');",
         "})().catch((error) => { console.error(error); process.exit(1); });",
     ])
     completed = subprocess.run(["node", "--input-type=commonjs", "-e", script], capture_output=True, text=True)

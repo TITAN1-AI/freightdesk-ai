@@ -1,3 +1,34 @@
+# Decisions - 2026-09-21
+
+## Next closed-loop slice is note read-back + board ops harvest, not an appointment write
+
+Atlas and sitemap have no Edit Stops / appointment / POD selectors (X1
+mapping-scope labels are vocabulary only). The clearest evidence is
+`textarea#scratch`, `#notes`, and the observed 33-column Active Loads headers
+already in harvest.js. Ship ALLOW note capture plus named ops-column harvest
+before inventing a stop-time write. Public-note write stays FORBIDDEN. Next
+safe APPROVAL_REQUIRED write after notes+status remains deferred until an
+Edit Stops atlas selector exists. Bridge 0.1.13. See
+docs/ASCEND_READ_NOTES_V0.md.
+
+## Board ops harvest is CANDIDATE named cells, not a money or private-note scrape
+
+Customer, last-contact/tracking, public notes, and assignment names are ALLOW
+CANDIDATE board text Avery needs without opening Load Basics. Income/expenses
+and private `#scratch` stay rejected (`HarvestRow` extra=forbid).
+`values_included` remains false; evidence_class stays CANDIDATE. Private note
+text is capture-only via `POST .../notes/capture`. See
+docs/ASCEND_READ_NOTES_V0.md.
+
+## Note capture is ALLOW READ_ONLY, same claim queue as writes
+
+`ASCEND_READ_LOAD_NOTES` defaults to ALLOW so Avery can read `#scratch` /
+`#notes` without an approval token. The job still uses the oldest-DISPATCHED
+claim/complete/verify queue, force-reinjects 0.1.13 content, prefers
+already-open Load Basics, and never clicks Save. Empty control-found text is
+VERIFIED. Wire receipts stay `live_validated=false` until Avery. See
+docs/ASCEND_READ_NOTES_V0.md.
+
 # Decisions - 2026-09-20
 
 ## Avery 0.1.12 SAVE_STAY on 1777 In Transit↔Dispatched is FIELD LIVE_VALIDATED

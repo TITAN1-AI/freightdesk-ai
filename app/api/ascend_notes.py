@@ -17,6 +17,9 @@ def install_ascend_note_routes(api, identity):
     def notes(request: Request):
         return request.app.state.notes
 
+    def note_reads(request: Request):
+        return request.app.state.note_reads
+
     def writes(request: Request):
         return request.app.state.writes
 
@@ -35,6 +38,18 @@ def install_ascend_note_routes(api, identity):
                           actor: AuthorizedIdentity = Depends(facade_reader)):
         """Queue a private/internal note. Rejects without a valid approval by default."""
         code, receipt = notes(request).add_note(actor.id, load_id, body.text, body.approval_token)
+        return JSONResponse(receipt, status_code=code)
+
+    @api.get("/v1/ascend/loads/{load_id}/notes")
+    def read_load_notes(load_id: str, request: Request, _actor=Depends(facade_reader)):
+        """Last VERIFIED private/public note capture. Empty-safe when missing."""
+        return note_reads(request).latest(load_id)
+
+    @api.post("/v1/ascend/loads/{load_id}/notes/capture")
+    def capture_load_notes(load_id: str, request: Request,
+                           actor: AuthorizedIdentity = Depends(facade_reader)):
+        """Queue a Load Basics note read-back. ALLOW. Never Save."""
+        code, receipt = note_reads(request).capture(actor.id, load_id)
         return JSONResponse(receipt, status_code=code)
 
     @api.get("/v1/ascend/writes/{write_id}")
@@ -58,4 +73,5 @@ def install_ascend_note_routes(api, identity):
             body.live_validated, body.production_writes, body.stage, body.opener_strategy,
             body.note_label, body.commit_kind, body.save_variant, body.tab_hint,
             body.reopen_attempts, body.verify_reason, body.bridge_version,
-            body.status_matched, body.observed_status)
+            body.status_matched, body.observed_status, body.private_note, body.public_note,
+            body.private_note_present, body.public_note_present)
