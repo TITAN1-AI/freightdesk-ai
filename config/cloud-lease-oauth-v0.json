@@ -1,0 +1,72 @@
+{
+  "version": "0",
+  "product": "portable-bridge",
+  "track": "B",
+  "status": "CONTRACT_REHEARSAL",
+  "cloud_idp": "NOT_CONFIGURED",
+  "live_validated": false,
+  "production_writes": false,
+  "mints_session_from_oauth": false,
+  "replaces_placeholder": false,
+  "demo_sign_in_unchanged": true,
+  "auth_modes": {
+    "PLACEHOLDER": {
+      "actor": "extension popup Demo sign-in",
+      "route": "POST /v1/portable/session",
+      "header": "X-FreightDesk-Portable: 1",
+      "implemented": true,
+      "mints_session": true,
+      "auth_kind": "PLACEHOLDER",
+      "store_path": false
+    },
+    "DEMO_AGENT": {
+      "actor": "Avery / local agents",
+      "route": "POST /v1/agent/session",
+      "implemented": true,
+      "mints_session": true,
+      "auth_kind": "DEMO_AGENT",
+      "not_oauth": true,
+      "store_path": false
+    },
+    "DEVICE_CODE": {
+      "actor": "store-path extension",
+      "start": "POST /v1/portable/oauth/device/start",
+      "poll": "POST /v1/portable/oauth/device/poll",
+      "token": "POST /v1/portable/oauth/token",
+      "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+      "implemented": "rehearsal",
+      "mints_session": false,
+      "store_path": true
+    },
+    "AUTHORIZATION_CODE_PKCE": {
+      "actor": "optional browser tab / future chrome.identity",
+      "start": "POST /v1/portable/oauth/authorize",
+      "token": "POST /v1/portable/oauth/token",
+      "code_challenge_method": "S256",
+      "implemented": false,
+      "mints_session": false,
+      "store_path": true,
+      "note": "Not required for v0 store if device-code ships. Avoids the identity permission."
+    }
+  },
+  "after_auth": {
+    "lease": "POST /v1/portable/leases",
+    "origin": "https://ascendtms.com",
+    "scope": "VISIBLE_BOARD_ONLY",
+    "harvest": "POST /v1/portable/harvest with lease_token",
+    "revoke": "POST /v1/portable/leases/{id}/revoke",
+    "writes": "ActionPolicy APPROVAL_REQUIRED or FORBIDDEN; assign and money stay FORBIDDEN"
+  },
+  "token_storage": {
+    "demo": "chrome.storage.local hashed at rest on the API",
+    "store_path_next": "short-lived access token + rotating refresh held by Cloud; extension stores opaque handle only"
+  },
+  "forbidden": [
+    "native host pairing",
+    "DPAPI enrollment as the product auth",
+    "Playwright as secret extension",
+    "client_credentials with a shared secret in the extension",
+    "password grant",
+    "Mail.Send-style extra scopes analog — request only bridge lease scopes"
+  ]
+}

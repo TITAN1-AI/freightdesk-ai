@@ -1,5 +1,33 @@
 # Current state — 2026-09-21
 
+## Store packaging + cloud lease OAuth v0 — documented, not submitted
+
+Sellable product track (parallel to PR #11 note-capture; does not block Avery field):
+**AscendTMS back-ops agent** = harness + Avery + portable Chromium Bridge under policy.
+This slice documents Chrome Web Store / Edge Add-ons packaging and the Cloud
+OAuth/device-code trust model. Customers will install Bridge from the stores and bind
+to FreightDesk Cloud — no Windows native host, no TITAN-01.
+
+- Handoffs: [STORE_PACKAGING_V0.md](docs/STORE_PACKAGING_V0.md),
+  [CLOUD_LEASE_OAUTH_V0.md](docs/CLOUD_LEASE_OAUTH_V0.md)
+- Unpacked Demo sign-in (`POST /v1/portable/session` PLACEHOLDER) and `DEMO_AGENT` are
+  unchanged. `/v1/portable/oauth/*` is a **rehearsal**: device-code start never mints a
+  session; poll stays `authorization_pending` then `expired_token`; Cloud IdP is
+  `NOT_CONFIGURED`
+- Store zip is **not** the unpacked manifest. `store_blockers()` fails closed on
+  localhost host permissions, missing icons, unset Cloud origin, unset privacy URL
+- Assign / money stay FORBIDDEN. X1 untouched. No live Ascend UI automation. **Not
+  submitted. Not LIVE_VALIDATED.**
+- Merge risk: PR #11 (`cursor/ascend-note-readback-ops-harvest-1fb7`) owns harvest/write
+  JS and Bridge 0.1.13. This PR does not rewrite those files and does not bump 0.1.12
+
+Verification: 71 focused tests passed (`tests/test_store_packaging.py`,
+`tests/test_cloud_lease_oauth.py`, `tests/test_portable_leases.py`,
+`tests/test_portable_bridge_extension.py`, `tests/test_agent_sessions.py`,
+`tests/test_api.py`, `tests/test_ascend_facade.py`, `tests/test_ascend_capabilities.py`).
+Ruff passed on the new modules. Two existing Starlette/AnyIO deprecation warnings remain.
+No vendor action. **Not LIVE_VALIDATED. Not submitted.**
+
 ## Ascend write status v0.1.12 — FIELD LIVE_VALIDATED (Avery 1777 SAVE_STAY In Transit↔Dispatched)
 
 Avery Bridge **0.1.12** on load **1777** (owner-approved; did not touch 1778–1780 or 1763):

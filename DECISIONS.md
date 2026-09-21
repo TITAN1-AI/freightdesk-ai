@@ -1,4 +1,15 @@
-# Decisions - 2026-09-20
+# Decisions - 2026-09-21
+
+## Store-path packaging is documented; unpacked demo is not the store zip
+
+Owner locked the first sellable product as the AscendTMS back-ops agent (harness + Avery +
+portable Chromium Bridge under policy). Chrome Web Store / Edge Add-ons packaging and the
+FreightDesk Cloud OAuth/device-code lease are a docs + config + rehearsal-API slice.
+Demo PLACEHOLDER sign-in and DEMO_AGENT stay the only session mints until a Cloud IdP
+exists. The unpacked manifest keeps localhost for developers; `store_manifest_candidate`
+strips it. No native host, no TITAN-01, assign/money FORBIDDEN. Do not submit from this
+PR. Parallel to PR #11; do not rewrite harvest/write paths here.
+See docs/STORE_PACKAGING_V0.md and docs/CLOUD_LEASE_OAUTH_V0.md.
 
 ## Avery 0.1.12 SAVE_STAY on 1777 In Transit↔Dispatched is FIELD LIVE_VALIDATED
 

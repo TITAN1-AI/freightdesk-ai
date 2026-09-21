@@ -88,3 +88,10 @@ See [ASCEND_WRITE_STATUS_V0.md](ASCEND_WRITE_STATUS_V0.md) for mint → approve 
 
 See [ASCEND_FACADE_V0.md](ASCEND_FACADE_V0.md), [AGENT_ASCEND_API_V0.md](AGENT_ASCEND_API_V0.md),
 and [PORTABLE_BRIDGE.md](PORTABLE_BRIDGE.md).
+
+## Demo vs store-path
+
+This matrix is the **demo unpacked** actuator on localhost. The sellable store-path
+(Chrome Web Store / Edge Add-ons + Cloud OAuth/device-code lease) is documented in
+[STORE_PACKAGING_V0.md](STORE_PACKAGING_V0.md) and [CLOUD_LEASE_OAUTH_V0.md](CLOUD_LEASE_OAUTH_V0.md).
+Assign and money stay FORBIDDEN on both paths. Packaging does not rewrite harvest/write.

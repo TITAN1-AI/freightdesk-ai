@@ -86,7 +86,9 @@ Harvest posts use the returned `lease_token`, not the agent token:
 ## What this is not
 
 - Not a retail Ascend API.
-- Not FreightDesk Cloud OAuth / device-code / multi-tenant identity.
+- Not FreightDesk Cloud OAuth / device-code / multi-tenant identity. The Cloud lease
+  rehearsal (`GET /v1/portable/oauth`) does not mint this Bearer. See
+  [CLOUD_LEASE_OAUTH_V0.md](CLOUD_LEASE_OAUTH_V0.md).
 - Not a substitute for an authenticated Ascend browser session.
 - Not Playwright-as-secret-extension.
 - Not X1 / native host.

@@ -1,3 +1,11 @@
+# Known issues - store packaging + cloud lease 2026-09-21
+
+Chrome/Edge store packaging and Cloud OAuth are **documented, not submitted**.
+`store_blockers()` is non-empty (localhost host permissions, no icons, Cloud origin
+UNSET, privacy URL UNSET). Device-code rehearsal never mints a session. PLACEHOLDER
+and DEMO_AGENT remain the only demo principals. Do not upload the unpacked folder.
+See docs/STORE_PACKAGING_V0.md and docs/CLOUD_LEASE_OAUTH_V0.md.
+
 # Known issues - Ascend write status v0 2026-09-21
 
 Load-status write is **FIELD LIVE_VALIDATED** for Avery 0.1.12 smoke on load
@@ -30,16 +38,18 @@ only. Verify-after-write exists for notes and status. Do not treat status as LIV
 
 # Known issues - portable bridge v0 2026-09-19
 
-Track B is a demo/unpacked foundation, not a store product. The Ascend facade reads stored harvest
+Track B is a demo/unpacked foundation, not a submitted store product. Packaging + OAuth
+contracts exist (docs/STORE_PACKAGING_V0.md, docs/CLOUD_LEASE_OAUTH_V0.md); Cloud IdP is
+NOT_CONFIGURED and the unpacked zip is not store-ready. The Ascend facade reads stored harvest
 only; it is not an Ascend API and not LIVE_VALIDATED. Agent Bearer (`DEMO_AGENT`) skips the popup
 for API auth only; harvest still needs Bridge on an Ascend tab. After Load unpacked, 0.1.1 tries
 isolated reinject on open Ascend tabs; a full Active Loads reload is still required when the
-browser blocks that inject or the tab is not exact `/` or `/loads`. Remaining gaps: FreightDesk
-Cloud OAuth/device-code auth, multi-tenant agent identity, HTTPS cloud API origin, Chrome/Edge
-store listing and icons, Firefox, full dashboard shipment list from harvest, stronger token
-storage, operational values, general writes, AUTO_MAP, and any LIVE_VALIDATED harvest or note
-write. Localhost host permissions must be replaced before store submission. Revoke stops further
-accepted posts; the last snapshot stays readable on the facade. BL live ops and X1 native
+browser blocks that inject or the tab is not exact `/` or `/loads`. Remaining gaps: Cloud IdP
+mint, multi-tenant agent identity, HTTPS cloud API origin, icons/privacy URL/store submit,
+Firefox, full dashboard shipment list from harvest, stronger token storage, operational values,
+general writes, AUTO_MAP, and any LIVE_VALIDATED harvest. Localhost host permissions must be
+replaced before store submission. Revoke stops further accepted posts; the last snapshot stays
+readable on the facade. BL live ops and X1 native
 enrollment are unchanged.
 See docs/AGENT_ASCEND_API_V0.md, docs/ASCEND_FACADE_V0.md and docs/ASCEND_WRITE_NOTE_V0.md.
 
