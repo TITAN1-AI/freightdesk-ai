@@ -1,18 +1,13 @@
-# Current state — 2026-09-20
+# Current state — 2026-09-21
 
-## Ascend write status v0.1.12 — IMPLEMENTED / TESTED, not LIVE_VALIDATED
+## Ascend write status v0.1.12 — FIELD LIVE_VALIDATED (Avery 1777 SAVE_STAY In Transit↔Dispatched)
 
-Field feedback on PR #10: 1763 UI status is **To Be Billed**, which the short
-catalog omitted. Avery correctly refused Dispatched. Atlas `status_catalog` is
-now the source of truth (original board labels + historical harvest
-`To Be Billed` / `Driver Assigned` + field 1763). Harvest no longer collapses
-those to `UNKNOWN`. Policy stays **APPROVAL_REQUIRED**. Whole-form Save still
-needs `allow_whole_form_save`. No from→to graph. `VERIFIED` still requires
-read-back. Portable Bridge **0.1.12** force-reinjects write scripts.
-Note write, harvest lease semantics, and agent Bearer are unchanged. X1
-untouched. **Not LIVE_VALIDATED.** Avery smokes B on a different
-Active/Available load first; 1763 To Be Billed is later. Do not merge.
-Handoff: [ASCEND_WRITE_STATUS_V0.md](docs/ASCEND_WRITE_STATUS_V0.md).
+Avery Bridge **0.1.12** on load **1777** (owner-approved; did not touch 1778–1780 or 1763):
+- A: 403 `PENDING_APPROVAL` PASS
+- B write `198e600d…` **VERIFIED** In Transit→Dispatched `SAVE_STAY` `status_matched` `bridge_version=0.1.12`
+- Restore write `97ad44f2…` **VERIFIED** Dispatched→In Transit `SAVE_STAY`
+
+Atlas `status_catalog` is the source of truth (includes **To Be Billed**; 1763 To Be Billed round-trip is still later). Policy stays **APPROVAL_REQUIRED**. Whole-form Save still needs `allow_whole_form_save`. No from→to graph. `VERIFIED` still requires read-back. Portable Bridge **0.1.12** force-reinjects write scripts. Note write, harvest lease semantics, and agent Bearer are unchanged. X1 untouched. **FIELD LIVE_VALIDATED** for this exact 1777 / SAVE_STAY / In Transit↔Dispatched path only. Receipts remain CANDIDATE (`live_validated=false`). Handoff: [ASCEND_WRITE_STATUS_V0.md](docs/ASCEND_WRITE_STATUS_V0.md).
 
 Verification: 117 focused tests passed (`tests/test_ascend_status.py`,
 `tests/test_ascend_notes.py`, `tests/test_ascend_capabilities.py`,
@@ -23,7 +18,6 @@ Verification: 117 focused tests passed (`tests/test_ascend_status.py`,
 because `#ascend` is now multi-line; the extractor uses `re.S` and a
 newline-safe unit check. Ruff + Node `--check` passed on the touched
 modules. Two existing Starlette/AnyIO deprecation warnings remain.
-**Do not merge** until Avery VERIFIED.
 
 ## Ascend write note v0.1.10 — FIELD LIVE_VALIDATED (Avery 1763 SAVE_STAY)
 

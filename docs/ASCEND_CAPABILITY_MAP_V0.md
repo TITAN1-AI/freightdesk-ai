@@ -15,12 +15,12 @@ copy: `GET /v1/ascend/capabilities`.
 | Agent API | HTTP + demo Bearer (`DEMO_AGENT`) |
 | Evidence | CANDIDATE / CANDIDATE_ONLY unless noted |
 | Writes | Receipts only; no silent Save Load |
-| Next LIVE field after private-note **VERIFIED** | **status change** (`POST /v1/ascend/loads/{id}/status`, APPROVAL_REQUIRED) — **IMPLEMENTED / TESTED**, not LIVE_VALIDATED |
+| Next LIVE field after private-note **VERIFIED** | **status change** (`POST /v1/ascend/loads/{id}/status`, APPROVAL_REQUIRED) — **FIELD LIVE_VALIDATED** for Avery 1777 SAVE_STAY In Transit↔Dispatched only |
 | Out of scope | X1 native host, Playwright secret path, money/assign LIVE |
 
 Private-note write (`#scratch` + `WHOLE_FORM_SAVE`) is FIELD LIVE_VALIDATED for the
-1763 SAVE_STAY already_open path only (PR #8). Status write is IMPLEMENTED on this
-slice and is not LIVE_VALIDATED.
+1763 SAVE_STAY already_open path only (PR #8). Status write is FIELD LIVE_VALIDATED
+for Avery 1777 SAVE_STAY In Transit↔Dispatched only.
 
 ## READ
 
@@ -42,7 +42,7 @@ without inventing values. Load Basics selectors stay CANDIDATE until a later det
 | --- | --- | --- | --- | --- |
 | Private / internal note | `POST /v1/ascend/loads/{id}/notes` | **APPROVAL_REQUIRED** | **IMPLEMENTED** | Atlas `textarea#scratch`. FIELD LIVE_VALIDATED for 1763 SAVE_STAY already_open only. |
 | Public note | none | **FORBIDDEN** | **FORBIDDEN** | Atlas `#notes`. Never typed. |
-| Status change | `POST /v1/ascend/loads/{id}/status` | **APPROVAL_REQUIRED** | **IMPLEMENTED** | Atlas `status_catalog` (includes **To Be Billed**, `Driver Assigned`). UNKNOWN harvest-only. WHOLE_FORM_SAVE with explicit flag. No from→to graph. Not LIVE_VALIDATED until Avery VERIFIED. |
+| Status change | `POST /v1/ascend/loads/{id}/status` | **APPROVAL_REQUIRED** | **IMPLEMENTED** | Atlas `status_catalog` (includes **To Be Billed**, `Driver Assigned`). UNKNOWN harvest-only. WHOLE_FORM_SAVE with explicit flag. No from→to graph. FIELD LIVE_VALIDATED for Avery 1777 SAVE_STAY In Transit↔Dispatched only. |
 | Assign carrier | `POST /v1/ascend/loads/{id}/assign` | **FORBIDDEN** | **FORBIDDEN** | HTTP **403** stub. Money/assign stay forbidden. |
 | Expenses / rates | `POST /v1/ascend/loads/{id}/expenses` | **FORBIDDEN** | **FORBIDDEN** | HTTP **403** stub. |
 | Documents upload | none | **FORBIDDEN** | **NOT_STARTED** | No LIVE route. |
@@ -50,7 +50,8 @@ without inventing values. Load Basics selectors stay CANDIDATE until a later det
 
 Write receipts always include `silent_save_forbidden: true`, `live_validated: false`, and
 `production_writes: false`. An approval token on assign/expenses stubs does not execute Save,
-assign, or money moves. Status is IMPLEMENTED under **APPROVAL_REQUIRED** and is not LIVE.
+assign, or money moves. Status is **APPROVAL_REQUIRED** and FIELD LIVE_VALIDATED for
+1777 SAVE_STAY In Transit↔Dispatched only. Wire receipts stay `live_validated=false`.
 
 ## AUTOMATION
 
@@ -59,7 +60,7 @@ assign, or money moves. Status is IMPLEMENTED under **APPROVAL_REQUIRED** and is
 | Harvest poll | Extension alarm → `POST /v1/portable/harvest` | ALLOW (lease-scoped) | **IMPLEMENTED / TESTED** |
 | Lease revoke | `POST /v1/portable/leases/{id}/revoke` | ALLOW | **IMPLEMENTED / TESTED** — last snapshot stays readable |
 | Scheduled board sync | none beyond harvest alarm | ALLOW (read) | **NOT_STARTED** — no server-owned schedule |
-| Verify-after-write | `GET /v1/ascend/writes/{id}` | APPROVAL_REQUIRED | **IMPLEMENTED** for notes and status. Status not LIVE. |
+| Verify-after-write | `GET /v1/ascend/writes/{id}` | APPROVAL_REQUIRED | **IMPLEMENTED** for notes and status. Status FIELD LIVE_VALIDATED for 1777 SAVE_STAY In Transit↔Dispatched only. |
 
 ## Closed-loop rules
 

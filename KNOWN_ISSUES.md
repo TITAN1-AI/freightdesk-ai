@@ -1,14 +1,13 @@
-# Known issues - Ascend write status v0 2026-09-20
+# Known issues - Ascend write status v0 2026-09-21
 
-Load-status write is **IMPLEMENTED / TESTED offline** (Bridge 0.1.12). It is **not
-LIVE_VALIDATED**. Default policy is APPROVAL_REQUIRED. Whole-form Save can still
-submit unrelated dirty fields. No from→to transition graph — Ascend may reject
-some UI options. Catalog is atlas `status_catalog` (includes **To Be Billed**);
-UNKNOWN remains harvest-only for unlisted UI values. Assign / money stay
-FORBIDDEN. Avery first smokes B on an Active/Available load, not 1763.
-`device_session_bound` with a REVOKED harvest lease is the demo 8-session cap,
-not a status-write lease bug — see docs/ASCEND_WRITE_STATUS_V0.md. Do not merge
-until Avery’s receipt is VERIFIED.
+Load-status write is **FIELD LIVE_VALIDATED** for Avery 0.1.12 smoke on load
+1777 only (`198e600d` In Transit→Dispatched SAVE_STAY; restore `97ad44f2`
+Dispatched→In Transit SAVE_STAY; A 403 PENDING_APPROVAL PASS). Default policy
+is APPROVAL_REQUIRED. Whole-form Save can still submit unrelated dirty fields.
+No from→to transition graph — Ascend may reject some UI options. Catalog is
+atlas `status_catalog` (includes **To Be Billed**); UNKNOWN remains harvest-only
+for unlisted UI values. 1763 To Be Billed was not part of this field. Assign /
+money stay FORBIDDEN. Receipts remain CANDIDATE. See docs/ASCEND_WRITE_STATUS_V0.md.
 
 # Known issues - Ascend write note v0 2026-09-20
 

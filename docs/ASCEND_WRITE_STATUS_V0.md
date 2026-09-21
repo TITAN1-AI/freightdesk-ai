@@ -4,8 +4,11 @@ Second FreightDesk **write** on the portable / agent facade. Avery (or any agent
 Portable Bridge **0.1.12** sets **Load Status** on an authenticated Ascend Load Basics tab.
 The agent never clicks Ascend UI.
 
-**Not LIVE_VALIDATED.** Avery must field-pass before any live claim.
-X1 / native host is unchanged. Harvest, agent Bearer, and the private-note write stay as they were.
+**FIELD LIVE_VALIDATED** for Avery 0.1.12 / load **1777** / SAVE_STAY /
+In Transit↔Dispatched only (`198e600d` then restore `97ad44f2`). A 403 without
+approval passed. 1778–1780 and 1763 were not in this field. Receipts remain
+CANDIDATE (`live_validated=false`). X1 / native host is unchanged. Harvest,
+agent Bearer, and the private-note write stay as they were.
 
 | Claim | v0 |
 | --- | --- |
@@ -13,7 +16,7 @@ X1 / native host is unchanged. Harvest, agent Bearer, and the private-note write
 | Policy | **APPROVAL_REQUIRED** (default). No silent status flips. Assign / money stay FORBIDDEN |
 | Auth | Same as the read facade: demo agent Bearer, owner session, or portable device token |
 | Actuator | Portable Bridge 0.1.12 on an already-authenticated Ascend tab |
-| Evidence | CANDIDATE receipts. `live_validated=false`. `production_writes=false` |
+| Evidence | CANDIDATE receipts. `live_validated=false` on the wire. FIELD LIVE_VALIDATED for 1777 SAVE_STAY In Transit↔Dispatched only |
 | Control | Atlas Load Basics labels `Load Status` / `Status`. Prefer a unique `<select>` / combobox |
 | Whole-form Save | Allowed only when the approval sets `allow_whole_form_save: true`. Prefer stay-on-load **Save**. Otherwise `STATUS_COMMIT_REQUIRES_OWNER_PATH` |
 | Allowed statuses | Atlas `status_catalog`: `Active`, `Available`, `Assigned`, `Booked`, `Dispatched`, `In Transit`, `Delivered`, `Completed`, **`To Be Billed`**, `Driver Assigned` |
@@ -77,30 +80,17 @@ Receipt fields: `write_id`, `action`, `requested_status`, `observed_status`,
 Optional mint `"status"` binds the token so a different catalog value cannot reuse it.
 Alias `"action":"ASCEND_CHANGE_LOAD_STATUS_VIA_SAVE"` forces `allow_whole_form_save`.
 
-## Avery field script (Bridge 0.1.12 only)
+## Avery field result (Bridge 0.1.12, load 1777)
 
-Reload unpacked Bridge **0.1.12** (single-build) and **restart the demo API**.
-Demo-sign-in and **keep the popup open**. Sit on an **Active or Available** Load
-Basics tab (leave the Active Loads board tab open on purpose). Use **one**
-unpacked 0.1.12 build — do not mix 0.1.11 content.
+Owner-approved Avery smoke. Reload unpacked Bridge **0.1.12** (single-build).
+Did **not** use 1763. Did **not** touch 1778–1780.
 
-**Do not smoke B on 1763.** 1763 is **To Be Billed**. The first 0.1.12 pass is a
-reversible catalog change on a different Active/Available load. The 1763
-To Be Billed round-trip is a later field after this catalog smoke.
+1. **A — no approval.** PASS. HTTP **403** / `PENDING_APPROVAL`.
+2. **B — approved reversible change.** Write `198e600d…` **VERIFIED**
+   In Transit→Dispatched `SAVE_STAY` `status_matched` `bridge_version=0.1.12`.
+3. **Restore.** Write `97ad44f2…` **VERIFIED** Dispatched→In Transit `SAVE_STAY`.
 
-1. **A — no approval.** `POST /v1/ascend/loads/{ACTIVE_LOAD}/status` with a
-   catalog value (for example `Available` or `Active`). Expect HTTP **403** /
-   `PENDING_APPROVAL` / `approval_required`. Ascend status must not change.
-2. **B — approved reversible change.** Mint with `allow_whole_form_save: true`
-   (or VIA_SAVE) bound to that Active/Available load and the intended catalog
-   status. POST the same status. Expect claim, then
-   `GET /v1/ascend/writes/{id}` → **`VERIFIED`**, `status_matched=true`,
-   `observed_status` equals the request, `tab_hint` set, `bridge_version=0.1.12`,
-   `verify_reason` present. Prefer `save_variant=SAVE_STAY` if Save exists.
-3. Do **not** click Save yourself. Do **not** merge until this receipt is VERIFIED.
-4. Assign / expenses still 403. Note write still works on its own approval.
-5. **Later:** 1763 To Be Billed → another catalog status (or the reverse) after
-   B passes on an Active/Available load.
+1763 To Be Billed remains a later field. Assign / expenses still 403.
 
 ## Demo sign-in / revoked harvest lease
 
@@ -138,7 +128,7 @@ click Save (`STATUS_COMMIT_REQUIRES_OWNER_PATH`).
 
 ## What this is not
 
-- Not LIVE_VALIDATED until Avery’s VERIFIED receipt
+- Not a general LIVE_VALIDATED status API — field claim is 1777 SAVE_STAY In Transit↔Dispatched only
 - Not an Ascend retail API
 - Not X1 / native messaging
 - Not assign, rates, New Load, uploads, public notes, or send
